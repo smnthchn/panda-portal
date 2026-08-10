@@ -110,7 +110,6 @@ function linkAndLoadInFields(body) {
 
   return {
     mapUrl: optionalUrl(body.map_url, "Google Maps link"),
-    venueMapUrl: optionalUrl(body.venue_map_url, "Venue map link"),
     loadInStart,
     loadInEnd
   };
@@ -252,9 +251,10 @@ export async function handleCreateConvention(request, env) {
 
   const result = await env.DB.prepare(
     `INSERT INTO conventions
-       (name, slug, venue, address, map_url, venue_map_url,
+       (name, slug, venue, address, map_url,
         starts_on, ends_on, setup_on, store_close_on, load_in_start, load_in_end,
-        booth_number, notes, drive_folder_id, booth_layout_file_id, is_published)
+        booth_number, notes, drive_folder_id, booth_layout_file_id,
+        venue_map_file_id, is_published)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     name,
@@ -262,7 +262,6 @@ export async function handleCreateConvention(request, env) {
     optionalText(body.venue),
     optionalText(body.address),
     links.mapUrl,
-    links.venueMapUrl,
     assertDate(body.starts_on, "Start date"),
     assertDate(body.ends_on, "End date"),
     assertDate(body.setup_on, "Setup date"),
@@ -273,6 +272,7 @@ export async function handleCreateConvention(request, env) {
     optionalText(body.notes),
     optionalText(body.drive_folder_id),
     optionalText(body.booth_layout_file_id),
+    optionalText(body.venue_map_file_id),
     body.is_published === false ? 0 : 1
   ).run();
 
@@ -304,11 +304,11 @@ export async function handleUpdateConvention(request, env, conventionId) {
 
   await env.DB.prepare(
     `UPDATE conventions
-     SET name = ?, slug = ?, venue = ?, address = ?, map_url = ?, venue_map_url = ?,
+     SET name = ?, slug = ?, venue = ?, address = ?, map_url = ?,
          starts_on = ?, ends_on = ?, setup_on = ?, store_close_on = ?,
          load_in_start = ?, load_in_end = ?,
          booth_number = ?, notes = ?, drive_folder_id = ?, booth_layout_file_id = ?,
-         is_published = ?, updated_at = CURRENT_TIMESTAMP
+         venue_map_file_id = ?, is_published = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`
   ).bind(
     name,
@@ -316,7 +316,6 @@ export async function handleUpdateConvention(request, env, conventionId) {
     optionalText(body.venue),
     optionalText(body.address),
     links.mapUrl,
-    links.venueMapUrl,
     assertDate(body.starts_on, "Start date"),
     assertDate(body.ends_on, "End date"),
     assertDate(body.setup_on, "Setup date"),
@@ -327,6 +326,7 @@ export async function handleUpdateConvention(request, env, conventionId) {
     optionalText(body.notes),
     optionalText(body.drive_folder_id),
     optionalText(body.booth_layout_file_id),
+    optionalText(body.venue_map_file_id),
     body.is_published === false ? 0 : 1,
     id
   ).run();

@@ -39,7 +39,13 @@ async function renderConventions(pushState = true) {
 
     ${current.length
       ? `<div class="card-grid">${current.map(conventionCard).join("")}</div>`
-      : `<div class="card"><p class="empty-state">No upcoming conventions yet.</p></div>`}
+      : `<div class="card">
+           <p class="empty-state">
+             ${data.canManage
+               ? "No conventions yet. Use “New convention” above to add your first event — dates, setup and load-in times, booth number, maps and checklists all live inside it."
+               : "No upcoming conventions yet."}
+           </p>
+         </div>`}
 
     ${past.length ? `
       <div class="card">
@@ -135,7 +141,8 @@ function drawConvention() {
     ${eventInfoCard()}
     ${myShiftsCard()}
     ${scheduleCard()}
-    ${boothLayoutCard()}
+    ${driveEmbedCard("Booth layout", convention.booth_layout_file_id)}
+    ${driveEmbedCard("Venue map", convention.venue_map_file_id)}
     ${checklistsSection()}
     ${documentsCard()}
     ${managingConvention ? manageSection() : ""}
@@ -177,15 +184,17 @@ function eventInfoCard() {
     ["Store closed", formatDate(convention.store_close_on)],
     ["Venue", convention.venue],
     ["Address", convention.address, mapHref ? externalLink(mapHref, convention.address) : null],
-    ["Venue map", convention.venue_map_url, convention.venue_map_url
-      ? externalLink(convention.venue_map_url, "Open venue map")
-      : null],
     ["Booth", convention.booth_number]
   ].filter(([, value]) => value);
 
   return `
     <div class="card">
-      <h3>Event info</h3>
+      <div class="card-head">
+        <h3>Event info</h3>
+        ${detailData.canManage
+          ? `<button class="btn-quiet" data-edit-event="1">Edit event details</button>`
+          : ""}
+      </div>
       <dl class="info-list">
         ${rows.map(([label, value, html]) => `
           <dt>${esc(label)}</dt><dd>${html || esc(value)}</dd>
@@ -274,23 +283,23 @@ function groupShiftsByDate(shifts) {
   return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 }
 
-function boothLayoutCard() {
-  const { convention } = detailData;
+/** Embeds a Drive file (booth layout, venue map) as a preview with a direct link. */
+function driveEmbedCard(title, rawFileId) {
+  if (!rawFileId) return "";
 
-  if (!convention.booth_layout_file_id) return "";
-
-  const fileId = encodeURIComponent(convention.booth_layout_file_id);
+  const fileId = encodeURIComponent(rawFileId);
 
   return `
     <div class="card">
-      <h3>Booth layout</h3>
+      <h3>${esc(title)}</h3>
       <div class="layout-frame">
         <iframe src="https://drive.google.com/file/d/${fileId}/preview"
-                title="Booth layout" allow="autoplay"></iframe>
+                title="${esc(title)}" allow="autoplay"></iframe>
       </div>
       <p class="meta">
         Can't see it? You may need access to the file in Drive —
-        <a href="https://drive.google.com/file/d/${fileId}/view" target="_blank" rel="noopener">open it directly</a>.
+        <a href="https://drive.google.com/file/d/${fileId}/view"
+           target="_blank" rel="noopener noreferrer">open it directly</a>.
       </p>
     </div>
   `;
@@ -368,6 +377,9 @@ function documentsCard() {
 }
 
 function wireConventionDetail() {
+  const editEvent = document.querySelector("[data-edit-event]");
+  if (editEvent) editEvent.onclick = () => renderConventionForm(detailData.convention);
+
   const toggle = document.getElementById("toggleManageBtn");
   if (toggle) {
     toggle.onclick = () => {
@@ -645,12 +657,15 @@ function renderConventionForm(convention) {
           <input type="url" id="cMapUrl" value="${esc(convention?.map_url || "")}"
                  placeholder="Optional — links the address automatically if blank">
         </label>
-        <label>Venue map link
-          <input type="url" id="cVenueMapUrl" value="${esc(convention?.venue_map_url || "")}"
-                 placeholder="Optional — hall or floor plan">
-        </label>
         <label>Drive folder ID <input type="text" id="cFolder" value="${esc(convention?.drive_folder_id || "")}" placeholder="Optional"></label>
-        <label>Booth layout file ID <input type="text" id="cLayout" value="${esc(convention?.booth_layout_file_id || "")}" placeholder="Optional"></label>
+        <label>Booth layout file ID
+          <input type="text" id="cLayout" value="${esc(convention?.booth_layout_file_id || "")}"
+                 placeholder="Optional — Drive file ID">
+        </label>
+        <label>Venue map file ID
+          <input type="text" id="cVenueMapFileId" value="${esc(convention?.venue_map_file_id || "")}"
+                 placeholder="Optional — Drive file ID of the hall/floor plan">
+        </label>
       </div>
 
       <label class="block-label">Important notes
@@ -690,7 +705,7 @@ function renderConventionForm(convention) {
       load_in_start: document.getElementById("cLoadInStart").value,
       load_in_end: document.getElementById("cLoadInEnd").value,
       map_url: document.getElementById("cMapUrl").value,
-      venue_map_url: document.getElementById("cVenueMapUrl").value,
+      venue_map_file_id: document.getElementById("cVenueMapFileId").value,
       booth_number: document.getElementById("cBooth").value,
       drive_folder_id: document.getElementById("cFolder").value,
       booth_layout_file_id: document.getElementById("cLayout").value,

@@ -332,10 +332,9 @@ button:disabled {
   text-decoration: underline;
 }
 
-input[type="text"],
-input[type="email"],
-input[type="date"],
-input[type="time"],
+/* Style every text-ish input by exclusion, so adding a new input type (url,
+   number, tel…) can't silently fall back to the browser's default look. */
+input:not([type="checkbox"]):not([type="radio"]),
 select,
 textarea {
   width: 100%;
