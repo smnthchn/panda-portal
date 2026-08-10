@@ -107,7 +107,12 @@ async function openConvention(slug, pushState = true) {
   }
 
   detailData = data;
-  managingConvention = false;
+
+  // Internal reloads (after saving a day, shift or checklist) pass pushState
+  // false — keep the manage panel open so editing isn't interrupted. Arriving
+  // at a convention fresh starts collapsed.
+  if (pushState) managingConvention = false;
+
   drawConvention();
 }
 
@@ -139,6 +144,7 @@ function drawConvention() {
     ` : ""}
 
     ${eventInfoCard()}
+    ${hoursCard()}
     ${myShiftsCard()}
     ${scheduleCard()}
     ${driveEmbedCard("Booth layout", convention.booth_layout_file_id)}
@@ -203,6 +209,51 @@ function eventInfoCard() {
       ${convention.notes
         ? `<h4>Important notes</h4><p class="notes-block">${esc(convention.notes)}</p>`
         : ""}
+    </div>
+  `;
+}
+
+const DAY_WINDOWS = [
+  { key: "setup", label: "Setup" },
+  { key: "early", label: "Early access" },
+  { key: "regular", label: "Regular" }
+];
+
+function windowText(day, key) {
+  const start = day[`${key}_start`];
+  const end = day[`${key}_end`];
+  return start && end ? `${formatTime(start)} – ${formatTime(end)}` : null;
+}
+
+function hoursCard() {
+  const { days } = detailData;
+
+  if (!days.length) {
+    return `
+      <div class="card">
+        <h3>Hours of operation</h3>
+        <p class="empty-state">No daily hours set for this event yet.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="card">
+      <h3>Hours of operation</h3>
+      <div class="hours-grid">
+        ${days.map(day => `
+          <div class="hours-day">
+            <h4>${esc(formatDate(day.day_date))}</h4>
+            <dl class="info-list">
+              ${DAY_WINDOWS.map(({ key, label }) => {
+                const text = windowText(day, key);
+                return text ? `<dt>${esc(label)}</dt><dd>${esc(text)}</dd>` : "";
+              }).join("")}
+            </dl>
+            ${day.notes ? `<p class="meta">${esc(day.notes)}</p>` : ""}
+          </div>
+        `).join("")}
+      </div>
     </div>
   `;
 }
@@ -425,10 +476,73 @@ function wireConventionDetail() {
 
 /* ---------- Management (boss only) ---------- */
 
+/** Next date in the event's range that doesn't have hours saved yet. */
+function nextUnsetDay() {
+  const { convention, days } = detailData;
+  if (!convention.starts_on) return "";
+
+  const taken = new Set(days.map(d => d.day_date));
+  const end = convention.ends_on || convention.starts_on;
+
+  for (let d = new Date(`${convention.starts_on}T00:00:00`);
+       d <= new Date(`${end}T00:00:00`);
+       d.setDate(d.getDate() + 1)) {
+    const iso = d.toISOString().slice(0, 10);
+    if (!taken.has(iso)) return iso;
+  }
+
+  return "";
+}
+
 function manageSection() {
-  const { convention, assignable, shifts, checklists } = detailData;
+  const { convention, assignable, shifts, checklists, days } = detailData;
 
   return `
+    <div class="card manage-card">
+      <h3>Hours of operation</h3>
+      ${days.length
+        ? `<ul class="file-list">
+            ${days.map(day => `
+              <li class="manage-row">
+                <span>
+                  <strong>${esc(formatDate(day.day_date))}</strong>
+                  ${DAY_WINDOWS.map(({ key, label }) => {
+                    const text = windowText(day, key);
+                    return text ? ` · ${esc(label)} ${esc(text)}` : "";
+                  }).join("")}
+                </span>
+                <span class="button-row">
+                  <button class="btn-quiet" data-edit-day="${day.id}">Edit</button>
+                  <button class="btn-danger" data-delete-day="${day.id}">Remove</button>
+                </span>
+              </li>
+            `).join("")}
+          </ul>`
+        : `<p class="empty-state">No daily hours yet.</p>`}
+
+      <h4 id="dayFormHeading">Add a day</h4>
+      <p class="meta">
+        Saving a date that already has hours replaces them. Setup start fills in
+        automatically as one hour before the earliest opening time, and you can
+        change it. Leave a window blank if it doesn't apply that day.
+      </p>
+      <div class="form-grid">
+        <label>Date <input type="date" id="dayDate" value="${esc(nextUnsetDay())}"></label>
+        <label>Early access start <input type="time" id="dayEarlyStart"></label>
+        <label>Early access end <input type="time" id="dayEarlyEnd"></label>
+        <label>Regular start <input type="time" id="dayRegularStart"></label>
+        <label>Regular end <input type="time" id="dayRegularEnd"></label>
+        <label>Setup start <input type="time" id="daySetupStart"></label>
+        <label>Setup end <input type="time" id="daySetupEnd"></label>
+        <label>Notes <input type="text" id="dayNotes" placeholder="Optional"></label>
+      </div>
+      <div class="button-row">
+        <button id="saveDayBtn">Save day</button>
+        <button class="btn-quiet" id="clearDayBtn">Clear</button>
+      </div>
+      <p class="form-error" id="dayError"></p>
+    </div>
+
     <div class="card manage-card">
       <h3>Shifts</h3>
       ${shifts.length
@@ -512,11 +626,108 @@ function manageSection() {
   `;
 }
 
+const DAY_FIELD_IDS = {
+  day_date: "dayDate",
+  setup_start: "daySetupStart",
+  setup_end: "daySetupEnd",
+  early_start: "dayEarlyStart",
+  early_end: "dayEarlyEnd",
+  regular_start: "dayRegularStart",
+  regular_end: "dayRegularEnd",
+  notes: "dayNotes"
+};
+
+function readDayForm() {
+  const payload = {};
+  for (const [field, id] of Object.entries(DAY_FIELD_IDS)) {
+    payload[field] = document.getElementById(id).value;
+  }
+  return payload;
+}
+
+function fillDayForm(day) {
+  for (const [field, id] of Object.entries(DAY_FIELD_IDS)) {
+    document.getElementById(id).value = day?.[field] || "";
+  }
+}
+
+/** "09:00" -> "08:00". Returns null if it would cross midnight. */
+function oneHourEarlier(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  if (isNaN(h) || isNaN(m) || h < 1) return null;
+  return `${String(h - 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function wireDayForm(conventionId, reload) {
+  const saveBtn = document.getElementById("saveDayBtn");
+  if (!saveBtn) return;
+
+  const setupStart = document.getElementById("daySetupStart");
+  const setupEnd = document.getElementById("daySetupEnd");
+
+  // Setup runs the hour before doors, so derive it from whichever opening time
+  // comes first — but never overwrite a value that's already been typed in.
+  const suggestSetup = () => {
+    const opens = [
+      document.getElementById("dayEarlyStart").value,
+      document.getElementById("dayRegularStart").value
+    ].filter(Boolean).sort()[0];
+
+    if (!opens) return;
+
+    const hourBefore = oneHourEarlier(opens);
+    if (!hourBefore) return;
+
+    if (!setupStart.value) setupStart.value = hourBefore;
+    if (!setupEnd.value) setupEnd.value = opens;
+  };
+
+  document.getElementById("dayEarlyStart").onchange = suggestSetup;
+  document.getElementById("dayRegularStart").onchange = suggestSetup;
+
+  document.getElementById("clearDayBtn").onclick = () => {
+    fillDayForm(null);
+    document.getElementById("dayDate").value = nextUnsetDay();
+    showFormError("dayError", "");
+  };
+
+  saveBtn.onclick = async () => {
+    saveBtn.disabled = true;
+    const result = await apiSend(`/api/conventions/${conventionId}/days`, "POST", readDayForm());
+    saveBtn.disabled = false;
+
+    if (!result.ok) {
+      showFormError("dayError", result.error || "Could not save that day.");
+      return;
+    }
+
+    await reload();
+  };
+
+  document.querySelectorAll("[data-edit-day]").forEach(btn => {
+    btn.onclick = () => {
+      const day = detailData.days.find(d => d.id === Number(btn.dataset.editDay));
+      fillDayForm(day);
+      document.getElementById("dayFormHeading").textContent = `Editing ${formatDate(day.day_date)}`;
+      document.getElementById("dayFormHeading").scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+  });
+
+  document.querySelectorAll("[data-delete-day]").forEach(btn => {
+    btn.onclick = async () => {
+      await apiSend(`/api/convention-days/${btn.dataset.deleteDay}`, "DELETE");
+      await reload();
+    };
+  });
+}
+
 function wireManageSection() {
   if (!managingConvention) return;
 
   const conventionId = detailData.convention.id;
   const reload = () => openConvention(detailData.convention.slug, false);
+
+  wireDayForm(conventionId, reload);
 
   const addShift = document.getElementById("addShiftBtn");
   if (addShift) {

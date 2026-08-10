@@ -15,6 +15,8 @@ import {
   handleCreateConvention,
   handleUpdateConvention,
   handleDeleteConvention,
+  handleSaveConventionDay,
+  handleDeleteConventionDay,
   handleCreateShift,
   handleDeleteShift,
   handleCreateChecklist,
@@ -57,6 +59,9 @@ const ROUTES = [
   ["GET", "/api/conventions/:slug", handleConventionDetail],
   ["PATCH", "/api/conventions/:id", handleUpdateConvention],
   ["DELETE", "/api/conventions/:id", handleDeleteConvention],
+
+  ["POST", "/api/conventions/:id/days", handleSaveConventionDay],
+  ["DELETE", "/api/convention-days/:id", handleDeleteConventionDay],
 
   ["POST", "/api/conventions/:id/shifts", handleCreateShift],
   ["DELETE", "/api/convention-shifts/:id", handleDeleteShift],

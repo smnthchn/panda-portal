@@ -154,7 +154,7 @@ export async function handleConventionDetail(request, env, slug) {
     return { ok: false, error: "Convention not found." };
   }
 
-  const [shiftRows, checklistRows, itemRows] = await Promise.all([
+  const [shiftRows, checklistRows, itemRows, dayRows] = await Promise.all([
     env.DB.prepare(
       `SELECT s.*, e.full_name AS employee_name
        FROM convention_shifts s
@@ -174,6 +174,11 @@ export async function handleConventionDetail(request, env, slug) {
        LEFT JOIN employees e ON e.id = i.done_by
        WHERE cl.convention_id = ?
        ORDER BY i.sort_order ASC, i.id ASC`
+    ).bind(convention.id).all(),
+    env.DB.prepare(
+      `SELECT * FROM convention_days
+       WHERE convention_id = ?
+       ORDER BY day_date ASC`
     ).bind(convention.id).all()
   ]);
 
@@ -234,6 +239,7 @@ export async function handleConventionDetail(request, env, slug) {
     },
     shifts,
     myShifts: shifts.filter(s => s.is_mine),
+    days: dayRows.results || [],
     checklists,
     documents,
     documentsError,
@@ -347,8 +353,88 @@ export async function handleDeleteConvention(request, env, conventionId) {
     ).bind(id),
     env.DB.prepare(`DELETE FROM convention_checklists WHERE convention_id = ?`).bind(id),
     env.DB.prepare(`DELETE FROM convention_shifts WHERE convention_id = ?`).bind(id),
+    env.DB.prepare(`DELETE FROM convention_days WHERE convention_id = ?`).bind(id),
     env.DB.prepare(`DELETE FROM conventions WHERE id = ?`).bind(id)
   ]);
+
+  return { ok: true };
+}
+
+const DAY_WINDOWS = [
+  { key: "setup", label: "Setup" },
+  { key: "early", label: "Early access" },
+  { key: "regular", label: "Regular" }
+];
+
+/**
+ * Validates the three optional windows on a day. Each is all-or-nothing: a start
+ * without an end (or the reverse) is a half-entered row, not a valid window.
+ */
+function dayWindows(body) {
+  const values = {};
+
+  for (const { key, label } of DAY_WINDOWS) {
+    const start = optionalTime(body[`${key}_start`], `${label} start`);
+    const end = optionalTime(body[`${key}_end`], `${label} end`);
+
+    if (Boolean(start) !== Boolean(end)) {
+      throw new BadRequest(`${label} needs both a start and an end time.`);
+    }
+
+    if (start && end && end <= start) {
+      throw new BadRequest(`${label} hours must end after they start.`);
+    }
+
+    values[`${key}_start`] = start;
+    values[`${key}_end`] = end;
+  }
+
+  return values;
+}
+
+/** Creates a day, or replaces the hours on one already saved for that date. */
+export async function handleSaveConventionDay(request, env, conventionId) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const body = await readJsonBody(request);
+  const dayDate = requiredDate(body.day_date, "Day");
+  const w = dayWindows(body);
+
+  await env.DB.prepare(
+    `INSERT INTO convention_days
+       (convention_id, day_date, setup_start, setup_end,
+        early_start, early_end, regular_start, regular_end, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (convention_id, day_date) DO UPDATE SET
+       setup_start = excluded.setup_start,
+       setup_end = excluded.setup_end,
+       early_start = excluded.early_start,
+       early_end = excluded.early_end,
+       regular_start = excluded.regular_start,
+       regular_end = excluded.regular_end,
+       notes = excluded.notes`
+  ).bind(
+    Number(conventionId),
+    dayDate,
+    w.setup_start,
+    w.setup_end,
+    w.early_start,
+    w.early_end,
+    w.regular_start,
+    w.regular_end,
+    optionalText(body.notes)
+  ).run();
+
+  return { ok: true };
+}
+
+export async function handleDeleteConventionDay(request, env, dayId) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  await env.DB.prepare(`DELETE FROM convention_days WHERE id = ?`)
+    .bind(Number(dayId)).run();
 
   return { ok: true };
 }

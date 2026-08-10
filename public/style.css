@@ -569,6 +569,28 @@ input[type="checkbox"] {
   margin: 0;
 }
 
+.hours-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.hours-day {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.hours-day h4 {
+  margin: 0 0 8px 0;
+}
+
+.hours-day .info-list {
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  font-size: 14px;
+}
+
 .notes-block {
   white-space: pre-wrap;
   line-height: 1.6;
