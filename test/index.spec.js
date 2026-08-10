@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import worker from "../src";
 import { matchPath, getCookie, optionalText, requiredText, BadRequest } from "../src/lib/http.js";
 import { roleOutranks, isValidRole } from "../src/lib/permissions.js";
+import { optionalUrl } from "../src/routes/conventions.js";
 
 function request(path, method = "GET", headers = {}) {
   return new Request(`http://example.com${path}`, { method, headers });
@@ -77,6 +78,31 @@ describe("role ranking", () => {
   it("rejects unknown roles", () => {
     expect(isValidRole("manager")).toBe(false);
     expect(roleOutranks("manager", "staff")).toBe(false);
+  });
+});
+
+describe("link fields", () => {
+  // These values become hrefs, so anything but http(s) has to be rejected.
+  it.each([
+    "javascript:alert(document.cookie)",
+    "JavaScript:alert(1)",
+    "data:text/html,<script>alert(1)</script>",
+    "vbscript:msgbox(1)",
+    "file:///C:/Windows/system.ini",
+    "not a url at all"
+  ])("rejects %s", (value) => {
+    expect(() => optionalUrl(value, "Link")).toThrow(BadRequest);
+  });
+
+  it("accepts ordinary http and https links", () => {
+    expect(optionalUrl("https://maps.app.goo.gl/abc123", "Link")).toBe("https://maps.app.goo.gl/abc123");
+    expect(optionalUrl("http://example.com/floorplan.pdf", "Link")).toBe("http://example.com/floorplan.pdf");
+  });
+
+  it("treats a blank link as absent rather than invalid", () => {
+    expect(optionalUrl("", "Link")).toBeNull();
+    expect(optionalUrl("   ", "Link")).toBeNull();
+    expect(optionalUrl(undefined, "Link")).toBeNull();
   });
 });
 

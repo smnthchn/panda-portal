@@ -145,15 +145,41 @@ function drawConvention() {
   wireConventionDetail();
 }
 
+/**
+ * Where the address should point. A pasted Google Maps link wins; otherwise fall
+ * back to a Maps search for the address text so it's always tappable on a phone.
+ */
+function addressHref(convention) {
+  if (convention.map_url) return convention.map_url;
+  if (!convention.address) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(convention.address)}`;
+}
+
+function externalLink(href, label) {
+  return `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`;
+}
+
 function eventInfoCard() {
   const { convention } = detailData;
+  const mapHref = addressHref(convention);
 
+  const loadIn = convention.load_in_start && convention.load_in_end
+    ? `${formatTime(convention.load_in_start)} – ${formatTime(convention.load_in_end)}`
+    : convention.load_in_start
+      ? `from ${formatTime(convention.load_in_start)}`
+      : null;
+
+  // [label, plain text, optional pre-built HTML that replaces the text]
   const rows = [
     ["Dates", formatDateRange(convention.starts_on, convention.ends_on)],
     ["Setup", formatDate(convention.setup_on)],
+    ["Load-in", loadIn],
     ["Store closed", formatDate(convention.store_close_on)],
     ["Venue", convention.venue],
-    ["Address", convention.address],
+    ["Address", convention.address, mapHref ? externalLink(mapHref, convention.address) : null],
+    ["Venue map", convention.venue_map_url, convention.venue_map_url
+      ? externalLink(convention.venue_map_url, "Open venue map")
+      : null],
     ["Booth", convention.booth_number]
   ].filter(([, value]) => value);
 
@@ -161,8 +187,8 @@ function eventInfoCard() {
     <div class="card">
       <h3>Event info</h3>
       <dl class="info-list">
-        ${rows.map(([label, value]) => `
-          <dt>${esc(label)}</dt><dd>${esc(value)}</dd>
+        ${rows.map(([label, value, html]) => `
+          <dt>${esc(label)}</dt><dd>${html || esc(value)}</dd>
         `).join("")}
       </dl>
       ${convention.notes
@@ -611,8 +637,18 @@ function renderConventionForm(convention) {
         <label>End date <input type="date" id="cEnd" value="${esc(convention?.ends_on || "")}"></label>
         <label>Setup date <input type="date" id="cSetup" value="${esc(convention?.setup_on || "")}"></label>
         <label>Store close date <input type="date" id="cStoreClose" value="${esc(convention?.store_close_on || "")}"></label>
+        <label>Load-in start <input type="time" id="cLoadInStart" value="${esc(convention?.load_in_start || "")}"></label>
+        <label>Load-in end <input type="time" id="cLoadInEnd" value="${esc(convention?.load_in_end || "")}"></label>
         <label>Booth number <input type="text" id="cBooth" value="${esc(convention?.booth_number || "")}" placeholder="A-14"></label>
         <label>Address <input type="text" id="cAddress" value="${esc(convention?.address || "")}" placeholder="Optional"></label>
+        <label>Google Maps link
+          <input type="url" id="cMapUrl" value="${esc(convention?.map_url || "")}"
+                 placeholder="Optional — links the address automatically if blank">
+        </label>
+        <label>Venue map link
+          <input type="url" id="cVenueMapUrl" value="${esc(convention?.venue_map_url || "")}"
+                 placeholder="Optional — hall or floor plan">
+        </label>
         <label>Drive folder ID <input type="text" id="cFolder" value="${esc(convention?.drive_folder_id || "")}" placeholder="Optional"></label>
         <label>Booth layout file ID <input type="text" id="cLayout" value="${esc(convention?.booth_layout_file_id || "")}" placeholder="Optional"></label>
       </div>
@@ -651,6 +687,10 @@ function renderConventionForm(convention) {
       ends_on: document.getElementById("cEnd").value,
       setup_on: document.getElementById("cSetup").value,
       store_close_on: document.getElementById("cStoreClose").value,
+      load_in_start: document.getElementById("cLoadInStart").value,
+      load_in_end: document.getElementById("cLoadInEnd").value,
+      map_url: document.getElementById("cMapUrl").value,
+      venue_map_url: document.getElementById("cVenueMapUrl").value,
       booth_number: document.getElementById("cBooth").value,
       drive_folder_id: document.getElementById("cFolder").value,
       booth_layout_file_id: document.getElementById("cLayout").value,

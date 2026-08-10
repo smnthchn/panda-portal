@@ -63,12 +63,57 @@ function requiredDate(value, fieldName) {
   return date;
 }
 
-function assertTime(value, fieldName) {
-  const text = requiredText(value, fieldName);
+function optionalTime(value, fieldName) {
+  const text = optionalText(value);
+  if (!text) return null;
   if (!/^\d{2}:\d{2}$/.test(text)) {
     throw new BadRequest(`${fieldName} must be a time like 09:30.`);
   }
   return text;
+}
+
+function assertTime(value, fieldName) {
+  const text = optionalTime(requiredText(value, fieldName), fieldName);
+  return text;
+}
+
+/**
+ * Link fields end up as hrefs, so only http(s) is allowed through — a pasted
+ * "javascript:" URL would otherwise run when someone clicks it.
+ */
+export function optionalUrl(value, fieldName) {
+  const text = optionalText(value);
+  if (!text) return null;
+
+  let parsed;
+  try {
+    parsed = new URL(text);
+  } catch {
+    throw new BadRequest(`${fieldName} must be a full link, starting with https://`);
+  }
+
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new BadRequest(`${fieldName} must be an http or https link.`);
+  }
+
+  return parsed.toString();
+}
+
+/** Shared by create and update: the optional link and load-in fields. */
+function linkAndLoadInFields(body) {
+  const loadInStart = optionalTime(body.load_in_start, "Load-in start");
+  const loadInEnd = optionalTime(body.load_in_end, "Load-in end");
+
+  if (loadInStart && loadInEnd && loadInEnd <= loadInStart) {
+    throw new BadRequest("The load-in window's end time must be after its start time.");
+  }
+
+  return {
+    mapUrl: optionalUrl(body.map_url, "Google Maps link"),
+    venueMapUrl: optionalUrl(body.venue_map_url, "Venue map link"),
+    loadInStart,
+    loadInEnd
+  };
 }
 
 export async function handleConventionList(request, env) {
@@ -203,21 +248,27 @@ export async function handleCreateConvention(request, env) {
 
   const body = await readJsonBody(request);
   const name = requiredText(body.name, "Name");
+  const links = linkAndLoadInFields(body);
 
   const result = await env.DB.prepare(
     `INSERT INTO conventions
-       (name, slug, venue, address, starts_on, ends_on, setup_on, store_close_on,
+       (name, slug, venue, address, map_url, venue_map_url,
+        starts_on, ends_on, setup_on, store_close_on, load_in_start, load_in_end,
         booth_number, notes, drive_folder_id, booth_layout_file_id, is_published)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     name,
     await uniqueSlug(env.DB, name),
     optionalText(body.venue),
     optionalText(body.address),
+    links.mapUrl,
+    links.venueMapUrl,
     assertDate(body.starts_on, "Start date"),
     assertDate(body.ends_on, "End date"),
     assertDate(body.setup_on, "Setup date"),
     assertDate(body.store_close_on, "Store close date"),
+    links.loadInStart,
+    links.loadInEnd,
     optionalText(body.booth_number),
     optionalText(body.notes),
     optionalText(body.drive_folder_id),
@@ -249,11 +300,13 @@ export async function handleUpdateConvention(request, env, conventionId) {
 
   const name = optionalText(body.name) || existing.name;
   const slug = name === existing.name ? existing.slug : await uniqueSlug(env.DB, name, id);
+  const links = linkAndLoadInFields(body);
 
   await env.DB.prepare(
     `UPDATE conventions
-     SET name = ?, slug = ?, venue = ?, address = ?, starts_on = ?, ends_on = ?,
-         setup_on = ?, store_close_on = ?,
+     SET name = ?, slug = ?, venue = ?, address = ?, map_url = ?, venue_map_url = ?,
+         starts_on = ?, ends_on = ?, setup_on = ?, store_close_on = ?,
+         load_in_start = ?, load_in_end = ?,
          booth_number = ?, notes = ?, drive_folder_id = ?, booth_layout_file_id = ?,
          is_published = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`
@@ -262,10 +315,14 @@ export async function handleUpdateConvention(request, env, conventionId) {
     slug,
     optionalText(body.venue),
     optionalText(body.address),
+    links.mapUrl,
+    links.venueMapUrl,
     assertDate(body.starts_on, "Start date"),
     assertDate(body.ends_on, "End date"),
     assertDate(body.setup_on, "Setup date"),
     assertDate(body.store_close_on, "Store close date"),
+    links.loadInStart,
+    links.loadInEnd,
     optionalText(body.booth_number),
     optionalText(body.notes),
     optionalText(body.drive_folder_id),
