@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS clock_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  employee_id INTEGER NOT NULL,
+  event_type TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  notes TEXT,
+  FOREIGN KEY (employee_id) REFERENCES employees(id)
+);

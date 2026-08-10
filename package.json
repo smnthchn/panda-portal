@@ -1,0 +1,18 @@
+{
+  "name": "panda-portal",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "start": "wrangler dev",
+    "test": "vitest",
+    "migrate:local": "wrangler d1 migrations apply panda_portal_db --local",
+    "migrate:remote": "wrangler d1 migrations apply panda_portal_db --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.12.4",
+    "vitest": "~3.2.0",
+    "wrangler": "^4.79.0"
+  }
+}
