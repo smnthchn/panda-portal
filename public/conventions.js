@@ -150,6 +150,8 @@ function eventInfoCard() {
 
   const rows = [
     ["Dates", formatDateRange(convention.starts_on, convention.ends_on)],
+    ["Setup", formatDate(convention.setup_on)],
+    ["Store closed", formatDate(convention.store_close_on)],
     ["Venue", convention.venue],
     ["Address", convention.address],
     ["Booth", convention.booth_number]
@@ -607,6 +609,8 @@ function renderConventionForm(convention) {
         <label>Venue <input type="text" id="cVenue" value="${esc(convention?.venue || "")}" placeholder="Toronto Congress Centre"></label>
         <label>Start date <input type="date" id="cStart" value="${esc(convention?.starts_on || "")}"></label>
         <label>End date <input type="date" id="cEnd" value="${esc(convention?.ends_on || "")}"></label>
+        <label>Setup date <input type="date" id="cSetup" value="${esc(convention?.setup_on || "")}"></label>
+        <label>Store close date <input type="date" id="cStoreClose" value="${esc(convention?.store_close_on || "")}"></label>
         <label>Booth number <input type="text" id="cBooth" value="${esc(convention?.booth_number || "")}" placeholder="A-14"></label>
         <label>Address <input type="text" id="cAddress" value="${esc(convention?.address || "")}" placeholder="Optional"></label>
         <label>Drive folder ID <input type="text" id="cFolder" value="${esc(convention?.drive_folder_id || "")}" placeholder="Optional"></label>
@@ -645,6 +649,8 @@ function renderConventionForm(convention) {
       address: document.getElementById("cAddress").value,
       starts_on: document.getElementById("cStart").value,
       ends_on: document.getElementById("cEnd").value,
+      setup_on: document.getElementById("cSetup").value,
+      store_close_on: document.getElementById("cStoreClose").value,
       booth_number: document.getElementById("cBooth").value,
       drive_folder_id: document.getElementById("cFolder").value,
       booth_layout_file_id: document.getElementById("cLayout").value,

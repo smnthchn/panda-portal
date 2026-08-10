@@ -206,9 +206,9 @@ export async function handleCreateConvention(request, env) {
 
   const result = await env.DB.prepare(
     `INSERT INTO conventions
-       (name, slug, venue, address, starts_on, ends_on, booth_number, notes,
-        drive_folder_id, booth_layout_file_id, is_published)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       (name, slug, venue, address, starts_on, ends_on, setup_on, store_close_on,
+        booth_number, notes, drive_folder_id, booth_layout_file_id, is_published)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     name,
     await uniqueSlug(env.DB, name),
@@ -216,6 +216,8 @@ export async function handleCreateConvention(request, env) {
     optionalText(body.address),
     assertDate(body.starts_on, "Start date"),
     assertDate(body.ends_on, "End date"),
+    assertDate(body.setup_on, "Setup date"),
+    assertDate(body.store_close_on, "Store close date"),
     optionalText(body.booth_number),
     optionalText(body.notes),
     optionalText(body.drive_folder_id),
@@ -251,6 +253,7 @@ export async function handleUpdateConvention(request, env, conventionId) {
   await env.DB.prepare(
     `UPDATE conventions
      SET name = ?, slug = ?, venue = ?, address = ?, starts_on = ?, ends_on = ?,
+         setup_on = ?, store_close_on = ?,
          booth_number = ?, notes = ?, drive_folder_id = ?, booth_layout_file_id = ?,
          is_published = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`
@@ -261,6 +264,8 @@ export async function handleUpdateConvention(request, env, conventionId) {
     optionalText(body.address),
     assertDate(body.starts_on, "Start date"),
     assertDate(body.ends_on, "End date"),
+    assertDate(body.setup_on, "Setup date"),
+    assertDate(body.store_close_on, "Store close date"),
     optionalText(body.booth_number),
     optionalText(body.notes),
     optionalText(body.drive_folder_id),
