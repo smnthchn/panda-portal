@@ -77,14 +77,27 @@ const LOOKUP_SCHEMA = {
   }
 };
 
-function buildPrompt(name, today) {
+function buildPrompt(name, today, officialUrl) {
+  const sourceRule = officialUrl
+    ? `The official page for this exact event is ${officialUrl}. Fetch that page
+first and treat it as authoritative. Follow links within that same site to find
+hours, venue, and dates.
+
+This matters: many convention brands run several editions in different cities
+under near-identical names. Use only pages on this site, and if something you
+find describes a different city or a different edition, ignore it — do not blend
+it in.`
+    : `Search for the convention's own official website and use that as the primary
+source. Prefer the official site over aggregators, wikis, or news coverage. If
+the brand runs editions in several cities, be careful to use the one matching the
+name given.`;
+
   return `Find the public details and hours of operation for this convention: "${name}".
 
 Today's date is ${today}. If the name doesn't include a year, assume the next
 upcoming edition.
 
-Search for the convention's own official website and use that as the primary
-source. Prefer the official site over aggregators, wikis, or news coverage.
+${sourceRule}
 
 Return:
 - event.name: the convention's full official name, including the year.
@@ -122,7 +135,7 @@ Rules that matter more than completeness:
  * Runs the lookup. Returns the parsed suggestion object.
  * Throws with a readable message on configuration or API failure.
  */
-export async function lookupConvention(name, env) {
+export async function lookupConvention(name, env, officialUrl = null) {
   if (!env.ANTHROPIC_API_KEY) {
     throw new Error(
       "Convention lookup isn't configured yet — the worker needs an ANTHROPIC_API_KEY secret."
@@ -132,7 +145,28 @@ export async function lookupConvention(name, env) {
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
   const today = new Date().toISOString().slice(0, 10);
 
-  const messages = [{ role: "user", content: buildPrompt(name, today) }];
+  // With an official URL, pin searching to that host too — the prompt alone
+  // doesn't reliably stop a sibling edition's pages from creeping in.
+  let host = null;
+  if (officialUrl) {
+    try {
+      host = new URL(officialUrl).hostname;
+    } catch {
+      host = null;
+    }
+  }
+
+  const searchTool = { type: "web_search_20260209", name: "web_search", max_uses: 5 };
+  if (host) searchTool.allowed_domains = [host];
+
+  const tools = [searchTool];
+  // web_fetch can only retrieve URLs already in the conversation, which is
+  // exactly the one we put in the prompt.
+  if (officialUrl) {
+    tools.push({ type: "web_fetch_20260209", name: "web_fetch", max_uses: 5 });
+  }
+
+  const messages = [{ role: "user", content: buildPrompt(name, today, officialUrl) }];
   let response;
 
   // Server-side web search runs its own loop; when it hits the iteration limit
@@ -141,7 +175,7 @@ export async function lookupConvention(name, env) {
     response = await client.messages.create({
       model: MODEL,
       max_tokens: 8000,
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }],
+      tools,
       output_config: {
         // This is a find-the-page-and-read-it task, not a reasoning-heavy one.
         // Low effort keeps it well under Cloudflare's ~100s edge timeout; at the
