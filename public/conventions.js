@@ -198,7 +198,7 @@ function eventInfoCard() {
       <div class="card-head">
         <h3>Event info</h3>
         ${detailData.canManage
-          ? `<button class="btn-quiet" data-edit-event="1">Edit event details</button>`
+          ? `<button class="btn-quiet" data-edit-event="1">Edit event info</button>`
           : ""}
       </div>
       <dl class="info-list">
@@ -225,13 +225,26 @@ function windowText(day, key) {
   return start && end ? `${formatTime(start)} – ${formatTime(end)}` : null;
 }
 
+/**
+ * Small "jump to the editor" button for a read-only card. The management forms
+ * live at the bottom of the page, so each card that displays data links to the
+ * form that fills it in.
+ */
+function manageJumpButton(anchorId, label) {
+  if (!detailData.canManage) return "";
+  return `<button class="btn-quiet" data-manage-jump="${esc(anchorId)}">${esc(label)}</button>`;
+}
+
 function hoursCard() {
   const { days } = detailData;
 
   if (!days.length) {
     return `
       <div class="card">
-        <h3>Hours of operation</h3>
+        <div class="card-head">
+          <h3>Hours of operation</h3>
+          ${manageJumpButton("dayFormHeading", "Add hours")}
+        </div>
         <p class="empty-state">No daily hours set for this event yet.</p>
       </div>
     `;
@@ -239,7 +252,10 @@ function hoursCard() {
 
   return `
     <div class="card">
-      <h3>Hours of operation</h3>
+      <div class="card-head">
+        <h3>Hours of operation</h3>
+        ${manageJumpButton("dayFormHeading", "Edit hours")}
+      </div>
       <div class="hours-grid">
         ${days.map(day => `
           <div class="hours-day">
@@ -301,7 +317,10 @@ function scheduleCard() {
 
   return `
     <div class="card">
-      <h3>Full schedule</h3>
+      <div class="card-head">
+        <h3>Full schedule</h3>
+        ${manageJumpButton("shiftFormHeading", shifts.length ? "Edit shifts" : "Add shifts")}
+      </div>
       ${shifts.length
         ? groupShiftsByDate(shifts).map(([date, dayShifts]) => `
             <h4>${esc(formatDate(date))}</h4>
@@ -362,7 +381,10 @@ function checklistsSection() {
   if (!checklists.length) {
     return `
       <div class="card">
-        <h3>Checklists</h3>
+        <div class="card-head">
+          <h3>Checklists</h3>
+          ${manageJumpButton("checklistFormHeading", "Add a checklist")}
+        </div>
         <p class="empty-state">No checklists for this event yet.</p>
       </div>
     `;
@@ -430,6 +452,24 @@ function documentsCard() {
 function wireConventionDetail() {
   const editEvent = document.querySelector("[data-edit-event]");
   if (editEvent) editEvent.onclick = () => renderConventionForm(detailData.convention);
+
+  // Opens the management area (if it isn't already) and scrolls to the form that
+  // edits whichever card was clicked.
+  document.querySelectorAll("[data-manage-jump]").forEach(btn => {
+    btn.onclick = () => {
+      const anchorId = btn.dataset.manageJump;
+
+      if (!managingConvention) {
+        managingConvention = true;
+        drawConvention();
+      }
+
+      const anchor = document.getElementById(anchorId);
+      anchor?.scrollIntoView({ behavior: "smooth", block: "center" });
+      anchor?.classList.add("flash-target");
+      setTimeout(() => anchor?.classList.remove("flash-target"), 1600);
+    };
+  });
 
   const toggle = document.getElementById("toggleManageBtn");
   if (toggle) {
@@ -560,7 +600,7 @@ function manageSection() {
           </ul>`
         : `<p class="empty-state">No shifts yet.</p>`}
 
-      <h4>Add a shift</h4>
+      <h4 id="shiftFormHeading">Add a shift</h4>
       <div class="form-grid">
         <label>What <input type="text" id="shiftTitle" placeholder="Booth setup"></label>
         <label>Who
@@ -601,7 +641,7 @@ function manageSection() {
         </div>
       `).join("")}
 
-      <h4>Add a checklist</h4>
+      <h4 id="checklistFormHeading">Add a checklist</h4>
       <div class="form-grid">
         <label>Name <input type="text" id="checklistName" placeholder="Pre-show packing"></label>
         <label>Visible to
@@ -617,9 +657,13 @@ function manageSection() {
     </div>
 
     <div class="card manage-card">
-      <h3>Event details</h3>
+      <h3>This convention</h3>
+      <p class="meta">
+        “Edit event info” changes the name, venue, dates and links at the top of
+        the page. Hours, shifts and checklists are edited in the boxes above.
+      </p>
       <div class="button-row">
-        <button id="editConventionBtn">Edit event details</button>
+        <button id="editConventionBtn">Edit event info</button>
         <button class="btn-danger" id="deleteConventionBtn">Delete convention</button>
       </div>
     </div>
