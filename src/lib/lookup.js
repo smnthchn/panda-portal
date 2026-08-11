@@ -140,9 +140,15 @@ export async function lookupConvention(name, env) {
   for (let attempt = 0; attempt < 4; attempt++) {
     response = await client.messages.create({
       model: MODEL,
-      max_tokens: 16000,
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 8 }],
-      output_config: { format: { type: "json_schema", schema: LOOKUP_SCHEMA } },
+      max_tokens: 8000,
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }],
+      output_config: {
+        // This is a find-the-page-and-read-it task, not a reasoning-heavy one.
+        // Low effort keeps it well under Cloudflare's ~100s edge timeout; at the
+        // default (high) the same lookup took over two minutes.
+        effort: "low",
+        format: { type: "json_schema", schema: LOOKUP_SCHEMA }
+      },
       messages
     });
 

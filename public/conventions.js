@@ -563,9 +563,9 @@ function manageSection() {
       <div class="lookup-bar">
         <button class="btn-quiet" id="lookupHoursBtn">Look up hours</button>
         <span class="meta">
-          Searches the web for ${esc(convention.name)}'s published hours. Setup and
-          load-in times are usually only in the exhibitor kit, so expect to fill
-          those in yourself.
+          Searches the web for ${esc(convention.name)}'s published hours — around 20
+          seconds. Setup and load-in times are usually only in the exhibitor kit, so
+          expect to fill those in yourself.
         </span>
       </div>
       <p class="form-error" id="lookupHoursError"></p>
@@ -984,13 +984,31 @@ async function runLookup(name, { button, errorId, onResult }) {
 
   const originalLabel = button.textContent;
   button.disabled = true;
-  button.textContent = "Searching…";
   showFormError(errorId, "");
 
-  const result = await apiSend("/api/convention-lookup", "POST", { name });
+  // A silent 20-second button reads as broken, so show it counting.
+  const startedAt = Date.now();
+  const tick = () => {
+    const seconds = Math.round((Date.now() - startedAt) / 1000);
+    button.textContent = `Searching… ${seconds}s`;
+  };
+  tick();
+  const ticker = setInterval(tick, 1000);
 
-  button.disabled = false;
-  button.textContent = originalLabel;
+  let result;
+  try {
+    result = await apiSend("/api/convention-lookup", "POST", { name });
+  } catch {
+    // Usually the edge cutting off a search that ran past ~100 seconds.
+    result = {
+      ok: false,
+      error: "The search took too long and was cut off. Obscure conventions are slower — try again, or enter the details by hand."
+    };
+  } finally {
+    clearInterval(ticker);
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
 
   if (!result.ok) {
     showFormError(errorId, result.error || "The lookup failed.");
@@ -1025,8 +1043,8 @@ function renderConventionForm(convention) {
         <button class="btn-quiet" id="lookupBtn">Look up details</button>
         <span class="meta">
           Type the convention's name, then let this search the web and fill in the
-          blanks. It only fills fields you've left empty, and never saves on its own —
-          check everything before you do.
+          blanks. Takes around 20 seconds. It only fills fields you've left empty,
+          and never saves on its own — check everything before you do.
         </span>
       </div>
       <p class="form-error" id="lookupError"></p>
