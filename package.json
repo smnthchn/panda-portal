@@ -8,7 +8,8 @@
     "start": "wrangler dev",
     "test": "vitest",
     "migrate:local": "wrangler d1 migrations apply panda_portal_db --local",
-    "migrate:remote": "wrangler d1 migrations apply panda_portal_db --remote"
+    "migrate:remote": "wrangler d1 migrations apply panda_portal_db --remote",
+    "migrate:check": "wrangler d1 migrations list panda_portal_db --remote"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.12.4",
