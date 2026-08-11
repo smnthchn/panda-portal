@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import worker from "../src";
 import { matchPath, getCookie, optionalText, requiredText, BadRequest } from "../src/lib/http.js";
 import { roleOutranks, isValidRole } from "../src/lib/permissions.js";
-import { optionalUrl } from "../src/routes/conventions.js";
+import { optionalUrl, sanitizeSuggestion } from "../src/routes/conventions.js";
 
 function request(path, method = "GET", headers = {}) {
   return new Request(`http://example.com${path}`, { method, headers });
@@ -103,6 +103,90 @@ describe("link fields", () => {
     expect(optionalUrl("", "Link")).toBeNull();
     expect(optionalUrl("   ", "Link")).toBeNull();
     expect(optionalUrl(undefined, "Link")).toBeNull();
+  });
+});
+
+describe("AI lookup sanitizing", () => {
+  // The model's output is untrusted: it reaches hrefs and the day form.
+  const dirty = {
+    found: true,
+    confidence: "extremely sure",
+    notes: "x".repeat(5000),
+    event: {
+      name: "Fan Expo 2026",
+      venue: "MTCC",
+      address: "255 Front St W",
+      website: "javascript:alert(document.cookie)",
+      starts_on: "August 27th",
+      ends_on: "2026-08-30"
+    },
+    days: [
+      { day_date: "2026-08-28", regular_start: "10:00", regular_end: "18:00", setup_start: "", setup_end: "", early_start: "", early_end: "", notes: "" },
+      { day_date: "2026-08-27", regular_start: "10:00", regular_end: "18:00", setup_start: "25:99", setup_end: "09:00", early_start: "", early_end: "", notes: "" },
+      { day_date: "2026-08-29", regular_start: "10:00", regular_end: "16:00", setup_start: "", setup_end: "", early_start: "18:00", early_end: "10:00", notes: "" },
+      { day_date: "2026-08-30", regular_start: "18:00", regular_end: "10:00", setup_start: "", setup_end: "", early_start: "", early_end: "", notes: "" },
+      { day_date: "not a date", regular_start: "10:00", regular_end: "18:00", setup_start: "", setup_end: "", early_start: "", early_end: "", notes: "" },
+      { day_date: "2026-08-31", regular_start: "", regular_end: "", setup_start: "", setup_end: "", early_start: "", early_end: "", notes: "" }
+    ],
+    sources: [
+      { title: "Official", url: "https://fanexpohq.com/hours" },
+      { title: "Evil", url: "javascript:alert(1)" }
+    ]
+  };
+
+  const clean = sanitizeSuggestion(dirty);
+
+  it("strips a javascript: url from the website", () => {
+    expect(clean.event.website).toBe("");
+  });
+
+  it("drops sources whose url is not http(s)", () => {
+    expect(clean.sources).toEqual([{ title: "Official", url: "https://fanexpohq.com/hours" }]);
+  });
+
+  it("drops an unparseable date but keeps a valid one", () => {
+    expect(clean.event.starts_on).toBe("");
+    expect(clean.event.ends_on).toBe("2026-08-30");
+  });
+
+  // 08-30's only window was backwards, so after cleaning it has nothing to say
+  // and is dropped along with the undated and hourless entries.
+  it("drops days with no date, no hours, or only invalid hours", () => {
+    expect(clean.days.map(d => d.day_date)).toEqual(["2026-08-27", "2026-08-28", "2026-08-29"]);
+  });
+
+  it("sorts days by date", () => {
+    const dates = clean.days.map(d => d.day_date);
+    expect([...dates].sort()).toEqual(dates);
+  });
+
+  it("drops a window with an out-of-range time", () => {
+    const day = clean.days.find(d => d.day_date === "2026-08-27");
+    expect(day.setup_start).toBe("");
+    expect(day.setup_end).toBe("");
+  });
+
+  it("drops a backwards window but keeps the day's valid ones", () => {
+    const day = clean.days.find(d => d.day_date === "2026-08-29");
+    expect(day.early_start).toBe("");
+    expect(day.early_end).toBe("");
+    expect(day.regular_start).toBe("10:00");
+    expect(day.regular_end).toBe("16:00");
+  });
+
+  it("falls back to low for an unrecognised confidence", () => {
+    expect(clean.confidence).toBe("low");
+  });
+
+  it("caps runaway text", () => {
+    expect(clean.notes.length).toBeLessThanOrEqual(600);
+  });
+
+  it("treats a junk payload as not found rather than throwing", () => {
+    const empty = sanitizeSuggestion(null);
+    expect(empty.found).toBe(false);
+    expect(empty.days).toEqual([]);
+    expect(empty.sources).toEqual([]);
   });
 });
 

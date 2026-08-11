@@ -560,6 +560,17 @@ function manageSection() {
           </ul>`
         : `<p class="empty-state">No daily hours yet.</p>`}
 
+      <div class="lookup-bar">
+        <button class="btn-quiet" id="lookupHoursBtn">Look up hours</button>
+        <span class="meta">
+          Searches the web for ${esc(convention.name)}'s published hours. Setup and
+          load-in times are usually only in the exhibitor kit, so expect to fill
+          those in yourself.
+        </span>
+      </div>
+      <p class="form-error" id="lookupHoursError"></p>
+      <div id="lookupHoursResult"></div>
+
       <h4 id="dayFormHeading">Add a day</h4>
       <p class="meta">
         Saving a date that already has hours replaces them. Setup start fills in
@@ -702,9 +713,63 @@ function oneHourEarlier(hhmm) {
   return `${String(h - 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+let suggestedDays = [];
+
+/** Renders looked-up days for review. Each one loads into the form; nothing auto-saves. */
+function drawSuggestedDays(suggestion) {
+  suggestedDays = suggestion.days;
+
+  document.getElementById("lookupHoursResult").innerHTML = `
+    ${lookupSummary(suggestion)}
+    ${suggestedDays.length
+      ? `<ul class="file-list">
+          ${suggestedDays.map((day, i) => `
+            <li class="manage-row">
+              <span>
+                <strong>${esc(formatDate(day.day_date))}</strong>
+                ${DAY_WINDOWS.map(({ key, label }) => {
+                  const text = windowText(day, key);
+                  return text ? ` · ${esc(label)} ${esc(text)}` : "";
+                }).join("")}
+                ${day.notes ? `<div class="meta">${esc(day.notes)}</div>` : ""}
+              </span>
+              <button class="btn-quiet" data-use-suggested="${i}">Load into form</button>
+            </li>
+          `).join("")}
+        </ul>
+        <p class="meta">
+          Loading a day fills the form below — check it, add setup times if you have
+          them, then press Save day.
+        </p>`
+      : `<p class="empty-state">No usable hours found. Enter them by hand below.</p>`}
+  `;
+
+  document.querySelectorAll("[data-use-suggested]").forEach(btn => {
+    btn.onclick = () => {
+      const day = suggestedDays[Number(btn.dataset.useSuggested)];
+      fillDayForm(day);
+      const heading = document.getElementById("dayFormHeading");
+      heading.textContent = `Reviewing ${formatDate(day.day_date)}`;
+      heading.scrollIntoView({ behavior: "smooth", block: "center" });
+      heading.classList.add("flash-target");
+      setTimeout(() => heading.classList.remove("flash-target"), 1600);
+    };
+  });
+}
+
 function wireDayForm(conventionId, reload) {
   const saveBtn = document.getElementById("saveDayBtn");
   if (!saveBtn) return;
+
+  const lookupHoursBtn = document.getElementById("lookupHoursBtn");
+  if (lookupHoursBtn) {
+    lookupHoursBtn.onclick = () =>
+      runLookup(detailData.convention.name, {
+        button: lookupHoursBtn,
+        errorId: "lookupHoursError",
+        onResult: drawSuggestedDays
+      });
+  }
 
   const setupStart = document.getElementById("daySetupStart");
   const setupEnd = document.getElementById("daySetupEnd");
@@ -881,6 +946,65 @@ function wireManageSection() {
   }
 }
 
+/* ---------- AI lookup ---------- */
+
+const CONFIDENCE_LABELS = {
+  high: "Found on the official site",
+  medium: "Found, but check it",
+  low: "Uncertain — verify everything"
+};
+
+/** Shared result panel: how confident it was, what it couldn't find, and sources. */
+function lookupSummary(suggestion) {
+  return `
+    <div class="lookup-result">
+      <div class="badge-row">
+        <span class="phase-badge confidence-${esc(suggestion.confidence)}">
+          ${esc(CONFIDENCE_LABELS[suggestion.confidence] || suggestion.confidence)}
+        </span>
+      </div>
+      ${suggestion.notes ? `<p class="meta">${esc(suggestion.notes)}</p>` : ""}
+      ${suggestion.event.website
+        ? `<p class="meta">Official site: ${externalLink(suggestion.event.website, suggestion.event.website)}</p>`
+        : ""}
+      ${suggestion.sources.length
+        ? `<p class="meta">Sources: ${suggestion.sources
+            .map(s => externalLink(s.url, s.title || s.url))
+            .join(" · ")}</p>`
+        : ""}
+    </div>
+  `;
+}
+
+async function runLookup(name, { button, errorId, onResult }) {
+  if (!name.trim()) {
+    showFormError(errorId, "Enter the convention's name first.");
+    return;
+  }
+
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = "Searching…";
+  showFormError(errorId, "");
+
+  const result = await apiSend("/api/convention-lookup", "POST", { name });
+
+  button.disabled = false;
+  button.textContent = originalLabel;
+
+  if (!result.ok) {
+    showFormError(errorId, result.error || "The lookup failed.");
+    return;
+  }
+
+  if (!result.suggestion.found) {
+    showFormError(errorId, "Couldn't identify that convention. Check the spelling, or add the year.");
+    return;
+  }
+
+  onResult(result.suggestion);
+}
+
 function renderConventionForm(convention) {
   const editing = Boolean(convention);
   const crumbs = [
@@ -897,6 +1021,17 @@ function renderConventionForm(convention) {
     </div>
 
     <div class="card">
+      <div class="lookup-bar">
+        <button class="btn-quiet" id="lookupBtn">Look up details</button>
+        <span class="meta">
+          Type the convention's name, then let this search the web and fill in the
+          blanks. It only fills fields you've left empty, and never saves on its own —
+          check everything before you do.
+        </span>
+      </div>
+      <p class="form-error" id="lookupError"></p>
+      <div id="lookupResult"></div>
+
       <div class="form-grid">
         <label>Name <input type="text" id="cName" value="${esc(convention?.name || "")}" placeholder="Anime North 2026"></label>
         <label>Venue <input type="text" id="cVenue" value="${esc(convention?.venue || "")}" placeholder="Toronto Congress Centre"></label>
@@ -941,6 +1076,46 @@ function renderConventionForm(convention) {
   `;
 
   attachBreadcrumb(crumbs);
+
+  const lookupBtn = document.getElementById("lookupBtn");
+  lookupBtn.onclick = () =>
+    runLookup(document.getElementById("cName").value, {
+      button: lookupBtn,
+      errorId: "lookupError",
+      onResult: (suggestion) => {
+        // Only fill blanks, so a lookup can't overwrite something you typed.
+        const fills = [
+          ["cName", suggestion.event.name],
+          ["cVenue", suggestion.event.venue],
+          ["cAddress", suggestion.event.address],
+          ["cStart", suggestion.event.starts_on],
+          ["cEnd", suggestion.event.ends_on]
+        ];
+
+        const filled = [];
+        for (const [id, value] of fills) {
+          const input = document.getElementById(id);
+          if (value && !input.value) {
+            input.value = value;
+            input.classList.add("flash-target");
+            setTimeout(() => input.classList.remove("flash-target"), 1600);
+            filled.push(input.closest("label").firstChild.textContent.trim());
+          }
+        }
+
+        document.getElementById("lookupResult").innerHTML = `
+          ${lookupSummary(suggestion)}
+          <p class="meta">
+            ${filled.length
+              ? `Filled in: ${esc(filled.join(", "))}.`
+              : "Nothing to fill — those fields already have values."}
+            ${suggestion.days.length
+              ? ` Found hours for ${suggestion.days.length} day${suggestion.days.length === 1 ? "" : "s"} — save this convention first, then use “Look up hours” on its page.`
+              : ""}
+          </p>
+        `;
+      }
+    });
 
   document.getElementById("cancelConventionBtn").onclick = () =>
     editing ? openConvention(convention.slug) : renderConventions();
