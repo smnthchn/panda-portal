@@ -563,16 +563,7 @@ function manageSection() {
           </ul>`
         : `<p class="empty-state">No daily hours yet.</p>`}
 
-      <div class="lookup-bar">
-        <button class="btn-quiet" id="lookupHoursBtn">Look up hours</button>
-        <span class="meta">
-          Searches the web for ${esc(convention.name)}'s published hours — around 20
-          seconds. Setup and load-in times are usually only in the exhibitor kit, so
-          expect to fill those in yourself.
-        </span>
-      </div>
-      <p class="form-error" id="lookupHoursError"></p>
-      <div id="lookupHoursResult"></div>
+      ${suggestedDaysBlock()}
 
       <h4 id="dayFormHeading">Add a day</h4>
       <p class="meta">
@@ -716,40 +707,47 @@ function oneHourEarlier(hhmm) {
   return `${String(h - 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-let suggestedDays = [];
+/** The typical-hours list inside the hours editor. Part of every render. */
+function suggestedDaysBlock() {
+  const preset = presetFor(detailData.convention);
+  const suggestions = suggestedDays();
+  if (!suggestions.length) return "";
 
-/** Renders looked-up days for review. Each one loads into the form; nothing auto-saves. */
-function drawSuggestedDays(suggestion) {
-  suggestedDays = suggestion.days;
-
-  document.getElementById("lookupHoursResult").innerHTML = `
-    ${lookupSummary(suggestion)}
-    ${suggestedDays.length
-      ? `<ul class="file-list">
-          ${suggestedDays.map((day, i) => `
-            <li class="manage-row">
-              <span>
-                <strong>${esc(formatDate(day.day_date))}</strong>
-                ${DAY_WINDOWS.map(({ key, label }) => {
-                  const text = windowText(day, key);
-                  return text ? ` · ${esc(label)} ${esc(text)}` : "";
-                }).join("")}
-                ${day.notes ? `<div class="meta">${esc(day.notes)}</div>` : ""}
-              </span>
-              <button class="btn-quiet" data-use-suggested="${i}">Load into form</button>
-            </li>
-          `).join("")}
-        </ul>
-        <p class="meta">
-          Loading a day fills the form below — check it, add setup times if you have
-          them, then press Save day.
-        </p>`
-      : `<p class="empty-state">No usable hours found. Enter them by hand below.</p>`}
+  return `
+    <h4>Typical ${esc(preset.label)} hours</h4>
+    <p class="meta">
+      The hours ${esc(preset.label)} has published year after year, laid onto this
+      event's dates. Double-check against
+      ${externalLink(preset.website_url, "this year's site")} — setup and load-in
+      times are only in the exhibitor kit, so fill those in yourself.
+    </p>
+    <ul class="file-list">
+      ${suggestions.map((day, i) => `
+        <li class="manage-row">
+          <span>
+            <strong>${esc(formatDate(day.day_date))}</strong>
+            ${DAY_WINDOWS.map(({ key, label }) => {
+              const text = windowText(day, key);
+              return text ? ` · ${esc(label)} ${esc(text)}` : "";
+            }).join("")}
+            ${day.notes ? `<div class="meta">${esc(day.notes)}</div>` : ""}
+          </span>
+          <button class="btn-quiet" data-use-suggested="${i}">Load into form</button>
+        </li>
+      `).join("")}
+    </ul>
+    <p class="meta">Loading a day fills the form below — check it, then press Save day.</p>
   `;
+}
 
+function wireDayForm(conventionId, reload) {
+  const saveBtn = document.getElementById("saveDayBtn");
+  if (!saveBtn) return;
+
+  const suggestions = suggestedDays();
   document.querySelectorAll("[data-use-suggested]").forEach(btn => {
     btn.onclick = () => {
-      const day = suggestedDays[Number(btn.dataset.useSuggested)];
+      const day = suggestions[Number(btn.dataset.useSuggested)];
       fillDayForm(day);
       const heading = document.getElementById("dayFormHeading");
       heading.textContent = `Reviewing ${formatDate(day.day_date)}`;
@@ -758,22 +756,6 @@ function drawSuggestedDays(suggestion) {
       setTimeout(() => heading.classList.remove("flash-target"), 1600);
     };
   });
-}
-
-function wireDayForm(conventionId, reload) {
-  const saveBtn = document.getElementById("saveDayBtn");
-  if (!saveBtn) return;
-
-  const lookupHoursBtn = document.getElementById("lookupHoursBtn");
-  if (lookupHoursBtn) {
-    lookupHoursBtn.onclick = () =>
-      runLookup(detailData.convention.name, {
-        button: lookupHoursBtn,
-        errorId: "lookupHoursError",
-        websiteUrl: presetFor(detailData.convention)?.website_url || null,
-        onResult: drawSuggestedDays
-      });
-  }
 
   const setupStart = document.getElementById("daySetupStart");
   const setupEnd = document.getElementById("daySetupEnd");
@@ -950,108 +932,80 @@ function wireManageSection() {
   }
 }
 
-/* ---------- AI lookup ---------- */
+/* ---------- Our shows ---------- */
 
 /**
- * The shows Panda Hobby actually does. Pinning each lookup to its own site stops
- * a search for "Fan Expo" wandering onto the Chicago edition's pages.
- * Add a row here if you take on another convention.
+ * The shows Panda Hobby actually does: the venue details that never change,
+ * and the hall hours each show has published year after year. Hours are keyed
+ * by weekday (0 = Sunday) so they land on the right dates whatever this year's
+ * dates turn out to be. Verify against the official site once the year's page
+ * is up, and add a row here for a new show.
  */
 const OUR_CONVENTIONS = [
   {
     label: "Anime North",
+    match: "anime north",
     name: "Anime North",
-    website_url: "https://www.animenorth.com/index.php/about/con-overview"
+    venue: "Toronto Congress Centre",
+    address: "650 Dixon Road, Toronto, ON",
+    website_url: "https://www.animenorth.com/",
+    // Vendors Hall hours — the con itself runs later into the night.
+    typicalHours: {
+      5: { regular_start: "17:00", regular_end: "22:00" },
+      6: { regular_start: "10:00", regular_end: "20:00" },
+      0: { regular_start: "10:00", regular_end: "17:00" }
+    }
   },
   {
     label: "Fan Expo Canada",
+    match: "fan expo",
     name: "FAN EXPO Canada",
-    website_url: "https://fanexpohq.com/fanexpocanada/"
+    venue: "Metro Toronto Convention Centre",
+    address: "255 Front St W, Toronto, ON",
+    website_url: "https://fanexpohq.com/fanexpocanada/",
+    typicalHours: {
+      4: {
+        early_start: "14:00", early_end: "16:00",
+        regular_start: "16:00", regular_end: "21:00",
+        notes: "2 PM preview for VIP, Ultimate and 4-Day pass holders."
+      },
+      5: { regular_start: "10:00", regular_end: "19:00" },
+      6: { regular_start: "10:00", regular_end: "19:00" },
+      0: { regular_start: "10:00", regular_end: "17:00" }
+    }
   }
 ];
 
-/** Matches a saved convention back to its preset, so hours lookups stay pinned. */
+/** Matches a convention to its preset by name ("Anime North 2027" → Anime North). */
 function presetFor(convention) {
-  if (convention?.website_url) return { website_url: convention.website_url };
-
   const name = (convention?.name || "").toLowerCase();
-  return OUR_CONVENTIONS.find(preset => name.includes(preset.name.toLowerCase().split(" ")[0]))
-    || null;
+  return OUR_CONVENTIONS.find(preset => name.includes(preset.match)) || null;
 }
 
-const CONFIDENCE_LABELS = {
-  high: "Found on the official site",
-  medium: "Found, but check it",
-  low: "Uncertain — verify everything"
-};
+/**
+ * One suggested row per convention date that has no saved hours yet, laid out
+ * from the preset's weekday pattern. Static data computed on every render, so
+ * saving a day can't wipe it — unlike the AI lookup this replaced, which had
+ * to be re-run after each save.
+ */
+function suggestedDays() {
+  const { convention, days } = detailData;
+  const preset = presetFor(convention);
+  if (!preset || !convention.starts_on) return [];
 
-/** Shared result panel: how confident it was, what it couldn't find, and sources. */
-function lookupSummary(suggestion) {
-  return `
-    <div class="lookup-result">
-      <div class="badge-row">
-        <span class="phase-badge confidence-${esc(suggestion.confidence)}">
-          ${esc(CONFIDENCE_LABELS[suggestion.confidence] || suggestion.confidence)}
-        </span>
-      </div>
-      ${suggestion.notes ? `<p class="meta">${esc(suggestion.notes)}</p>` : ""}
-      ${suggestion.event.website
-        ? `<p class="meta">Official site: ${externalLink(suggestion.event.website, suggestion.event.website)}</p>`
-        : ""}
-      ${suggestion.sources.length
-        ? `<p class="meta">Sources: ${suggestion.sources
-            .map(s => externalLink(s.url, s.title || s.url))
-            .join(" · ")}</p>`
-        : ""}
-    </div>
-  `;
-}
+  const taken = new Set(days.map(d => d.day_date));
+  const end = convention.ends_on || convention.starts_on;
+  const out = [];
 
-async function runLookup(name, { button, errorId, onResult, websiteUrl = null }) {
-  if (!name.trim()) {
-    showFormError(errorId, "Enter the convention's name first.");
-    return;
+  for (let d = new Date(`${convention.starts_on}T00:00:00`);
+       d <= new Date(`${end}T00:00:00`);
+       d.setDate(d.getDate() + 1)) {
+    const iso = d.toISOString().slice(0, 10);
+    const hours = preset.typicalHours[d.getDay()];
+    if (hours && !taken.has(iso)) out.push({ day_date: iso, notes: "", ...hours });
   }
 
-  const originalLabel = button.textContent;
-  button.disabled = true;
-  showFormError(errorId, "");
-
-  // A silent 20-second button reads as broken, so show it counting.
-  const startedAt = Date.now();
-  const tick = () => {
-    const seconds = Math.round((Date.now() - startedAt) / 1000);
-    button.textContent = `Searching… ${seconds}s`;
-  };
-  tick();
-  const ticker = setInterval(tick, 1000);
-
-  let result;
-  try {
-    result = await apiSend("/api/convention-lookup", "POST", { name, website_url: websiteUrl });
-  } catch {
-    // Usually the edge cutting off a search that ran past ~100 seconds.
-    result = {
-      ok: false,
-      error: "The search took too long and was cut off. Obscure conventions are slower — try again, or enter the details by hand."
-    };
-  } finally {
-    clearInterval(ticker);
-    button.disabled = false;
-    button.textContent = originalLabel;
-  }
-
-  if (!result.ok) {
-    showFormError(errorId, result.error || "The lookup failed.");
-    return;
-  }
-
-  if (!result.suggestion.found) {
-    showFormError(errorId, "Couldn't identify that convention. Check the spelling, or add the year.");
-    return;
-  }
-
-  onResult(result.suggestion);
+  return out;
 }
 
 function renderConventionForm(convention) {
@@ -1075,14 +1029,12 @@ function renderConventionForm(convention) {
         ${OUR_CONVENTIONS.map((preset, i) => `
           <button class="btn-quiet" data-preset="${i}">${esc(preset.label)}</button>
         `).join("")}
-        <button class="btn-quiet" id="lookupBtn">Other — use the name below</button>
       </div>
       <p class="meta" style="margin-top:0;">
-        Reads that convention's own site and fills in the blanks — about 20 seconds.
-        It only fills fields you've left empty, and never saves on its own.
+        Fills the name, venue, address and official site — the parts that don't
+        change. Dates move every year, so set those yourself. Typical hall hours
+        get suggested on the convention's page once it's saved.
       </p>
-      <p class="form-error" id="lookupError"></p>
-      <div id="lookupResult"></div>
 
       <div class="form-grid">
         <label>Name <input type="text" id="cName" value="${esc(convention?.name || "")}" placeholder="Anime North 2026"></label>
@@ -1133,69 +1085,28 @@ function renderConventionForm(convention) {
 
   attachBreadcrumb(crumbs);
 
-  // Only fill blanks, so a lookup can never overwrite something you typed.
-  const applySuggestion = (suggestion) => {
-    const fills = [
-      ["cName", suggestion.event.name],
-      ["cVenue", suggestion.event.venue],
-      ["cAddress", suggestion.event.address],
-      ["cStart", suggestion.event.starts_on],
-      ["cEnd", suggestion.event.ends_on],
-      ["cWebsiteUrl", suggestion.event.website]
-    ];
-
-    const filled = [];
-    for (const [id, value] of fills) {
-      const input = document.getElementById(id);
-      if (value && !input.value) {
-        input.value = value;
-        input.classList.add("flash-target");
-        setTimeout(() => input.classList.remove("flash-target"), 1600);
-        filled.push(input.closest("label").firstChild.textContent.trim());
-      }
-    }
-
-    document.getElementById("lookupResult").innerHTML = `
-      ${lookupSummary(suggestion)}
-      <p class="meta">
-        ${filled.length
-          ? `Filled in: ${esc(filled.join(", "))}.`
-          : "Nothing to fill — those fields already have values."}
-        ${suggestion.days.length
-          ? ` Found hours for ${suggestion.days.length} day${suggestion.days.length === 1 ? "" : "s"} — save this convention first, then use “Look up hours” on its page.`
-          : ""}
-      </p>
-    `;
-  };
-
-  // Preset buttons: one per show we actually do, each pinned to its own site.
+  // Preset buttons: one per show we actually do. Only fills blanks, so a
+  // preset can never overwrite something you typed.
   document.querySelectorAll("[data-preset]").forEach(btn => {
     btn.onclick = () => {
       const preset = OUR_CONVENTIONS[Number(btn.dataset.preset)];
-      const nameInput = document.getElementById("cName");
-      if (!nameInput.value) nameInput.value = preset.name;
+      const fills = [
+        ["cName", preset.name],
+        ["cVenue", preset.venue],
+        ["cAddress", preset.address],
+        ["cWebsiteUrl", preset.website_url]
+      ];
 
-      const urlInput = document.getElementById("cWebsiteUrl");
-      if (!urlInput.value) urlInput.value = preset.website_url;
-
-      runLookup(preset.name, {
-        button: btn,
-        errorId: "lookupError",
-        websiteUrl: preset.website_url,
-        onResult: applySuggestion
-      });
+      for (const [id, value] of fills) {
+        const input = document.getElementById(id);
+        if (value && !input.value) {
+          input.value = value;
+          input.classList.add("flash-target");
+          setTimeout(() => input.classList.remove("flash-target"), 1600);
+        }
+      }
     };
   });
-
-  // Escape hatch for anything not in the preset list.
-  const lookupBtn = document.getElementById("lookupBtn");
-  lookupBtn.onclick = () =>
-    runLookup(document.getElementById("cName").value, {
-      button: lookupBtn,
-      errorId: "lookupError",
-      websiteUrl: document.getElementById("cWebsiteUrl").value || null,
-      onResult: applySuggestion
-    });
 
   document.getElementById("cancelConventionBtn").onclick = () =>
     editing ? openConvention(convention.slug) : renderConventions();

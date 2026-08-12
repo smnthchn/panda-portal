@@ -2,7 +2,6 @@ import { readJsonBody, optionalText, requiredText, BadRequest } from "../lib/htt
 import { requireUser } from "../lib/auth.js";
 import { roleOutranks } from "../lib/permissions.js";
 import { listDriveFiles } from "../lib/google.js";
-import { lookupConvention } from "../lib/lookup.js";
 
 const CHECKLIST_AUDIENCES = ["all", "staff", "boss"];
 
@@ -362,114 +361,6 @@ export async function handleDeleteConvention(request, env, conventionId) {
   ]);
 
   return { ok: true };
-}
-
-/* ---------- AI lookup (suggestions only — never writes to the database) ---------- */
-
-const MAX_SUGGESTED_DAYS = 14;
-const MAX_SOURCES = 8;
-
-function cleanText(value, maxLength = 300) {
-  const text = optionalText(value);
-  return text ? text.slice(0, maxLength) : "";
-}
-
-function cleanDate(value) {
-  const text = optionalText(value);
-  return text && /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "";
-}
-
-function cleanTime(value) {
-  const text = optionalText(value);
-  return text && /^([01]\d|2[0-3]):[0-5]\d$/.test(text) ? text : "";
-}
-
-function cleanUrl(value) {
-  const text = optionalText(value);
-  if (!text) return "";
-  try {
-    const parsed = new URL(text);
-    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.toString() : "";
-  } catch {
-    return "";
-  }
-}
-
-/** A window is only usable if both ends parsed and they're the right way round. */
-function cleanWindow(rawStart, rawEnd) {
-  const start = cleanTime(rawStart);
-  const end = cleanTime(rawEnd);
-  return start && end && end > start ? { start, end } : { start: "", end: "" };
-}
-
-/**
- * The model's output is untrusted input like any other. Anything that doesn't
- * parse is dropped rather than surfaced, so a malformed time can't reach the
- * day form and a bad link can't become an href.
- */
-export function sanitizeSuggestion(raw) {
-  const event = raw?.event || {};
-
-  const days = (Array.isArray(raw?.days) ? raw.days : [])
-    .slice(0, MAX_SUGGESTED_DAYS)
-    .map(day => {
-      const setup = cleanWindow(day?.setup_start, day?.setup_end);
-      const early = cleanWindow(day?.early_start, day?.early_end);
-      const regular = cleanWindow(day?.regular_start, day?.regular_end);
-
-      return {
-        day_date: cleanDate(day?.day_date),
-        setup_start: setup.start,
-        setup_end: setup.end,
-        early_start: early.start,
-        early_end: early.end,
-        regular_start: regular.start,
-        regular_end: regular.end,
-        notes: cleanText(day?.notes, 200)
-      };
-    })
-    // A day with no date can't be saved, and one with no hours says nothing.
-    .filter(day => day.day_date && (day.setup_start || day.early_start || day.regular_start))
-    .sort((a, b) => a.day_date.localeCompare(b.day_date));
-
-  const sources = (Array.isArray(raw?.sources) ? raw.sources : [])
-    .slice(0, MAX_SOURCES)
-    .map(source => ({ title: cleanText(source?.title, 120), url: cleanUrl(source?.url) }))
-    .filter(source => source.url);
-
-  return {
-    found: raw?.found === true,
-    confidence: ["high", "medium", "low"].includes(raw?.confidence) ? raw.confidence : "low",
-    notes: cleanText(raw?.notes, 600),
-    event: {
-      name: cleanText(event.name, 200),
-      venue: cleanText(event.venue, 200),
-      address: cleanText(event.address, 300),
-      website: cleanUrl(event.website),
-      starts_on: cleanDate(event.starts_on),
-      ends_on: cleanDate(event.ends_on)
-    },
-    days,
-    sources
-  };
-}
-
-export async function handleConventionLookup(request, env) {
-  const auth = await requireUser(request, env, "manage_conventions");
-  if (!auth.ok) return auth;
-
-  const body = await readJsonBody(request);
-  const name = requiredText(body.name, "Convention name");
-  const officialUrl = optionalUrl(body.website_url, "Official site URL");
-
-  let raw;
-  try {
-    raw = await lookupConvention(name, env, officialUrl);
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-
-  return { ok: true, suggestion: sanitizeSuggestion(raw) };
 }
 
 const DAY_WINDOWS = [
