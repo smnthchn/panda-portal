@@ -21,9 +21,12 @@
       "database_id": "94e21511-09a9-4428-9c22-9ffd81164535",
       "migrations_dir": "migrations"
     }],
-	  "assets": {  
-		"directory": "./public/",  
-	  	"binding": "ASSETS" 
+	  "assets": {
+		"directory": "./public/",
+	  	"binding": "ASSETS",
+	  	// Deep links like /conventions/anime-north serve index.html; the
+	  	// front end routes from the URL on load.
+	  	"not_found_handling": "single-page-application"
 	}
   
   /**

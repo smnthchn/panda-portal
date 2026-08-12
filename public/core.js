@@ -81,8 +81,24 @@ function formatDateRange(startsOn, endsOn) {
   return `${formatDate(startsOn)} – ${formatDate(endsOn)}`;
 }
 
+/** Each view's canonical URL, so pages are linkable and survive refresh. */
+const PAGE_URLS = {
+  dashboard: () => "/",
+  conventions: () => "/conventions",
+  convention: (d) => `/conventions/${encodeURIComponent(d.slug)}`,
+  "knowledge-base": () => "/knowledge-base",
+  "my-folder": () => "/my-folder",
+  clock: () => "/clock",
+  "users-roles": () => "/users-roles",
+  doc: (d) => `/doc/${encodeURIComponent(d.id)}`
+};
+
 function pushPageState(view, data = {}) {
-  history.pushState({ view, ...data }, "");
+  const url = PAGE_URLS[view] ? PAGE_URLS[view](data) : location.pathname;
+  // Re-opening the page you're already on replaces the entry instead of
+  // stacking a duplicate, so Back never needs two clicks to leave.
+  if (url === location.pathname) history.replaceState({ view, ...data }, "", url);
+  else history.pushState({ view, ...data }, "", url);
 }
 
 function setBreadcrumb(items) {
