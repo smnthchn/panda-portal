@@ -1,7 +1,7 @@
 import { json, matchPath, BadRequest } from "./lib/http.js";
 import { handleMe, handleLogin, handleLogout } from "./routes/session.js";
 import { handleKnowledgeBase, handleMyFolder, handleDocContent } from "./routes/knowledge.js";
-import { handleClockStatus, handleClockEvent } from "./routes/clock.js";
+import { handleClockStatus, handleClockEvent, handleClockHistory, handleClockReport } from "./routes/clock.js";
 import {
   handleAdminUsers,
   handleCreateUser,
@@ -15,7 +15,6 @@ import {
   handleCreateConvention,
   handleUpdateConvention,
   handleDeleteConvention,
-  handleConventionLookup,
   handleSaveConventionDay,
   handleDeleteConventionDay,
   handleCreateShift,
@@ -44,6 +43,8 @@ const ROUTES = [
   ["GET", "/api/doc-content", handleDocContent],
 
   ["GET", "/api/clock-status", handleClockStatus],
+  ["GET", "/api/clock-history", handleClockHistory],
+  ["GET", "/api/admin/clock-report", handleClockReport],
   ["POST", "/api/clock-in", (req, env) => handleClockEvent(req, env, "clock_in")],
   ["POST", "/api/clock-out", (req, env) => handleClockEvent(req, env, "clock_out")],
   ["POST", "/api/break-start", (req, env) => handleClockEvent(req, env, "break_start")],
@@ -60,8 +61,6 @@ const ROUTES = [
   ["GET", "/api/conventions/:slug", handleConventionDetail],
   ["PATCH", "/api/conventions/:id", handleUpdateConvention],
   ["DELETE", "/api/conventions/:id", handleDeleteConvention],
-
-  ["POST", "/api/convention-lookup", handleConventionLookup],
 
   ["POST", "/api/conventions/:id/days", handleSaveConventionDay],
   ["DELETE", "/api/convention-days/:id", handleDeleteConventionDay],

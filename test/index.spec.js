@@ -3,7 +3,8 @@ import { describe, it, expect } from "vitest";
 import worker from "../src";
 import { matchPath, getCookie, optionalText, requiredText, BadRequest } from "../src/lib/http.js";
 import { roleOutranks, isValidRole } from "../src/lib/permissions.js";
-import { optionalUrl, sanitizeSuggestion } from "../src/routes/conventions.js";
+import { optionalUrl } from "../src/routes/conventions.js";
+import { pairClockEvents } from "../src/routes/clock.js";
 
 function request(path, method = "GET", headers = {}) {
   return new Request(`http://example.com${path}`, { method, headers });
@@ -106,87 +107,79 @@ describe("link fields", () => {
   });
 });
 
-describe("AI lookup sanitizing", () => {
-  // The model's output is untrusted: it reaches hrefs and the day form.
-  const dirty = {
-    found: true,
-    confidence: "extremely sure",
-    notes: "x".repeat(5000),
-    event: {
-      name: "Fan Expo 2026",
-      venue: "MTCC",
-      address: "255 Front St W",
-      website: "javascript:alert(document.cookie)",
-      starts_on: "August 27th",
-      ends_on: "2026-08-30"
-    },
-    days: [
-      { day_date: "2026-08-28", regular_start: "10:00", regular_end: "18:00", setup_start: "", setup_end: "", early_start: "", early_end: "", notes: "" },
-      { day_date: "2026-08-27", regular_start: "10:00", regular_end: "18:00", setup_start: "25:99", setup_end: "09:00", early_start: "", early_end: "", notes: "" },
-      { day_date: "2026-08-29", regular_start: "10:00", regular_end: "16:00", setup_start: "", setup_end: "", early_start: "18:00", early_end: "10:00", notes: "" },
-      { day_date: "2026-08-30", regular_start: "18:00", regular_end: "10:00", setup_start: "", setup_end: "", early_start: "", early_end: "", notes: "" },
-      { day_date: "not a date", regular_start: "10:00", regular_end: "18:00", setup_start: "", setup_end: "", early_start: "", early_end: "", notes: "" },
-      { day_date: "2026-08-31", regular_start: "", regular_end: "", setup_start: "", setup_end: "", early_start: "", early_end: "", notes: "" }
-    ],
-    sources: [
-      { title: "Official", url: "https://fanexpohq.com/hours" },
-      { title: "Evil", url: "javascript:alert(1)" }
-    ]
-  };
+describe("clock event pairing", () => {
+  const ev = (type, at) => ({ event_type: type, created_at: at });
 
-  const clean = sanitizeSuggestion(dirty);
+  it("pairs a shift and deducts its breaks", () => {
+    const shifts = pairClockEvents([
+      ev("clock_in", "2026-08-10 14:00:00"),
+      ev("break_start", "2026-08-10 17:00:00"),
+      ev("break_end", "2026-08-10 17:30:00"),
+      ev("break_start", "2026-08-10 19:00:00"),
+      ev("break_end", "2026-08-10 19:15:00"),
+      ev("clock_out", "2026-08-10 22:00:00")
+    ]);
 
-  it("strips a javascript: url from the website", () => {
-    expect(clean.event.website).toBe("");
+    expect(shifts).toEqual([{
+      in_at: "2026-08-10 14:00:00",
+      out_at: "2026-08-10 22:00:00",
+      break_minutes: 45,
+      net_minutes: 435
+    }]);
   });
 
-  it("drops sources whose url is not http(s)", () => {
-    expect(clean.sources).toEqual([{ title: "Official", url: "https://fanexpohq.com/hours" }]);
+  it("leaves a shift with no clock-out open and uncounted", () => {
+    const shifts = pairClockEvents([ev("clock_in", "2026-08-10 14:00:00")]);
+    expect(shifts).toHaveLength(1);
+    expect(shifts[0].out_at).toBeNull();
+    expect(shifts[0].net_minutes).toBeNull();
   });
 
-  it("drops an unparseable date but keeps a valid one", () => {
-    expect(clean.event.starts_on).toBe("");
-    expect(clean.event.ends_on).toBe("2026-08-30");
+  it("closes a forgotten shift as incomplete when the next clock-in arrives", () => {
+    const shifts = pairClockEvents([
+      ev("clock_in", "2026-08-10 14:00:00"),
+      ev("clock_in", "2026-08-11 09:00:00"),
+      ev("clock_out", "2026-08-11 17:00:00")
+    ]);
+
+    expect(shifts).toHaveLength(2);
+    expect(shifts[0].out_at).toBeNull();
+    expect(shifts[0].net_minutes).toBeNull();
+    expect(shifts[1].net_minutes).toBe(480);
   });
 
-  // 08-30's only window was backwards, so after cleaning it has nothing to say
-  // and is dropped along with the undated and hourless entries.
-  it("drops days with no date, no hours, or only invalid hours", () => {
-    expect(clean.days.map(d => d.day_date)).toEqual(["2026-08-27", "2026-08-28", "2026-08-29"]);
+  it("ignores stray events before any clock-in", () => {
+    const shifts = pairClockEvents([
+      ev("break_end", "2026-08-10 10:00:00"),
+      ev("clock_out", "2026-08-10 11:00:00"),
+      ev("clock_in", "2026-08-10 12:00:00"),
+      ev("clock_out", "2026-08-10 13:00:00")
+    ]);
+
+    expect(shifts).toHaveLength(1);
+    expect(shifts[0].net_minutes).toBe(60);
   });
 
-  it("sorts days by date", () => {
-    const dates = clean.days.map(d => d.day_date);
-    expect([...dates].sort()).toEqual(dates);
+  it("runs an unclosed break until clock-out", () => {
+    const shifts = pairClockEvents([
+      ev("clock_in", "2026-08-10 09:00:00"),
+      ev("break_start", "2026-08-10 12:00:00"),
+      ev("clock_out", "2026-08-10 13:00:00")
+    ]);
+
+    expect(shifts[0].break_minutes).toBe(60);
+    expect(shifts[0].net_minutes).toBe(180);
   });
 
-  it("drops a window with an out-of-range time", () => {
-    const day = clean.days.find(d => d.day_date === "2026-08-27");
-    expect(day.setup_start).toBe("");
-    expect(day.setup_end).toBe("");
-  });
+  it("keeps separate shifts on the same day separate", () => {
+    const shifts = pairClockEvents([
+      ev("clock_in", "2026-08-10 09:00:00"),
+      ev("clock_out", "2026-08-10 12:00:00"),
+      ev("clock_in", "2026-08-10 16:00:00"),
+      ev("clock_out", "2026-08-10 20:00:00")
+    ]);
 
-  it("drops a backwards window but keeps the day's valid ones", () => {
-    const day = clean.days.find(d => d.day_date === "2026-08-29");
-    expect(day.early_start).toBe("");
-    expect(day.early_end).toBe("");
-    expect(day.regular_start).toBe("10:00");
-    expect(day.regular_end).toBe("16:00");
-  });
-
-  it("falls back to low for an unrecognised confidence", () => {
-    expect(clean.confidence).toBe("low");
-  });
-
-  it("caps runaway text", () => {
-    expect(clean.notes.length).toBeLessThanOrEqual(600);
-  });
-
-  it("treats a junk payload as not found rather than throwing", () => {
-    const empty = sanitizeSuggestion(null);
-    expect(empty.found).toBe(false);
-    expect(empty.days).toEqual([]);
-    expect(empty.sources).toEqual([]);
+    expect(shifts.map(s => s.net_minutes)).toEqual([180, 240]);
   });
 });
 

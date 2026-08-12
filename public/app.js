@@ -136,7 +136,13 @@ function renderShell(user) {
     await loadApp();
   };
 
-  renderDashboard(user, false);
+  // Land on whatever the URL says, so a refresh or shared link opens that
+  // page rather than the dashboard. history.state wins when present — the
+  // browser keeps it across refreshes and it can carry more than the URL
+  // does (a doc's origin, for the breadcrumb).
+  const target = POPSTATE_VIEWS[history.state?.view] ? history.state : viewForPath(location.pathname);
+  history.replaceState(target, "", PAGE_URLS[target.view](target));
+  guard(() => POPSTATE_VIEWS[target.view](target));
 }
 
 /* ---------- Dashboard ---------- */
@@ -346,6 +352,145 @@ async function openDoc(id, name, origin = { kind: "kb", label: "Knowledge Base" 
 
 /* ---------- Clock ---------- */
 
+function formatMinutes(total) {
+  const h = Math.floor(total / 60);
+  const m = Math.round(total % 60);
+  return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
+}
+
+/** Local calendar date (YYYY-MM-DD) of a UTC "YYYY-MM-DD HH:MM:SS" timestamp. */
+function localDateOf(dt) {
+  return new Date(dt.replace(" ", "T") + "Z").toLocaleDateString("en-CA");
+}
+
+function timeOf(dt) {
+  return new Date(dt.replace(" ", "T") + "Z")
+    .toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+function todayLocal() {
+  return new Date().toLocaleDateString("en-CA");
+}
+
+/** Monday of the week containing a local YYYY-MM-DD date. */
+function weekStartOf(isoDate) {
+  const d = new Date(`${isoDate}T00:00:00`);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+function shiftRow(shift) {
+  const date = formatDate(localDateOf(shift.in_at));
+
+  // No clock-out: today it means they're working right now; any earlier day
+  // means someone forgot. Neither counts toward a total.
+  if (!shift.out_at) {
+    const working = localDateOf(shift.in_at) === todayLocal();
+    return `
+      <tr class="${working ? "" : "shift-incomplete"}">
+        <td>${esc(date)}</td>
+        <td>${esc(timeOf(shift.in_at))} –</td>
+        <td></td>
+        <td>${working ? "Still clocked in" : "No clock-out recorded"}</td>
+      </tr>
+    `;
+  }
+
+  return `
+    <tr>
+      <td>${esc(date)}</td>
+      <td>${esc(timeOf(shift.in_at))} – ${esc(timeOf(shift.out_at))}</td>
+      <td>${shift.break_minutes ? `${esc(formatMinutes(shift.break_minutes))} break` : ""}</td>
+      <td>${esc(formatMinutes(shift.net_minutes))}</td>
+    </tr>
+  `;
+}
+
+function myHoursCard(shifts) {
+  if (!shifts.length) {
+    return `
+      <div class="card">
+        <h3>Your hours</h3>
+        <p class="empty-state">Worked shifts will show up here once you've clocked in and out.</p>
+      </div>
+    `;
+  }
+
+  // Newest week first, newest shift first inside it.
+  const weeks = new Map();
+  for (const shift of [...shifts].reverse()) {
+    const week = weekStartOf(localDateOf(shift.in_at));
+    if (!weeks.has(week)) weeks.set(week, []);
+    weeks.get(week).push(shift);
+  }
+
+  return `
+    <div class="card">
+      <h3>Your hours</h3>
+      ${[...weeks.entries()].map(([week, rows]) => {
+        const total = rows.reduce((sum, s) => sum + (s.net_minutes || 0), 0);
+        return `
+          <h4>Week of ${esc(formatDate(week))} <span class="meta">· ${esc(formatMinutes(total))}</span></h4>
+          <table class="hours-table"><tbody>${rows.map(shiftRow).join("")}</tbody></table>
+        `;
+      }).join("")}
+      <p class="meta">The last nine weeks, breaks deducted from the totals.</p>
+    </div>
+  `;
+}
+
+function teamHoursCard() {
+  const start = new Date();
+  start.setDate(start.getDate() - 13);
+
+  return `
+    <div class="card">
+      <h3>Team hours</h3>
+      <div class="inline-form report-range">
+        <label>From <input type="date" id="reportFrom" value="${esc(start.toLocaleDateString("en-CA"))}"></label>
+        <label>To <input type="date" id="reportTo" value="${esc(todayLocal())}"></label>
+        <button id="loadReportBtn">Show</button>
+      </div>
+      <p class="form-error" id="reportError"></p>
+      <div id="reportArea"><p class="meta">Loading…</p></div>
+    </div>
+  `;
+}
+
+async function loadTeamHours() {
+  const from = document.getElementById("reportFrom").value;
+  const to = document.getElementById("reportTo").value;
+  showFormError("reportError", "");
+
+  const result = await api(
+    `/api/admin/clock-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+  );
+
+  if (!result.ok) {
+    showFormError("reportError", result.error || "Could not load the report.");
+    return;
+  }
+
+  // The server sends a day of slack each side; trim to the exact local dates.
+  const blocks = result.employees.map(person => {
+    const shifts = person.shifts.filter(s => {
+      const day = localDateOf(s.in_at);
+      return day >= from && day <= to;
+    });
+    if (!shifts.length) return "";
+
+    const total = shifts.reduce((sum, s) => sum + (s.net_minutes || 0), 0);
+    return `
+      <h4>${esc(person.full_name)} <span class="meta">· ${esc(formatMinutes(total))}</span></h4>
+      <table class="hours-table"><tbody>${[...shifts].reverse().map(shiftRow).join("")}</tbody></table>
+    `;
+  }).filter(Boolean);
+
+  document.getElementById("reportArea").innerHTML = blocks.length
+    ? blocks.join("")
+    : `<p class="empty-state">No clock activity between those dates.</p>`;
+}
+
 const CLOCK_ACTIONS = {
   out: [{ label: "Clock In", path: "/api/clock-in" }],
   in: [
@@ -358,7 +503,10 @@ const CLOCK_ACTIONS = {
 async function renderClock(pushState = true) {
   if (pushState) pushPageState("clock");
 
-  const data = await api("/api/clock-status");
+  const [data, history] = await Promise.all([
+    api("/api/clock-status"),
+    api("/api/clock-history")
+  ]);
 
   if (!data.ok) {
     renderError(data.error || "Could not load clock status");
@@ -394,9 +542,18 @@ async function renderClock(pushState = true) {
       </div>
       <p class="form-error" id="clockError"></p>
     </div>
+
+    ${myHoursCard(history.ok ? history.shifts : [])}
+    ${can("manage_users") ? teamHoursCard() : ""}
   `;
 
   attachBreadcrumb(crumbs);
+
+  const loadReportBtn = document.getElementById("loadReportBtn");
+  if (loadReportBtn) {
+    loadReportBtn.onclick = () => guard(loadTeamHours);
+    guard(loadTeamHours);
+  }
 
   document.querySelectorAll("[data-clock]").forEach(btn => {
     btn.onclick = async () => {
@@ -431,6 +588,27 @@ async function handleCredentialResponse(response) {
   } catch (err) {
     alert("Login error: " + err.message);
   }
+}
+
+/** Maps a pathname back to a view state, for direct links and refreshes. */
+function viewForPath(pathname) {
+  const path = pathname.replace(/\/+$/, "") || "/";
+
+  const convention = path.match(/^\/conventions\/([^/]+)$/);
+  if (convention) return { view: "convention", slug: decodeURIComponent(convention[1]) };
+
+  const doc = path.match(/^\/doc\/([^/]+)$/);
+  if (doc) return { view: "doc", id: decodeURIComponent(doc[1]) };
+
+  const flat = {
+    "/": "dashboard",
+    "/conventions": "conventions",
+    "/knowledge-base": "knowledge-base",
+    "/my-folder": "my-folder",
+    "/clock": "clock",
+    "/users-roles": "users-roles"
+  };
+  return { view: flat[path] || "dashboard" };
 }
 
 const POPSTATE_VIEWS = {
