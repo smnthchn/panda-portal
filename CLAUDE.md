@@ -10,7 +10,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 34 tests
+npm test               # vitest, 35 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -105,6 +105,14 @@ Punches in `clock_events` are the source of truth; `pairClockEvents()` in
 flagged and never counted toward a total. Timestamps are UTC (SQLite
 `CURRENT_TIMESTAMP`), so grouping into days and weeks happens in the browser in
 local time — don't group by date in SQL, or evening shifts land on the next day.
+
+A boss fixes a wrong or missing clock-out from Team hours; the correction is a
+normal `clock_events` row stamped with who fixed it. That inserted row has a
+late id, which is why `pairClockEvents()` orders by `created_at`, never by id.
+Closing someone's trailing open shift also resets their live status, or their
+next Clock In would be rejected. Forgotten clock-outs usually surface as a
+~24-hour shift (people clock out the next morning when the portal tells them
+they're still in), so 16h+ shifts are flagged "check this" in the report.
 
 ## Secrets
 

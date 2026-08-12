@@ -606,14 +606,23 @@ input[type="checkbox"] {
   font-size: 14px;
 }
 
-.hours-table td:last-child {
+.hours-table .net-cell {
   text-align: right;
   font-weight: 600;
   white-space: nowrap;
 }
 
+.hours-table .fix-cell {
+  text-align: right;
+  width: 1%;
+}
+
 .shift-incomplete td {
   color: #991b1b;
+}
+
+.shift-long .net-cell {
+  color: #92400e;
 }
 
 .report-range {

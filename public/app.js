@@ -379,8 +379,18 @@ function weekStartOf(isoDate) {
   return d.toISOString().slice(0, 10);
 }
 
-function shiftRow(shift) {
+/**
+ * One table row. fixIndex: undefined = no fix column at all (own hours),
+ * null = fix column but no button (someone working right now), a number =
+ * a Fix button wired to teamFixList[fixIndex].
+ */
+function shiftRow(shift, fixIndex) {
   const date = formatDate(localDateOf(shift.in_at));
+  const fixCell = fixIndex === undefined
+    ? ""
+    : `<td class="fix-cell">${fixIndex === null
+        ? ""
+        : `<button class="btn-quiet" data-fix="${fixIndex}">Fix</button>`}</td>`;
 
   // No clock-out: today it means they're working right now; any earlier day
   // means someone forgot. Neither counts toward a total.
@@ -391,17 +401,22 @@ function shiftRow(shift) {
         <td>${esc(date)}</td>
         <td>${esc(timeOf(shift.in_at))} –</td>
         <td></td>
-        <td>${working ? "Still clocked in" : "No clock-out recorded"}</td>
+        <td class="net-cell">${working ? "Still clocked in" : "No clock-out recorded"}</td>
+        ${fixCell}
       </tr>
     `;
   }
 
+  // 16+ hours is almost always a clock-out pressed the next morning.
+  const long = shift.net_minutes >= 960;
+
   return `
-    <tr>
+    <tr class="${long ? "shift-long" : ""}">
       <td>${esc(date)}</td>
       <td>${esc(timeOf(shift.in_at))} – ${esc(timeOf(shift.out_at))}</td>
       <td>${shift.break_minutes ? `${esc(formatMinutes(shift.break_minutes))} break` : ""}</td>
-      <td>${esc(formatMinutes(shift.net_minutes))}</td>
+      <td class="net-cell">${esc(formatMinutes(shift.net_minutes))}${long ? " — check this" : ""}</td>
+      ${fixCell}
     </tr>
   `;
 }
@@ -453,9 +468,15 @@ function teamHoursCard() {
       </div>
       <p class="form-error" id="reportError"></p>
       <div id="reportArea"><p class="meta">Loading…</p></div>
+      <p class="meta">
+        Fix a wrong or missing clock-out with a row's Fix button — the correction
+        is stamped with your name in the punch log.
+      </p>
     </div>
   `;
 }
+
+let teamFixList = [];
 
 async function loadTeamHours() {
   const from = document.getElementById("reportFrom").value;
@@ -471,6 +492,8 @@ async function loadTeamHours() {
     return;
   }
 
+  teamFixList = [];
+
   // The server sends a day of slack each side; trim to the exact local dates.
   const blocks = result.employees.map(person => {
     const shifts = person.shifts.filter(s => {
@@ -480,15 +503,88 @@ async function loadTeamHours() {
     if (!shifts.length) return "";
 
     const total = shifts.reduce((sum, s) => sum + (s.net_minutes || 0), 0);
+    const rows = [...shifts].reverse().map(shift => {
+      // Someone working right now isn't a mistake to fix.
+      const working = !shift.out_at && localDateOf(shift.in_at) === todayLocal();
+      if (working) return shiftRow(shift, null);
+
+      teamFixList.push({ employee_id: person.id, in_at: shift.in_at, out_at: shift.out_at });
+      return shiftRow(shift, teamFixList.length - 1);
+    }).join("");
+
     return `
       <h4>${esc(person.full_name)} <span class="meta">· ${esc(formatMinutes(total))}</span></h4>
-      <table class="hours-table"><tbody>${[...shifts].reverse().map(shiftRow).join("")}</tbody></table>
+      <table class="hours-table"><tbody>${rows}</tbody></table>
     `;
   }).filter(Boolean);
 
   document.getElementById("reportArea").innerHTML = blocks.length
     ? blocks.join("")
     : `<p class="empty-state">No clock activity between those dates.</p>`;
+
+  document.querySelectorAll("[data-fix]").forEach(btn => {
+    btn.onclick = () => openFixEditor(btn.closest("tr"), teamFixList[Number(btn.dataset.fix)]);
+  });
+}
+
+/** Date -> the browser-local "YYYY-MM-DDTHH:MM" a datetime-local input wants. */
+function toLocalInput(d) {
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function asDate(dt) {
+  return new Date(dt.replace(" ", "T") + "Z");
+}
+
+function openFixEditor(row, shift) {
+  document.getElementById("fixEditorRow")?.remove();
+
+  // Start from the recorded clock-out; if there isn't one, guess in + 8h.
+  const initial = shift.out_at
+    ? toLocalInput(asDate(shift.out_at))
+    : toLocalInput(new Date(asDate(shift.in_at).getTime() + 8 * 3600 * 1000));
+
+  const editor = document.createElement("tr");
+  editor.id = "fixEditorRow";
+  editor.innerHTML = `
+    <td colspan="5">
+      <div class="inline-form">
+        <label>Clock-out <input type="datetime-local" id="fixOutInput" value="${esc(initial)}"></label>
+        <button id="fixSaveBtn">Save</button>
+        <button class="btn-quiet" id="fixCancelBtn">Cancel</button>
+      </div>
+      <p class="form-error" id="fixError"></p>
+    </td>
+  `;
+  row.after(editor);
+
+  document.getElementById("fixCancelBtn").onclick = () => editor.remove();
+
+  document.getElementById("fixSaveBtn").onclick = async () => {
+    const value = document.getElementById("fixOutInput").value;
+    if (!value) {
+      showFormError("fixError", "Pick the clock-out time.");
+      return;
+    }
+
+    const saveBtn = document.getElementById("fixSaveBtn");
+    saveBtn.disabled = true;
+
+    const result = await apiSend("/api/admin/clock-fix", "POST", {
+      employee_id: shift.employee_id,
+      in_at: shift.in_at,
+      out_at: new Date(value).toISOString().slice(0, 19).replace("T", " ")
+    });
+
+    if (!result.ok) {
+      saveBtn.disabled = false;
+      showFormError("fixError", result.error || "Could not save that fix.");
+      return;
+    }
+
+    await loadTeamHours();
+  };
 }
 
 const CLOCK_ACTIONS = {

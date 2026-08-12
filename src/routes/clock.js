@@ -1,4 +1,5 @@
 import { requireUser } from "../lib/auth.js";
+import { readJsonBody } from "../lib/http.js";
 
 // event type -> [status required to do it, status it leaves you in]
 const TRANSITIONS = {
@@ -98,7 +99,11 @@ export function pairClockEvents(events) {
   const shifts = [];
   let open = null;
 
-  for (const event of events) {
+  // A fixed-up clock-out is inserted long after its shift's other punches, so
+  // row ids don't tell the story — timestamps do.
+  const ordered = [...events].sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+  for (const event of ordered) {
     if (event.event_type === "clock_in") {
       if (open) shifts.push(finishShift(open, null));
       open = { in_at: event.created_at, break_minutes: 0, breakStart: null };
@@ -180,6 +185,91 @@ export async function handleClockReport(request, env) {
       .map(({ id, full_name, events: list }) => ({ id, full_name, shifts: pairClockEvents(list) }))
       .sort((a, b) => a.full_name.localeCompare(b.full_name))
   };
+}
+
+const UTC_STAMP = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+
+/**
+ * Boss-only repair for the two ways a forgotten clock-out shows up: a shift
+ * with no clock-out at all, or one "closed" the next morning when the person
+ * noticed. Updates the shift's clock-out if it has one, inserts it otherwise.
+ * The correction is a normal clock_events row, stamped with who fixed it.
+ */
+export async function handleClockFix(request, env) {
+  const auth = await requireUser(request, env, "manage_users");
+  if (!auth.ok) return auth;
+
+  const body = await readJsonBody(request);
+  const employeeId = Number(body.employee_id);
+  const inAt = String(body.in_at || "");
+  const outAt = String(body.out_at || "");
+
+  if (!Number.isInteger(employeeId) || !UTC_STAMP.test(inAt) || !UTC_STAMP.test(outAt)) {
+    return { ok: false, error: "That fix didn't look right. Reload and try again." };
+  }
+
+  if (outAt <= inAt) {
+    return { ok: false, error: "The clock-out has to be after the clock-in." };
+  }
+
+  const clockIn = await env.DB.prepare(
+    `SELECT id FROM clock_events
+     WHERE employee_id = ? AND event_type = 'clock_in' AND created_at = ?
+     LIMIT 1`
+  ).bind(employeeId, inAt).first();
+
+  if (!clockIn) {
+    return { ok: false, error: "Couldn't find that shift's clock-in any more. Reload and try again." };
+  }
+
+  const nextIn = await env.DB.prepare(
+    `SELECT created_at FROM clock_events
+     WHERE employee_id = ? AND event_type = 'clock_in' AND created_at > ?
+     ORDER BY created_at LIMIT 1`
+  ).bind(employeeId, inAt).first();
+
+  if (nextIn && outAt >= nextIn.created_at) {
+    return { ok: false, error: "That would run into the next shift. Pick an earlier time." };
+  }
+
+  const existingOut = await (nextIn
+    ? env.DB.prepare(
+        `SELECT id FROM clock_events
+         WHERE employee_id = ? AND event_type = 'clock_out'
+           AND created_at > ? AND created_at < ?
+         ORDER BY created_at LIMIT 1`
+      ).bind(employeeId, inAt, nextIn.created_at)
+    : env.DB.prepare(
+        `SELECT id FROM clock_events
+         WHERE employee_id = ? AND event_type = 'clock_out' AND created_at > ?
+         ORDER BY created_at LIMIT 1`
+      ).bind(employeeId, inAt)
+  ).first();
+
+  const note = `Fixed by ${auth.user.full_name}`;
+  const statements = [];
+
+  if (existingOut) {
+    statements.push(env.DB.prepare(
+      `UPDATE clock_events SET created_at = ?, notes = ? WHERE id = ?`
+    ).bind(outAt, note, existingOut.id));
+  } else {
+    statements.push(env.DB.prepare(
+      `INSERT INTO clock_events (employee_id, event_type, created_at, notes)
+       VALUES (?, 'clock_out', ?, ?)`
+    ).bind(employeeId, outAt, note));
+
+    // Closing someone's trailing open shift has to flip their live status too,
+    // or their next "Clock In" gets rejected as already clocked in.
+    if (!nextIn) {
+      statements.push(env.DB.prepare(
+        `UPDATE clock_profiles SET clock_user_status = 'out' WHERE employee_id = ?`
+      ).bind(employeeId));
+    }
+  }
+
+  await env.DB.batch(statements);
+  return { ok: true };
 }
 
 export async function handleClockEvent(request, env, eventType) {

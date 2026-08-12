@@ -171,6 +171,17 @@ describe("clock event pairing", () => {
     expect(shifts[0].net_minutes).toBe(180);
   });
 
+  it("pairs by timestamp, not insertion order, so a fixed-up clock-out lands in its shift", () => {
+    const shifts = pairClockEvents([
+      ev("clock_in", "2026-08-10 14:00:00"),
+      ev("clock_in", "2026-08-11 14:00:00"),
+      ev("clock_out", "2026-08-11 22:00:00"),
+      ev("clock_out", "2026-08-10 22:00:00") // the fix, inserted a day later
+    ]);
+
+    expect(shifts.map(s => s.net_minutes)).toEqual([480, 480]);
+  });
+
   it("keeps separate shifts on the same day separate", () => {
     const shifts = pairClockEvents([
       ev("clock_in", "2026-08-10 09:00:00"),
