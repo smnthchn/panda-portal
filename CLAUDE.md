@@ -10,7 +10,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 39 tests
+npm test               # vitest, 47 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -92,8 +92,18 @@ is in Toronto.
 A staff member sees the fixed spine (date + identity, clock card, shift), then a
 block set chosen by the day: store day gets the roster and the upcoming-event
 nudge; a convention day swaps in the amber event band, break battery, hall-hours
-bar and booth roster. **The boss gets no clock card** — hall hours gain coverage
-metrics and the roster shows live status instead.
+bar and booth roster. **The boss gets no clock card and no personal shift card**
+— hall hours gain coverage metrics, and *Who's on today* is their main view.
+
+`buildRoster()` answers "who's scheduled today and when" on any day, not just a
+convention day. It takes every shift dated today across all events (a tear-down
+shift falls outside its show's run) **plus anyone who clocked in without a
+shift** — on a store day that's the whole team, since shifts only exist against
+conventions. Each row carries a status decided server-side so the badge and the
+punch log can't disagree: `in`, `break`, `done`, `upcoming`, or `late` when a
+shift started more than 15 minutes ago and the person never clocked in. Live
+status is read off the **last punch**, not the cached `clock_profiles` status,
+so someone with punches but no profile row still shows a real state.
 
 ## Break battery
 

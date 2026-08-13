@@ -5,7 +5,7 @@ import { matchPath, getCookie, optionalText, requiredText, BadRequest } from "..
 import { roleOutranks, isValidRole } from "../src/lib/permissions.js";
 import { optionalUrl } from "../src/routes/conventions.js";
 import { pairClockEvents } from "../src/routes/clock.js";
-import { segmentsFor } from "../src/routes/dashboard.js";
+import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/dashboard.js";
 
 function request(path, method = "GET", headers = {}) {
   return new Request(`http://example.com${path}`, { method, headers });
@@ -225,6 +225,116 @@ describe("hall hours segments", () => {
   it("ignores an early access that isn't before doors", () => {
     const layout = segmentsFor({ early_start: "10:00", regular_start: "10:00", regular_end: "17:00" });
     expect(layout.segments.map(s => s.kind)).toEqual(["open"]);
+  });
+});
+
+describe("live clock status from the punch log", () => {
+  const ev = (type) => ({ event_type: type, created_at: "2026-08-13 15:00:00" });
+
+  it("reads the state off the last punch", () => {
+    expect(liveStatusFromEvents([ev("clock_in")])).toBe("in");
+    expect(liveStatusFromEvents([ev("clock_in"), ev("break_start")])).toBe("break");
+    expect(liveStatusFromEvents([ev("clock_in"), ev("break_start"), ev("break_end")])).toBe("in");
+    expect(liveStatusFromEvents([ev("clock_in"), ev("clock_out")])).toBe("out");
+  });
+
+  it("treats no punches as out", () => {
+    expect(liveStatusFromEvents([])).toBe("out");
+    expect(liveStatusFromEvents(undefined)).toBe("out");
+  });
+});
+
+describe("today's roster", () => {
+  const shift = (id, name, starts, ends) => ({
+    employee_id: id, employee_name: name, employee_role: "staff",
+    title: "Booth", starts_at: starts, ends_at: ends, convention_name: "Fan Expo"
+  });
+
+  const people = (entries) => new Map(entries.map(([id, name]) =>
+    [id, { id, full_name: name, role: "staff" }]
+  ));
+
+  const punch = (type) => ({ event_type: type, created_at: "2026-08-13 15:00:00" });
+  const noOpenShift = () => null;
+  const NOON = 12 * 60;
+
+  it("flags someone whose shift started but who never clocked in", () => {
+    const roster = buildRoster(
+      [shift(1, "Marcus Kwan", "10:00", "18:00")],
+      new Map(),
+      people([[1, "Marcus Kwan"]]),
+      noOpenShift,
+      NOON
+    );
+
+    expect(roster[0].status).toBe("late");
+    expect(roster[0].initials).toBe("MK");
+  });
+
+  it("does not call someone late before their shift starts", () => {
+    const roster = buildRoster(
+      [shift(1, "Marcus Kwan", "15:00", "20:00")],
+      new Map(),
+      people([[1, "Marcus Kwan"]]),
+      noOpenShift,
+      NOON
+    );
+
+    expect(roster[0].status).toBe("upcoming");
+  });
+
+  it("reports in and break from each person's punches", () => {
+    const roster = buildRoster(
+      [shift(1, "Ann Lee", "09:00", "17:00"), shift(2, "Bo Ng", "09:00", "17:00")],
+      new Map([[1, [punch("clock_in")]], [2, [punch("clock_in"), punch("break_start")]]]),
+      people([[1, "Ann Lee"], [2, "Bo Ng"]]),
+      noOpenShift,
+      NOON
+    );
+
+    expect(roster.map(p => p.status)).toEqual(["in", "break"]);
+    expect(roster.every(p => p.clocked_in)).toBe(true);
+  });
+
+  it("counts someone who already clocked out as done, not late", () => {
+    const roster = buildRoster(
+      [shift(1, "Ann Lee", "07:00", "11:00")],
+      new Map([[1, [punch("clock_in"), punch("clock_out")]]]),
+      people([[1, "Ann Lee"]]),
+      noOpenShift,
+      NOON
+    );
+
+    expect(roster[0].status).toBe("done");
+  });
+
+  // On a store day nobody has a shift, because shifts only exist against
+  // conventions — but the boss still needs to see who's in.
+  it("includes someone who clocked in with no shift on the books", () => {
+    const roster = buildRoster(
+      [],
+      new Map([[7, [punch("clock_in")]]]),
+      people([[7, "Jenna Tran"]]),
+      noOpenShift,
+      NOON
+    );
+
+    expect(roster).toHaveLength(1);
+    expect(roster[0].name).toBe("Jenna Tran");
+    expect(roster[0].starts_at).toBeNull();
+    expect(roster[0].status).toBe("in");
+  });
+
+  it("orders by shift start, with the unscheduled last", () => {
+    const roster = buildRoster(
+      [shift(1, "Late Start", "15:00", "20:00"), shift(2, "Early Start", "09:00", "17:00")],
+      new Map([[9, [punch("clock_in")]]]),
+      people([[1, "Late Start"], [2, "Early Start"], [9, "No Shift"]]),
+      noOpenShift,
+      NOON
+    );
+
+    expect(roster.map(p => p.name)).toEqual(["Early Start", "Late Start", "No Shift"]);
   });
 });
 

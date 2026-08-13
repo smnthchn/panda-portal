@@ -76,6 +76,101 @@ export function segmentsFor(day) {
   return { segments, span_start: spanStart, span_end: close };
 }
 
+/** Names and roles for whoever turns up on today's roster. */
+async function peopleById(db, employeeIds) {
+  if (!employeeIds.length) return new Map();
+
+  const placeholders = employeeIds.map(() => "?").join(",");
+  const rows = await db.prepare(
+    `SELECT id, full_name, role FROM employees WHERE id IN (${placeholders})`
+  ).bind(...employeeIds).all();
+
+  return new Map((rows.results || []).map(row => [row.id, row]));
+}
+
+/**
+ * Live in / break / out, read off the last punch rather than the cached
+ * status on clock_profiles — the log is the source of truth, and a person
+ * with punches but no profile row still has a real state.
+ */
+export function liveStatusFromEvents(events) {
+  const list = events || [];
+  const last = list[list.length - 1];
+  if (!last) return "out";
+
+  if (last.event_type === "clock_in" || last.event_type === "break_end") return "in";
+  if (last.event_type === "break_start") return "break";
+  return "out";
+}
+
+/**
+ * One row per person on today: their shift if they have one, their live
+ * status, and — for someone whose shift has started but who never clocked
+ * in — a late flag, which is the one thing worth chasing.
+ *
+ * `status` is decided here rather than in the browser so the badge and the
+ * punch log can't disagree.
+ */
+export function buildRoster(shifts, eventsByEmployee, people, openShiftFor, nowMinutes = null) {
+  const minutesNow = nowMinutes ?? new Date().getHours() * 60 + new Date().getMinutes();
+  const byEmployee = new Map();
+
+  for (const shift of shifts) {
+    if (!shift.employee_id || byEmployee.has(shift.employee_id)) continue;
+    byEmployee.set(shift.employee_id, {
+      employee_id: shift.employee_id,
+      name: shift.employee_name,
+      role: shift.employee_role,
+      title: shift.title,
+      starts_at: shift.starts_at,
+      ends_at: shift.ends_at,
+      event_name: shift.convention_name
+    });
+  }
+
+  // Anyone who punched in without a shift on the books still belongs here.
+  for (const employeeId of eventsByEmployee.keys()) {
+    if (byEmployee.has(employeeId)) continue;
+    const person = people.get(employeeId);
+    if (!person) continue;
+
+    byEmployee.set(employeeId, {
+      employee_id: employeeId,
+      name: person.full_name,
+      role: person.role,
+      title: null,
+      starts_at: null,
+      ends_at: null,
+      event_name: null
+    });
+  }
+
+  return [...byEmployee.values()]
+    .map(person => {
+      const events = eventsByEmployee.get(person.employee_id);
+      const live = liveStatusFromEvents(events);
+      const open = openShiftFor(person.employee_id);
+      const punchedToday = Boolean(events && events.length);
+      const startMinutes = toMinutes(person.starts_at);
+
+      let status;
+      if (live === "break") status = "break";
+      else if (live === "in") status = "in";
+      else if (punchedToday) status = "done";
+      else if (startMinutes !== null && minutesNow > startMinutes + 15) status = "late";
+      else status = "upcoming";
+
+      return {
+        ...person,
+        initials: initialsOf(person.name),
+        status,
+        clocked_in: status === "in" || status === "break",
+        clocked_in_at: open ? open.in_at : null
+      };
+    })
+    .sort((a, b) => (a.starts_at || "99:99").localeCompare(b.starts_at || "99:99"));
+}
+
 /** The convention whose run covers today, else the next one starting soon. */
 async function findRelevantConvention(db, today) {
   const soon = addDays(today, NUDGE_WINDOW_DAYS);
@@ -118,26 +213,26 @@ export async function handleDashboard(request, env) {
         ).bind(convention.id, today).first()
       : Promise.resolve(null),
 
-    convention
-      ? env.DB.prepare(
-          `SELECT s.*, e.full_name AS employee_name, e.role AS employee_role
-           FROM convention_shifts s
-           LEFT JOIN employees e ON e.id = s.employee_id
-           WHERE s.convention_id = ? AND s.shift_date = ?
-           ORDER BY s.starts_at ASC`
-        ).bind(convention.id, today).all()
-      : Promise.resolve({ results: [] }),
+    // Every shift dated today, whatever event it belongs to — a setup or
+    // tear-down shift lands on a day that isn't part of the show's run.
+    env.DB.prepare(
+      `SELECT s.*, e.full_name AS employee_name, e.role AS employee_role,
+              c.name AS convention_name
+       FROM convention_shifts s
+       LEFT JOIN employees e ON e.id = s.employee_id
+       LEFT JOIN conventions c ON c.id = s.convention_id
+       WHERE s.shift_date = ?
+       ORDER BY s.starts_at ASC`
+    ).bind(today).all(),
 
     // Everyone's punches for today (local), so the roster can show live
     // status. Two days of slack covers the UTC/local offset either way.
-    usesClock || canManage
-      ? env.DB.prepare(
-          `SELECT employee_id, event_type, created_at
-           FROM clock_events
-           WHERE created_at >= datetime(?, '-1 day') AND created_at < datetime(?, '+2 days')
-           ORDER BY created_at`
-        ).bind(today, today).all()
-      : Promise.resolve({ results: [] })
+    env.DB.prepare(
+      `SELECT employee_id, event_type, created_at
+       FROM clock_events
+       WHERE created_at >= datetime(?, '-1 day') AND created_at < datetime(?, '+2 days')
+       ORDER BY created_at`
+    ).bind(today, today).all()
   ]);
 
   const shifts = shiftRows.results || [];
@@ -156,22 +251,17 @@ export async function handleDashboard(request, env) {
 
   const myShift = shifts.find(s => s.employee_id === user.id) || null;
 
-  const roster = shifts
-    .filter(s => s.employee_id)
-    .map(shift => {
-      const open = openShiftFor(shift.employee_id);
-      return {
-        employee_id: shift.employee_id,
-        name: shift.employee_name,
-        initials: initialsOf(shift.employee_name),
-        role: shift.employee_role,
-        title: shift.title,
-        starts_at: shift.starts_at,
-        ends_at: shift.ends_at,
-        clocked_in: Boolean(open),
-        clocked_in_at: open ? open.in_at : null
-      };
-    });
+  // Who the boss should see today: everyone with a shift, plus anyone who
+  // clocked in without one — on a store day that's the whole team, since
+  // shifts only exist against conventions.
+  const people = await peopleById(env.DB, [
+    ...new Set([
+      ...shifts.filter(s => s.employee_id).map(s => s.employee_id),
+      ...eventsByEmployee.keys()
+    ])
+  ]);
+
+  const roster = buildRoster(shifts, eventsByEmployee, people, openShiftFor);
 
   // Boss coverage metrics: when the booth is staffed, end to end.
   const coverage = shifts.length

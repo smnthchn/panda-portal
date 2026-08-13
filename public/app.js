@@ -300,6 +300,10 @@ function myShiftCard(data) {
   const shift = data.my_shift;
 
   if (!shift) {
+    // The boss doesn't work shifts, so an empty personal card is just noise
+    // on their screen — the roster below is what they came for.
+    if (data.can_manage) return "";
+
     return `
       <div class="card stripped">
         <div class="strip brand">YOUR SHIFT</div>
@@ -394,34 +398,75 @@ function nowMarkerHtml(hall) {
   return `<div class="now-marker" style="left:${pct.toFixed(1)}%;"></div>`;
 }
 
-/** Who else is on. The boss sees live status pills; staff see presence. */
-function rosterCard(data) {
-  if (!data.roster.length) return "";
+/** The badge on a roster row. Late is the one worth a red pill. */
+function rosterStatusPill(person) {
+  if (person.status === "in") return `<span class="pill pill-go">IN</span>`;
+  if (person.status === "break") return `<span class="pill pill-warm">BREAK</span>`;
+  if (person.status === "late") return `<span class="pill pill-late">LATE</span>`;
+  if (person.status === "done") return `<span class="pill">DONE</span>`;
+  return `<span class="pill">${esc(shortTimeLabel(person.starts_at))}</span>`;
+}
 
+/** What a person's row says under their name. */
+function rosterLine(person) {
+  const when = person.starts_at
+    ? `${hhmmToLabel(person.starts_at)} – ${hhmmToLabel(person.ends_at)}`
+    : "No shift on the schedule";
+
+  const what = [person.title, person.event_name].filter(Boolean).join(" · ");
+  return what ? `${what} · ${when}` : when;
+}
+
+/**
+ * Who's on today. The boss gets everyone with their times and live status —
+ * including anyone who clocked in without a shift, which on a store day is
+ * the whole team. Staff just see who else is around.
+ */
+function rosterCard(data) {
   const boss = data.can_manage;
+
+  if (!boss && !data.roster.length) return "";
+
   const onNow = data.roster.filter(p => p.clocked_in).length;
+  const scheduled = data.roster.filter(p => p.starts_at).length;
 
   return `
     <div class="card stripped">
       <div class="strip">
-        ${boss ? "WHO'S WORKING" : data.day_type === "event" ? "AT THE BOOTH TODAY" : "ON WITH YOU"}
+        ${boss ? "WHO'S ON TODAY" : data.day_type === "event" ? "AT THE BOOTH TODAY" : "ON WITH YOU"}
         <span class="strip-side">
-          ${boss ? `${onNow} on now · ${data.roster.length} today` : data.roster.length}
+          ${boss
+            ? `${onNow} on now · ${scheduled} scheduled`
+            : data.roster.length}
         </span>
       </div>
       <div class="card-body">
-        ${data.roster.map(person => `
+        ${data.roster.length ? data.roster.map(person => `
           <div class="roster-row${person.clocked_in ? "" : " later"}">
             <div class="avatar small${person.clocked_in ? " present" : ""}">${esc(person.initials)}</div>
             <div style="flex:1;">
-              <div style="font-size:13px;">${esc(person.name)}</div>
-              ${boss ? `<div class="meta">${esc(person.title)} · ${esc(hhmmToLabel(person.starts_at))}–${esc(hhmmToLabel(person.ends_at))}</div>` : ""}
+              <div style="font-size:13px;">
+                ${esc(person.name)}
+                ${person.role === "volunteer" ? `<span class="meta"> · volunteer</span>` : ""}
+              </div>
+              ${boss ? `<div class="meta">${esc(rosterLine(person))}</div>` : ""}
             </div>
             ${boss
-              ? `<span class="pill ${person.clocked_in ? "pill-go" : ""}">${person.clocked_in ? "IN" : esc(shortTimeLabel(person.starts_at))}</span>`
-              : `<span class="meta" style="color:${person.clocked_in ? "var(--brand-text)" : "var(--muted)"};">${person.clocked_in ? "now" : `from ${esc(shortTimeLabel(person.starts_at))}`}</span>`}
+              ? rosterStatusPill(person)
+              : `<span class="meta" style="color:${person.clocked_in ? "var(--brand-text)" : "var(--muted)"};">
+                   ${person.clocked_in ? "now" : person.starts_at ? `from ${esc(shortTimeLabel(person.starts_at))}` : ""}
+                 </span>`}
           </div>
-        `).join("")}
+        `).join("") : `
+          <p class="empty-state">
+            Nobody is scheduled today, and nobody has clocked in yet.
+          </p>
+          ${data.event ? `
+            <p class="meta">
+              Shifts are set on an event's page — open ${esc(data.event.name)} to build its schedule.
+            </p>
+          ` : ""}
+        `}
       </div>
     </div>
   `;
