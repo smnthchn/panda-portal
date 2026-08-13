@@ -10,7 +10,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 64 tests
+npm test               # vitest, 65 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -107,8 +107,10 @@ convention day. It takes every shift dated today across all events (a tear-down
 shift falls outside its show's run) **plus anyone who clocked in without a
 shift** — on a store day that's the whole team, since shifts only exist against
 conventions. Each row carries a status decided server-side so the badge and the
-punch log can't disagree: `in`, `break`, `done`, `upcoming`, or `late` when a
-shift started more than 15 minutes ago and the person never clocked in. Live
+punch log can't disagree: `in`, `break`, `done`, `upcoming`, `late` when a
+shift started more than 15 minutes ago and nobody clocked in, and `missed`
+(NO SHOW) once such a shift has finished — someone who never came is a
+different conversation from someone running late. Live
 status is read off the **last punch**, not the cached `clock_profiles` status,
 so someone with punches but no profile row still shows a real state.
 
@@ -175,13 +177,26 @@ run, its results were lost on every save, and it mostly rediscovered hours that
 don't change year to year. Setup and load-in times still aren't public either way —
 they live in the exhibitor kit, so the boss fills those in by hand.
 
-## Schedule builder
+## Scheduling
 
-`/conventions/:slug/schedule` — a day at a time, reached from **Build** on the
-event's Full schedule card. Day tabs cover the event's run plus its setup day
-plus any date that already has shifts; a day nobody is on is amber, because
-that's the one that needs you. Opening the builder lands on the first day with
-gaps, unassigned shifts, or nobody on it.
+**A shift doesn't have to belong to an event.** `convention_shifts.convention_id`
+is nullable — NULL means an ordinary store shift. Migration 0012 rebuilt the
+table to drop the NOT NULL (SQLite can't do it in place). This is deliberately
+one shift model rather than two: the roster, the clock, the staff page and the
+dashboard all keep working without knowing which kind they're looking at.
+**Any query joining conventions must LEFT JOIN**, or store shifts vanish.
+
+Two screens over that one model:
+
+- **Schedule** (`/schedule`) — the store week. Seven day tabs, week arrows,
+  and the store's usual hours (`store_hours`, one row per weekday, 0 = Sunday)
+  which drive the coverage check. Convention shifts that fall in the week are
+  shown read-only, since they belong to the event.
+- **Event schedule** (`/conventions/:slug/schedule`) — reached from **Build**
+  on the event's Full schedule card. Its day tabs cover the event's run plus its setup
+day plus any date that already has shifts; a day nobody is on is amber, because
+that's the one that needs you. Opening it lands on the first day with gaps,
+unassigned shifts, or nobody on it.
 
 **Coverage is the point of the screen.** `coverageGaps()` in `routes/schedule.js`
 merges the day's shifts into stretches and reports the holes *inside hall

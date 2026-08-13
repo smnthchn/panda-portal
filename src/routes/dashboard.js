@@ -155,10 +155,16 @@ export function buildRoster(shifts, eventsByEmployee, people, openShiftFor, nowM
       const punchedToday = Boolean(events && events.length);
       const startMinutes = toMinutes(person.starts_at);
 
+      const endMinutes = toMinutes(person.ends_at);
+
       let status;
       if (live === "break") status = "break";
       else if (live === "in") status = "in";
       else if (punchedToday) status = "done";
+      // Once a shift they never clocked into has finished, "late" is the
+      // wrong word — they didn't come at all, and that's a different
+      // conversation from someone running twenty minutes behind.
+      else if (endMinutes !== null && minutesNow > endMinutes) status = "missed";
       else if (startMinutes !== null && minutesNow > startMinutes + 15) status = "late";
       else status = "upcoming";
 

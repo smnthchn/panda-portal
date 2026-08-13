@@ -173,12 +173,14 @@ export async function handleStaffDetail(request, env, staffId) {
   }
 
   const [shiftRows, openRows] = await Promise.all([
+    // LEFT JOIN: a store shift has no convention, and dropping those here
+    // would quietly hide half of someone's week.
     env.DB.prepare(
       `SELECT s.id, s.title, s.shift_date, s.starts_at, s.ends_at,
               s.break_allotment_minutes, s.break_count,
               c.name AS convention_name, c.slug AS convention_slug
        FROM convention_shifts s
-       JOIN conventions c ON c.id = s.convention_id
+       LEFT JOIN conventions c ON c.id = s.convention_id
        WHERE s.employee_id = ?
        ORDER BY s.shift_date DESC, s.starts_at DESC
        LIMIT 40`
@@ -189,7 +191,7 @@ export async function handleStaffDetail(request, env, staffId) {
       `SELECT s.id, s.title, s.shift_date, s.starts_at, s.ends_at,
               c.name AS convention_name
        FROM convention_shifts s
-       JOIN conventions c ON c.id = s.convention_id
+       LEFT JOIN conventions c ON c.id = s.convention_id
        WHERE s.employee_id IS NULL AND s.shift_date >= date('now')
        ORDER BY s.shift_date ASC, s.starts_at ASC
        LIMIT 50`

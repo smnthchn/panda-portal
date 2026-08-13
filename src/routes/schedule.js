@@ -240,19 +240,73 @@ export async function handleUpdateShift(request, env, shiftId) {
   return { ok: true };
 }
 
-/**
- * Copies a day's shifts onto another date — the same people, times and break
- * allotments. Refuses a target that already has shifts rather than silently
- * doubling them up.
- */
-export async function handleCopyDay(request, env, conventionId) {
+/** Creates a shift. A null convention_id is an ordinary store shift. */
+export async function handleCreateShiftAnywhere(request, env) {
   const auth = await requireUser(request, env, "manage_conventions");
   if (!auth.ok) return auth;
 
-  const id = Number(conventionId);
+  const body = await readJsonBody(request);
+  const startsAt = assertTime(body.starts_at, "Start time");
+  const endsAt = assertTime(body.ends_at, "End time");
+
+  if (toMinutes(endsAt) <= toMinutes(startsAt)) {
+    throw new BadRequest("The shift's end time must be after its start time.");
+  }
+
+  const shiftDate = optionalText(body.shift_date);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(shiftDate || "")) {
+    throw new BadRequest("Shift date must be a date like 2026-09-14.");
+  }
+
+  const conventionId = body.convention_id ? Number(body.convention_id) : null;
+  const employeeId = body.employee_id ? Number(body.employee_id) : null;
+
+  if (employeeId) {
+    const clash = await env.DB.prepare(
+      `SELECT id FROM convention_shifts
+       WHERE employee_id = ? AND shift_date = ? AND starts_at < ? AND ends_at > ?`
+    ).bind(employeeId, shiftDate, endsAt, startsAt).first();
+
+    if (clash) {
+      return { ok: false, error: "They're already on an overlapping shift that day." };
+    }
+  }
+
+  const { minutes, count } = breakFields(body);
+
+  await env.DB.prepare(
+    `INSERT INTO convention_shifts
+       (convention_id, employee_id, title, shift_date, starts_at, ends_at, notes,
+        break_allotment_minutes, break_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    conventionId,
+    employeeId,
+    requiredText(body.title, "Shift name"),
+    shiftDate,
+    startsAt,
+    endsAt,
+    optionalText(body.notes),
+    minutes,
+    count
+  ).run();
+
+  return { ok: true };
+}
+
+/**
+ * Copies a day's shifts onto another date — the same people, times and break
+ * allotments. Refuses a target that already has shifts rather than silently
+ * doubling them up. Works for a convention day or a store day.
+ */
+export async function handleCopyDay(request, env) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
   const body = await readJsonBody(request);
   const fromDate = optionalText(body.from_date);
   const toDate = optionalText(body.to_date);
+  const conventionId = body.convention_id ? Number(body.convention_id) : null;
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate || "") || !/^\d{4}-\d{2}-\d{2}$/.test(toDate || "")) {
     throw new BadRequest("Pick a day to copy from and a day to copy to.");
@@ -262,13 +316,18 @@ export async function handleCopyDay(request, env, conventionId) {
     throw new BadRequest("That's the same day.");
   }
 
+  // `convention_id = ?` never matches NULL, so store days need IS NULL.
+  const scope = conventionId === null
+    ? { clause: "convention_id IS NULL", args: [] }
+    : { clause: "convention_id = ?", args: [conventionId] };
+
   const source = await env.DB.prepare(
     `SELECT title, employee_id, starts_at, ends_at, notes,
             break_allotment_minutes, break_count
      FROM convention_shifts
-     WHERE convention_id = ? AND shift_date = ?
+     WHERE ${scope.clause} AND shift_date = ?
      ORDER BY starts_at ASC`
-  ).bind(id, fromDate).all();
+  ).bind(...scope.args, fromDate).all();
 
   const shifts = source.results || [];
   if (!shifts.length) {
@@ -276,8 +335,8 @@ export async function handleCopyDay(request, env, conventionId) {
   }
 
   const existing = await env.DB.prepare(
-    `SELECT COUNT(*) AS n FROM convention_shifts WHERE convention_id = ? AND shift_date = ?`
-  ).bind(id, toDate).first();
+    `SELECT COUNT(*) AS n FROM convention_shifts WHERE ${scope.clause} AND shift_date = ?`
+  ).bind(...scope.args, toDate).first();
 
   if ((existing?.n || 0) > 0) {
     return { ok: false, error: "That day already has shifts. Clear them first, or pick another day." };
@@ -290,7 +349,7 @@ export async function handleCopyDay(request, env, conventionId) {
           break_allotment_minutes, break_count)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
-      id,
+      conventionId,
       shift.employee_id,
       shift.title,
       toDate,
@@ -303,4 +362,173 @@ export async function handleCopyDay(request, env, conventionId) {
   ));
 
   return { ok: true, copied: shifts.length };
+}
+
+/* ---------- The store week ---------- */
+
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/** Monday of the week containing a date, in UTC so no timezone drift. */
+function weekStart(isoDate) {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+function addDays(isoDate, days) {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * A week of ordinary store days: who's on, and whether the shop is covered
+ * for the hours it's open. Convention shifts are shown alongside but not
+ * edited here — those belong to the event's own builder.
+ */
+export async function handleStoreSchedule(request, env) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const url = new URL(request.url);
+  const param = url.searchParams.get("week") || "";
+  const from = weekStart(/^\d{4}-\d{2}-\d{2}$/.test(param) ? param : new Date().toISOString().slice(0, 10));
+  const to = addDays(from, 6);
+
+  const [shiftRows, hoursRows, staffRows] = await Promise.all([
+    env.DB.prepare(
+      `SELECT s.*, e.full_name AS employee_name, e.role AS employee_role,
+              e.avatar IS NOT NULL AS has_avatar, e.updated_at AS employee_updated_at,
+              c.name AS convention_name, c.slug AS convention_slug
+       FROM convention_shifts s
+       LEFT JOIN employees e ON e.id = s.employee_id
+       LEFT JOIN conventions c ON c.id = s.convention_id
+       WHERE s.shift_date >= ? AND s.shift_date <= ?
+       ORDER BY s.shift_date ASC, s.starts_at ASC`
+    ).bind(from, to).all(),
+
+    env.DB.prepare(`SELECT * FROM store_hours`).all(),
+
+    env.DB.prepare(
+      `SELECT id, full_name, role, avatar IS NOT NULL AS has_avatar, updated_at
+       FROM employees WHERE is_active = 1 ORDER BY full_name ASC`
+    ).all()
+  ]);
+
+  const allShifts = shiftRows.results || [];
+  const hoursByWeekday = new Map((hoursRows.results || []).map(row => [row.weekday, row]));
+
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(from, i);
+    const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+    const hours = hoursByWeekday.get(weekday) || null;
+    const closed = Boolean(hours?.is_closed);
+
+    const shifts = allShifts.filter(s => s.shift_date === date);
+    const storeShifts = shifts.filter(s => !s.convention_id);
+    const eventShifts = shifts.filter(s => s.convention_id);
+
+    const open = closed ? null : toMinutes(hours?.opens_at);
+    const close = closed ? null : toMinutes(hours?.closes_at);
+    const merged = mergeIntervals(storeShifts);
+
+    return {
+      date,
+      weekday,
+      weekday_name: WEEKDAYS[weekday],
+      closed,
+      hours: hours && !closed ? { opens_at: hours.opens_at, closes_at: hours.closes_at } : null,
+      shifts: storeShifts.map(shiftPayload),
+      event_shifts: eventShifts.map(shift => ({
+        ...shiftPayload(shift),
+        convention_name: shift.convention_name,
+        convention_slug: shift.convention_slug
+      })),
+      covered: merged.length
+        ? { from: toHhmm(merged[0].start), to: toHhmm(merged[merged.length - 1].end) }
+        : null,
+      gaps: closed ? [] : coverageGaps(storeShifts, open, close)
+    };
+  });
+
+  return {
+    ok: true,
+    week_start: from,
+    week_end: to,
+    prev_week: addDays(from, -7),
+    next_week: addDays(from, 7),
+    days,
+    store_hours: WEEKDAYS.map((name, weekday) => {
+      const row = hoursByWeekday.get(weekday);
+      return {
+        weekday,
+        name,
+        opens_at: row?.opens_at || "",
+        closes_at: row?.closes_at || "",
+        is_closed: Boolean(row?.is_closed)
+      };
+    }),
+    staff: (staffRows.results || []).map(person => ({
+      id: person.id,
+      full_name: person.full_name,
+      role: person.role,
+      avatar_url: person.has_avatar ? avatarUrlFor(person.id, person.updated_at) : null
+    }))
+  };
+}
+
+function shiftPayload(shift) {
+  return {
+    id: shift.id,
+    title: shift.title,
+    employee_id: shift.employee_id,
+    employee_name: shift.employee_name,
+    employee_role: shift.employee_role,
+    avatar_url: shift.has_avatar
+      ? avatarUrlFor(shift.employee_id, shift.employee_updated_at)
+      : null,
+    shift_date: shift.shift_date,
+    starts_at: shift.starts_at,
+    ends_at: shift.ends_at,
+    notes: shift.notes,
+    break_allotment_minutes: shift.break_allotment_minutes || 0,
+    break_count: shift.break_count || 1
+  };
+}
+
+/** The store's usual week. Saved as a whole so a blank day means closed. */
+export async function handleSaveStoreHours(request, env) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const body = await readJsonBody(request);
+  const rows = Array.isArray(body.hours) ? body.hours : [];
+
+  const statements = rows.map(row => {
+    const weekday = Number(row.weekday);
+    if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
+      throw new BadRequest("That isn't a day of the week.");
+    }
+
+    const closed = row.is_closed === true;
+    const opensAt = closed ? null : optionalText(row.opens_at);
+    const closesAt = closed ? null : optionalText(row.closes_at);
+
+    if (!closed && opensAt && closesAt && toMinutes(closesAt) <= toMinutes(opensAt)) {
+      throw new BadRequest(`${WEEKDAYS[weekday]} closes before it opens.`);
+    }
+
+    return env.DB.prepare(
+      `INSERT INTO store_hours (weekday, opens_at, closes_at, is_closed)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT (weekday) DO UPDATE SET
+         opens_at = excluded.opens_at,
+         closes_at = excluded.closes_at,
+         is_closed = excluded.is_closed`
+    ).bind(weekday, opensAt, closesAt, closed ? 1 : 0);
+  });
+
+  if (statements.length) await env.DB.batch(statements);
+
+  return { ok: true };
 }

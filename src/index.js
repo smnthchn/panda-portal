@@ -4,7 +4,10 @@ import { handleDashboard } from "./routes/dashboard.js";
 import {
   handleScheduleView,
   handleUpdateShift,
-  handleCopyDay
+  handleCopyDay,
+  handleCreateShiftAnywhere,
+  handleStoreSchedule,
+  handleSaveStoreHours
 } from "./routes/schedule.js";
 import {
   handleStaffList,
@@ -98,8 +101,12 @@ const ROUTES = [
   ["POST", "/api/conventions/:id/days", handleSaveConventionDay],
   ["DELETE", "/api/convention-days/:id", handleDeleteConventionDay],
 
+  ["GET", "/api/schedule/store", handleStoreSchedule],
+  ["PUT", "/api/schedule/store-hours", handleSaveStoreHours],
+  ["POST", "/api/schedule/copy-day", handleCopyDay],
+  ["POST", "/api/shifts", handleCreateShiftAnywhere],
+
   ["GET", "/api/conventions/:slug/schedule", handleScheduleView],
-  ["POST", "/api/conventions/:id/copy-day", handleCopyDay],
 
   ["POST", "/api/conventions/:id/shifts", handleCreateShift],
   ["PATCH", "/api/convention-shifts/:id", handleUpdateShift],

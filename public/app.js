@@ -56,6 +56,7 @@ const NAV_ITEMS = [
   // they use it for. Same screen, different job.
   { id: "navClock", label: "Clock", bossLabel: "Hours", group: "Today", permission: "clock", view: "clock", nav: true },
   { id: "navConventions", label: "Events", group: "Operations", permission: "conventions", view: "conventions", nav: true },
+  { id: "navSchedule", label: "Schedule", group: "Operations", permission: "manage_conventions", view: "schedule" },
   { id: "navStaff", label: "Staff", group: "Operations", permission: "manage_users", view: "staff" },
   { id: "navKnowledgeBase", label: "Docs", group: "Reference", permission: "knowledge_base", view: "knowledge-base" },
   { id: "navMyFolder", label: "My Folder", group: "Reference", permission: "employee_folder", view: "my-folder" },
@@ -417,6 +418,7 @@ function rosterStatusPill(person) {
   if (person.status === "in") return `<span class="pill pill-go">IN</span>`;
   if (person.status === "break") return `<span class="pill pill-warm">BREAK</span>`;
   if (person.status === "late") return `<span class="pill pill-late">LATE</span>`;
+  if (person.status === "missed") return `<span class="pill pill-late">NO SHOW</span>`;
   if (person.status === "done") return `<span class="pill">DONE</span>`;
   return `<span class="pill">${esc(shortTimeLabel(person.starts_at))}</span>`;
 }
@@ -1155,8 +1157,10 @@ async function handleCredentialResponse(response) {
 function viewForPath(pathname) {
   const path = pathname.replace(/\/+$/, "") || "/";
 
-  const schedule = path.match(/^\/conventions\/([^/]+)\/schedule$/);
-  if (schedule) return { view: "schedule", slug: decodeURIComponent(schedule[1]) };
+  const conventionSchedule = path.match(/^\/conventions\/([^/]+)\/schedule$/);
+  if (conventionSchedule) {
+    return { view: "convention-schedule", slug: decodeURIComponent(conventionSchedule[1]) };
+  }
 
   const convention = path.match(/^\/conventions\/([^/]+)$/);
   if (convention) return { view: "convention", slug: decodeURIComponent(convention[1]) };
@@ -1173,6 +1177,7 @@ function viewForPath(pathname) {
     "/knowledge-base": "knowledge-base",
     "/my-folder": "my-folder",
     "/clock": "clock",
+    "/schedule": "schedule",
     "/staff": "staff",
     "/users-roles": "users-roles",
     "/appearance": "appearance",
@@ -1185,7 +1190,8 @@ const POPSTATE_VIEWS = {
   dashboard: () => renderDashboard(state.user, false),
   conventions: () => renderConventions(false),
   convention: (s) => openConvention(s.slug, false),
-  schedule: (s) => renderSchedule(s.slug, false),
+  schedule: () => renderStoreSchedule(null, false),
+  "convention-schedule": (s) => renderSchedule(s.slug, false),
   "knowledge-base": () => renderKnowledgeBase(false),
   "my-folder": () => renderMyFolder(false),
   clock: () => renderClock(false),

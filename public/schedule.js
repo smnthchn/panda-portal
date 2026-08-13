@@ -8,7 +8,7 @@ let editingShiftId = null;
 let addingShift = false;
 
 async function renderSchedule(slug, pushState = true) {
-  if (pushState) pushPageState("schedule", { slug });
+  if (pushState) pushPageState("convention-schedule", { slug });
 
   const data = await api(`/api/conventions/${encodeURIComponent(slug)}/schedule`);
 
@@ -346,9 +346,10 @@ function wireSchedule() {
     copyBtn.onclick = async () => {
       copyBtn.disabled = true;
 
-      const result = await apiSend(`/api/conventions/${scheduleData.convention.id}/copy-day`, "POST", {
+      const result = await apiSend("/api/schedule/copy-day", "POST", {
         from_date: scheduleDay,
-        to_date: document.getElementById("copyTarget").value
+        to_date: document.getElementById("copyTarget").value,
+        convention_id: scheduleData.convention.id
       });
 
       copyBtn.disabled = false;
@@ -364,4 +365,459 @@ function wireSchedule() {
   }
 }
 
+/* ---------- The store week ---------- */
+
+let storeData = null;
+let storeWeek = null;
+let storeDay = null;
+let editingStoreShift = null;
+let addingStoreShift = false;
+let editingStoreHours = false;
+
+async function renderStoreSchedule(week = null, pushState = true) {
+  if (pushState) pushPageState("schedule");
+
+  const query = week ? `?week=${encodeURIComponent(week)}` : "";
+  const data = await api(`/api/schedule/store${query}`);
+
+  if (!data.ok) {
+    renderError(data.error || "Could not load the schedule");
+    return;
+  }
+
+  storeData = data;
+  storeWeek = data.week_start;
+
+  if (!data.days.some(d => d.date === storeDay)) {
+    const today = todayLocal();
+    storeDay = data.days.some(d => d.date === today) ? today : data.days[0].date;
+  }
+
+  drawStoreSchedule();
+}
+
+function drawStoreSchedule() {
+  const day = storeData.days.find(d => d.date === storeDay);
+
+  pageArea().innerHTML = `
+    <div class="page-header">
+      <h2>Schedule</h2>
+      <p>Who's on in the store, week by week</p>
+    </div>
+
+    <div class="inline-form" style="margin:0 0 13px; align-items:center;">
+      <button class="btn-quiet" id="prevWeekBtn">‹</button>
+      <div style="flex:1; text-align:center; font-family:'Fredoka',sans-serif; font-weight:600; font-size:14px;">
+        ${esc(formatDate(storeData.week_start))} – ${esc(formatDate(storeData.week_end))}
+      </div>
+      <button class="btn-quiet" id="nextWeekBtn">›</button>
+    </div>
+
+    <div class="day-tabs">
+      ${storeData.days.map(storeDayTab).join("")}
+    </div>
+
+    ${day ? storeDaySection(day) : ""}
+
+    ${storeHoursCard()}
+  `;
+
+  markActiveNav("schedule", { wide: true });
+  wireStoreSchedule();
+}
+
+function storeDayTab(day) {
+  const d = new Date(`${day.date}T00:00:00`);
+  const selected = day.date === storeDay;
+  const count = day.shifts.length + day.event_shifts.length;
+
+  return `
+    <button class="day-tab${selected ? " on" : ""}${!count && !day.closed ? " empty" : ""}"
+            data-store-day="${esc(day.date)}">
+      ${esc(d.toLocaleDateString(undefined, { weekday: "short" }))}
+      <span class="day-tab-date">${d.getDate()}</span>
+      <span class="day-tab-count">${day.closed ? "closed" : count ? `${count} on` : "none"}</span>
+    </button>
+  `;
+}
+
+function storeDaySection(day) {
+  const otherDays = storeData.days.filter(d => d.date !== day.date && !d.closed);
+
+  return `
+    ${storeCoverageCard(day)}
+
+    ${day.event_shifts.length ? `
+      <div class="card stripped">
+        <div class="strip">
+          AT AN EVENT
+          <span class="strip-side">${day.event_shifts.length}</span>
+        </div>
+        <div class="card-body">
+          ${day.event_shifts.map(shift => `
+            <div class="roster-row">
+              ${avatarHtml({ name: shift.employee_name, avatar_url: shift.avatar_url }, "small")}
+              <div style="flex:1;">
+                <div style="font-size:13px;">${esc(shift.employee_name || "Unassigned")}</div>
+                <div class="meta">${esc(shift.convention_name)} · ${esc(shift.title)}</div>
+              </div>
+              <span class="meta">${esc(formatTime(shift.starts_at))}–${esc(formatTime(shift.ends_at))}</span>
+            </div>
+          `).join("")}
+          <p class="meta" style="margin:8px 0 0;">
+            These belong to the event — build them on its own page.
+          </p>
+        </div>
+      </div>
+    ` : ""}
+
+    ${day.shifts.map(shift =>
+      editingStoreShift === shift.id ? storeShiftEditor(shift, day) : shiftCard(shift)
+    ).join("")}
+
+    ${addingStoreShift ? storeShiftEditor(null, day) : `
+      <button class="btn-dashed" id="addStoreShiftBtn" style="width:100%; margin-bottom:13px;">
+        + Add shift
+      </button>
+    `}
+
+    <p class="form-error" id="storeError"></p>
+
+    ${day.shifts.length && otherDays.length ? `
+      <div class="card stripped">
+        <div class="strip">COPY THIS DAY</div>
+        <div class="card-body">
+          <div class="inline-form">
+            <select id="storeCopyTarget">
+              ${otherDays.map(d => `
+                <option value="${esc(d.date)}">
+                  ${esc(formatDate(d.date))}${d.shifts.length ? ` — has ${d.shifts.length} already` : ""}
+                </option>
+              `).join("")}
+            </select>
+            <button class="btn-quiet" id="storeCopyBtn">Copy</button>
+          </div>
+        </div>
+      </div>
+    ` : ""}
+  `;
+}
+
+function storeCoverageCard(day) {
+  if (day.closed) {
+    return `
+      <div class="card cool">
+        <h3 style="color:var(--cool-text);">Closed on ${esc(day.weekday_name)}s</h3>
+        <p style="margin:0; font-size:12.5px;">Nothing to cover. Change it in the store's hours below.</p>
+      </div>
+    `;
+  }
+
+  if (!day.hours) {
+    return `
+      <div class="card cool">
+        <h3 style="color:var(--cool-text);">No hours set for ${esc(day.weekday_name)}s</h3>
+        <p style="margin:0; font-size:12.5px;">
+          Set the store's usual hours below and this will tell you whether
+          the day is covered.
+        </p>
+      </div>
+    `;
+  }
+
+  const chip = day.gaps.length
+    ? `<span class="pill pill-warm">${day.gaps.length} gap${day.gaps.length === 1 ? "" : "s"}</span>`
+    : day.shifts.length
+      ? `<span class="pill pill-go">NO GAPS</span>`
+      : `<span class="pill pill-warm">NOBODY ON</span>`;
+
+  return `
+    <div class="card cool" style="display:flex; align-items:flex-start; gap:10px;">
+      <div style="flex:1;">
+        <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:11.5px; letter-spacing:0.06em; color:var(--cool-text);">
+          STORE ${esc(formatTime(day.hours.opens_at))} – ${esc(formatTime(day.hours.closes_at))}
+        </div>
+        <div style="font-size:11.5px; color:var(--cool-text); margin-top:2px;">
+          ${day.covered
+            ? `Covered ${esc(formatTime(day.covered.from))} – ${esc(formatTime(day.covered.to))}`
+            : "Nobody on yet"}
+        </div>
+        ${day.gaps.length ? `
+          <div style="font-size:11.5px; color:var(--cool-text); margin-top:6px;">
+            ${day.gaps.map(gap =>
+              `Uncovered ${esc(formatTime(gap.from))} – ${esc(formatTime(gap.to))}`
+            ).join("<br>")}
+          </div>
+        ` : ""}
+      </div>
+      ${chip}
+    </div>
+  `;
+}
+
+function storeShiftEditor(shift, day) {
+  const { staff } = storeData;
+  const minutes = shift ? shift.break_allotment_minutes : 30;
+  const count = shift ? shift.break_count : 1;
+
+  return `
+    <div class="card" style="border-style:dashed;">
+      <h3>${shift ? "Edit shift" : "New shift"}</h3>
+
+      <div class="form-grid" style="margin:0;">
+        <label>Who
+          <select id="storeWho">
+            <option value="">Unassigned</option>
+            ${staff.map(person => `
+              <option value="${person.id}" ${shift?.employee_id === person.id ? "selected" : ""}>
+                ${esc(person.full_name)}
+              </option>
+            `).join("")}
+          </select>
+        </label>
+        <label>What
+          <input type="text" id="storeWhat" value="${esc(shift?.title || "Store floor")}" placeholder="Store floor">
+        </label>
+        <label>Start
+          <input type="time" id="storeFrom" value="${esc(shift?.starts_at || day.hours?.opens_at || "11:00")}">
+        </label>
+        <label>End
+          <input type="time" id="storeTo" value="${esc(shift?.ends_at || day.hours?.closes_at || "19:00")}">
+        </label>
+        <label>Break minutes
+          <input type="number" id="storeBreakMins" value="${minutes}" min="0" max="240">
+        </label>
+        <label>Split into
+          <select id="storeBreakCount">
+            <option value="1" ${count === 1 ? "selected" : ""}>One break</option>
+            <option value="2" ${count === 2 ? "selected" : ""}>Two breaks</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="button-row">
+        <button id="saveStoreShiftBtn" style="flex:1;">${shift ? "Save shift" : "Add shift"}</button>
+        <button class="btn-quiet" id="cancelStoreShiftBtn">Cancel</button>
+        ${shift ? `<button class="btn-danger" id="deleteStoreShiftBtn">Remove</button>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+/** The store's usual week — set once, drives every week's coverage check. */
+function storeHoursCard() {
+  if (!editingStoreHours) {
+    const summary = storeData.store_hours.map(row =>
+      row.is_closed || !row.opens_at
+        ? `${row.name.slice(0, 3)} closed`
+        : `${row.name.slice(0, 3)} ${formatTime(row.opens_at)}–${formatTime(row.closes_at)}`
+    );
+
+    return `
+      <div class="card stripped">
+        <div class="strip">
+          STORE HOURS
+          <button class="btn-quiet strip-side" id="editHoursBtn"
+                  style="font-size:11.5px; padding:5px 9px; border-bottom-width:2px;">Edit</button>
+        </div>
+        <div class="card-body">
+          <div class="meta" style="line-height:1.7;">${summary.map(esc).join("<br>")}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="card stripped">
+      <div class="strip">STORE HOURS</div>
+      <div class="card-body">
+        ${storeData.store_hours.map(row => `
+          <div class="inline-form" style="margin-bottom:8px;">
+            <span style="width:78px; flex:none; font-family:'Fredoka',sans-serif; font-weight:600; font-size:12.5px;">
+              ${esc(row.name)}
+            </span>
+            <input type="time" data-opens="${row.weekday}" value="${esc(row.opens_at)}" ${row.is_closed ? "disabled" : ""}>
+            <input type="time" data-closes="${row.weekday}" value="${esc(row.closes_at)}" ${row.is_closed ? "disabled" : ""}>
+            <label class="meta" style="display:flex; align-items:center; gap:5px; white-space:nowrap;">
+              <input type="checkbox" data-closed="${row.weekday}" ${row.is_closed ? "checked" : ""}> Closed
+            </label>
+          </div>
+        `).join("")}
+        <p class="form-error" id="hoursError"></p>
+        <div class="button-row">
+          <button id="saveHoursBtn" style="flex:1;">Save hours</button>
+          <button class="btn-quiet" id="cancelHoursBtn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function wireStoreSchedule() {
+  const reload = () => renderStoreSchedule(storeWeek, false);
+
+  document.getElementById("prevWeekBtn").onclick = () => {
+    storeDay = null;
+    renderStoreSchedule(storeData.prev_week, false);
+  };
+
+  document.getElementById("nextWeekBtn").onclick = () => {
+    storeDay = null;
+    renderStoreSchedule(storeData.next_week, false);
+  };
+
+  document.querySelectorAll("[data-store-day]").forEach(tab => {
+    tab.onclick = () => {
+      storeDay = tab.dataset.storeDay;
+      editingStoreShift = null;
+      addingStoreShift = false;
+      drawStoreSchedule();
+    };
+  });
+
+  document.querySelectorAll("[data-edit-shift]").forEach(card => {
+    card.onclick = () => {
+      editingStoreShift = Number(card.dataset.editShift);
+      addingStoreShift = false;
+      drawStoreSchedule();
+    };
+  });
+
+  const addBtn = document.getElementById("addStoreShiftBtn");
+  if (addBtn) {
+    addBtn.onclick = () => {
+      addingStoreShift = true;
+      editingStoreShift = null;
+      drawStoreSchedule();
+    };
+  }
+
+  const cancelBtn = document.getElementById("cancelStoreShiftBtn");
+  if (cancelBtn) {
+    cancelBtn.onclick = () => {
+      editingStoreShift = null;
+      addingStoreShift = false;
+      drawStoreSchedule();
+    };
+  }
+
+  const saveBtn = document.getElementById("saveStoreShiftBtn");
+  if (saveBtn) {
+    saveBtn.onclick = async () => {
+      saveBtn.disabled = true;
+
+      const payload = {
+        employee_id: document.getElementById("storeWho").value || null,
+        title: document.getElementById("storeWhat").value,
+        shift_date: storeDay,
+        starts_at: document.getElementById("storeFrom").value,
+        ends_at: document.getElementById("storeTo").value,
+        break_allotment_minutes: Number(document.getElementById("storeBreakMins").value) || 0,
+        break_count: Number(document.getElementById("storeBreakCount").value) || 1
+      };
+
+      const result = editingStoreShift
+        ? await apiSend(`/api/convention-shifts/${editingStoreShift}`, "PATCH", payload)
+        : await apiSend("/api/shifts", "POST", payload);
+
+      saveBtn.disabled = false;
+
+      if (!result.ok) {
+        showFormError("storeError", result.error || "Could not save that shift.");
+        return;
+      }
+
+      editingStoreShift = null;
+      addingStoreShift = false;
+      await reload();
+    };
+  }
+
+  const deleteBtn = document.getElementById("deleteStoreShiftBtn");
+  if (deleteBtn) {
+    deleteBtn.onclick = async () => {
+      await apiSend(`/api/convention-shifts/${editingStoreShift}`, "DELETE");
+      editingStoreShift = null;
+      await reload();
+    };
+  }
+
+  const copyBtn = document.getElementById("storeCopyBtn");
+  if (copyBtn) {
+    copyBtn.onclick = async () => {
+      copyBtn.disabled = true;
+      const target = document.getElementById("storeCopyTarget").value;
+
+      const result = await apiSend("/api/schedule/copy-day", "POST", {
+        from_date: storeDay,
+        to_date: target,
+        convention_id: null
+      });
+
+      copyBtn.disabled = false;
+
+      if (!result.ok) {
+        showFormError("storeError", result.error || "Could not copy that day.");
+        return;
+      }
+
+      storeDay = target;
+      await reload();
+    };
+  }
+
+  const editHours = document.getElementById("editHoursBtn");
+  if (editHours) {
+    editHours.onclick = () => {
+      editingStoreHours = true;
+      drawStoreSchedule();
+    };
+  }
+
+  const cancelHours = document.getElementById("cancelHoursBtn");
+  if (cancelHours) {
+    cancelHours.onclick = () => {
+      editingStoreHours = false;
+      drawStoreSchedule();
+    };
+  }
+
+  // Ticking Closed greys that day's times rather than leaving stale ones on.
+  document.querySelectorAll("[data-closed]").forEach(box => {
+    box.onchange = () => {
+      const weekday = box.dataset.closed;
+      for (const attr of ["opens", "closes"]) {
+        const input = document.querySelector(`[data-${attr}="${weekday}"]`);
+        input.disabled = box.checked;
+      }
+    };
+  });
+
+  const saveHours = document.getElementById("saveHoursBtn");
+  if (saveHours) {
+    saveHours.onclick = async () => {
+      saveHours.disabled = true;
+
+      const hours = storeData.store_hours.map(row => ({
+        weekday: row.weekday,
+        opens_at: document.querySelector(`[data-opens="${row.weekday}"]`).value,
+        closes_at: document.querySelector(`[data-closes="${row.weekday}"]`).value,
+        is_closed: document.querySelector(`[data-closed="${row.weekday}"]`).checked
+      }));
+
+      const result = await apiSend("/api/schedule/store-hours", "PUT", { hours });
+      saveHours.disabled = false;
+
+      if (!result.ok) {
+        showFormError("hoursError", result.error || "Could not save those hours.");
+        return;
+      }
+
+      editingStoreHours = false;
+      await reload();
+    };
+  }
+}
+
 window.renderSchedule = renderSchedule;
+window.renderStoreSchedule = renderStoreSchedule;

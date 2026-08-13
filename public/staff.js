@@ -218,20 +218,19 @@ function drawStaffMember() {
               ${openShifts.map(s => `
                 <option value="${s.id}">
                   ${esc(formatDate(s.shift_date))} · ${esc(formatTime(s.starts_at))}–${esc(formatTime(s.ends_at))}
-                  · ${esc(s.title)} (${esc(s.convention_name)})
+                  · ${esc(s.title)} (${esc(s.convention_name || "Store")})
                 </option>
               `).join("")}
             </select>
             <button id="assignShiftBtn">Assign</button>
           </div>
           <p class="meta" style="margin:6px 0 0;">
-            Unassigned shifts across every upcoming event. Add shifts on the
-            event's own page.
+            Unassigned shifts from Schedule and from every upcoming event.
           </p>
         ` : `
           <p class="meta">
-            No unassigned shifts going spare. Add them on an event's page, then
-            they'll show up here.
+            No unassigned shifts going spare. Build a week on Schedule, or a
+            show on its own page, and they'll turn up here.
           </p>
         `}
 
@@ -255,7 +254,7 @@ function shiftRowHtml(shift) {
           ${esc(formatDate(shift.shift_date))}
         </strong>
         <div class="meta">
-          ${esc(shift.title)} · ${esc(shift.convention_name)} ·
+          ${esc(shift.title)} · ${esc(shift.convention_name || "Store")} ·
           ${esc(formatTime(shift.starts_at))} – ${esc(formatTime(shift.ends_at))}
           ${shift.break_allotment_minutes
             ? ` · ${esc(breakBasisText(shift.break_allotment_minutes, shift.break_count || 1))} break`

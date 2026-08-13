@@ -273,6 +273,18 @@ describe("today's roster", () => {
     expect(roster[0].initials).toBe("MK");
   });
 
+  it("calls it a no-show once the shift they skipped has finished", () => {
+    const roster = buildRoster(
+      [shift(1, "Marcus Kwan", "07:00", "11:00")],
+      new Map(),
+      people([[1, "Marcus Kwan"]]),
+      noOpenShift,
+      NOON
+    );
+
+    expect(roster[0].status).toBe("missed");
+  });
+
   it("does not call someone late before their shift starts", () => {
     const roster = buildRoster(
       [shift(1, "Marcus Kwan", "15:00", "20:00")],
