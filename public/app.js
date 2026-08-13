@@ -148,8 +148,11 @@ function renderShell(user) {
   };
 }
 
-/** Marks the current view active in both navs. Called by every render. */
-function markActiveNav(view) {
+/**
+ * Marks the current view active in both navs, and sets the column width.
+ * Every render calls this, so `wide` can't leak from the previous screen.
+ */
+function markActiveNav(view, { wide = false } = {}) {
   document.querySelectorAll("[data-bottom-nav]").forEach(link => {
     link.classList.toggle("active", link.dataset.bottomNav === view);
   });
@@ -157,6 +160,8 @@ function markActiveNav(view) {
   for (const item of NAV_ITEMS) {
     document.getElementById(item.id)?.classList.toggle("active", item.view === view);
   }
+
+  pageArea().classList.toggle("wide", wide);
 }
 
 /* ---------- Dashboard ---------- */
@@ -781,13 +786,15 @@ async function loadTeamHours() {
     }).join("");
 
     return `
-      <h4>${esc(person.full_name)} <span class="meta">· ${esc(formatMinutes(total))}</span></h4>
-      <table class="hours-table"><tbody>${rows}</tbody></table>
+      <div class="person-block">
+        <h4>${esc(person.full_name)} <span class="meta">· ${esc(formatMinutes(total))}</span></h4>
+        <table class="hours-table"><tbody>${rows}</tbody></table>
+      </div>
     `;
   }).filter(Boolean);
 
   document.getElementById("reportArea").innerHTML = blocks.length
-    ? blocks.join("")
+    ? `<div class="people-grid">${blocks.join("")}</div>`
     : `<p class="empty-state">No clock activity between those dates.</p>`;
 
   document.querySelectorAll("[data-fix]").forEach(btn => {
@@ -873,7 +880,7 @@ function renderTimesheets(history) {
     ${ownShifts.length ? myHoursCard(ownShifts) : ""}
   `;
 
-  markActiveNav("clock");
+  markActiveNav("clock", { wide: true });
 
   const loadReportBtn = document.getElementById("loadReportBtn");
   loadReportBtn.onclick = () => guard(loadTeamHours);

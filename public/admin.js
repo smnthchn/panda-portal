@@ -29,7 +29,7 @@ function drawUsersRoles() {
     ${addPersonCard()}
   `;
 
-  markActiveNav("users-roles");
+  markActiveNav("users-roles", { wide: true });
   wireRoleDefaults();
   wirePeople();
   wireAddPerson();

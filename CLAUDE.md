@@ -75,6 +75,13 @@ shared iPad. `arcade` is dark: pills over a coloured band use `.pill-paper`
 The desktop sidebar is kept for the boss's longer screens; below 800px it's
 replaced by the four-item bottom nav (Home / Clock / Events / Docs).
 
+Screens that are a phone screen stay in a 560px column on desktop. Data-dense
+ones opt into the full width by passing `markActiveNav(view, { wide: true })` —
+Timesheets and Users & Roles do. Every render calls `markActiveNav`, so the
+width can't leak from the previous screen. Widening buys more rows on screen
+(timesheets go side by side, the permission table stops scrolling), never
+longer lines of prose.
+
 ## Dashboard
 
 `/api/dashboard` answers the whole home screen in one request, and decides the

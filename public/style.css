@@ -382,9 +382,43 @@ button:disabled {
   padding: 20px 12px 90px;
 }
 
+/* The design is drawn for a 392px phone, so screens that are a phone screen
+   stay in a narrow column even on a desktop. Data-dense ones — timesheets,
+   user admin — opt into the full width with .wide, where the extra room buys
+   you more rows on screen at once instead of just longer lines. */
 .page {
   max-width: 560px;
   margin: 0 auto;
+}
+
+@media (min-width: 801px) {
+  .page.wide {
+    max-width: 1180px;
+  }
+
+  /* Several people's timesheets side by side rather than one long scroll. */
+  .page.wide .people-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+    gap: 0 28px;
+    align-items: start;
+  }
+
+  .page.wide .perm-rows {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+
+  .page.wide .card-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+}
+
+.person-block {
+  break-inside: avoid;
+}
+
+.person-block h4 {
+  margin-top: 0;
 }
 
 /* The 30x30 teal app tile and round avatar from the header spec. */
