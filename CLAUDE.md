@@ -373,6 +373,12 @@ Set with `wrangler secret put NAME` for production, and in `.dev.vars` for local
 
 ## Gotchas
 
+- **Never bulk-edit source with PowerShell `Get-Content`/`Set-Content`.** In
+  Windows PowerShell 5.1 `Get-Content` reads as ANSI, so a UTF-8 file round
+  trips into mojibake — one find/replace turned every `—`, `·`, `′`, `×`, `✓`
+  and `‹` in `shelves.js` into `â€"`, `Â·`, `â€²`… The UI is full of typographic
+  characters, so this is guaranteed damage. Use the editing tools, or
+  `[IO.File]::ReadAllText`/`WriteAllText` with an explicit UTF-8 encoding.
 - **Style inputs by exclusion.** `input:not([type="checkbox"]):not([type="radio"])`,
   not a list of types — a listed-types rule silently skips any new input type.
 - **`openConvention(slug, pushState)`** only resets the manage panel when `pushState`
