@@ -159,6 +159,12 @@ flagged and never counted toward a total. Timestamps are UTC (SQLite
 `CURRENT_TIMESTAMP`), so grouping into days and weeks happens in the browser in
 local time — don't group by date in SQL, or evening shifts land on the next day.
 
+**The boss doesn't punch a clock, they read everyone else's.** `/clock` renders
+as **Timesheets** for anyone with `manage_users` — the team report, no clock
+buttons — and their own hours appear only if they turn out to have punches. The
+nav calls it Hours/Timesheets for them, Clock for everyone else. The dashboard
+likewise gives the boss the floor instead of a clock card.
+
 A boss fixes a wrong or missing clock-out from Team hours; the correction is a
 normal `clock_events` row stamped with who fixed it. That inserted row has a
 late id, which is why `pairClockEvents()` orders by `created_at`, never by id.

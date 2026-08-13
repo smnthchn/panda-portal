@@ -52,7 +52,9 @@ function renderLogin(clientId = "") {
 
 const NAV_ITEMS = [
   { id: "navDashboard", label: "Home", group: "Today", permission: null, view: "dashboard", nav: true },
-  { id: "navClock", label: "Clock", group: "Today", permission: "clock", view: "clock", nav: true },
+  // The boss reads this page rather than punching it, so it's named for what
+  // they use it for. Same screen, different job.
+  { id: "navClock", label: "Clock", bossLabel: "Hours", group: "Today", permission: "clock", view: "clock", nav: true },
   { id: "navConventions", label: "Events", group: "Operations", permission: "conventions", view: "conventions", nav: true },
   { id: "navKnowledgeBase", label: "Docs", group: "Reference", permission: "knowledge_base", view: "knowledge-base", nav: true },
   { id: "navMyFolder", label: "My Folder", group: "Reference", permission: "employee_folder", view: "my-folder" },
@@ -65,7 +67,12 @@ const NAV_ITEMS = [
 const NAV_STUBS = ["Inventory", "Purchasing"];
 
 function visibleNavItems() {
-  return NAV_ITEMS.filter(item => !item.permission || can(item.permission));
+  return NAV_ITEMS
+    .filter(item => !item.permission || can(item.permission))
+    .map(item => ({
+      ...item,
+      label: item.bossLabel && can("manage_users") ? item.bossLabel : item.label
+    }));
 }
 
 function goToView(view) {
@@ -94,7 +101,9 @@ function renderShell(user) {
           ${groups.map(group => `
             <div class="nav-group">${esc(group.name)}</div>
             ${group.items.map(item =>
-              `<a href="#" id="${item.id}">${esc(item.label === "Home" ? "Dashboard" : item.label)}</a>`
+              `<a href="#" id="${item.id}">${esc(
+                item.label === "Home" ? "Dashboard" : item.label === "Hours" ? "Timesheets" : item.label
+              )}</a>`
             ).join("")}
           `).join("")}
           <div class="nav-group">Not built yet</div>
@@ -846,6 +855,31 @@ function openFixEditor(row, shift) {
   };
 }
 
+/**
+ * The boss doesn't punch a clock — they read everyone else's. So this page is
+ * the timesheets for them: the team report first, and their own hours only if
+ * they turn out to have punches of their own.
+ */
+function renderTimesheets(history) {
+  const ownShifts = history.ok ? history.shifts : [];
+
+  pageArea().innerHTML = `
+    <div class="page-header">
+      <h2>Timesheets</h2>
+      <p>Everyone's hours, with breaks deducted</p>
+    </div>
+
+    ${teamHoursCard()}
+    ${ownShifts.length ? myHoursCard(ownShifts) : ""}
+  `;
+
+  markActiveNav("clock");
+
+  const loadReportBtn = document.getElementById("loadReportBtn");
+  loadReportBtn.onclick = () => guard(loadTeamHours);
+  guard(loadTeamHours);
+}
+
 async function renderClock(pushState = true) {
   if (pushState) pushPageState("clock");
 
@@ -856,6 +890,11 @@ async function renderClock(pushState = true) {
 
   if (!data.ok) {
     renderError(data.error || "Could not load clock status");
+    return;
+  }
+
+  if (can("manage_users")) {
+    renderTimesheets(history);
     return;
   }
 
@@ -891,11 +930,15 @@ async function renderClock(pushState = true) {
             ? esc(elapsedSince(data.last_event.created_at))
             : "Off the clock"}
         </div>
-        ${data.last_event
+        ${clockedIn && data.last_event
           ? `<div style="font-size:12px; color:${onBreak ? "#E4CE9B" : "var(--clock-sub)"};">
                Since ${esc(timeOf(data.last_event.created_at))}
              </div>`
-          : ""}
+          : data.last_event
+            ? `<div style="font-size:12px; color:var(--clock-sub);">
+                 Last out ${esc(timeOf(data.last_event.created_at))}
+               </div>`
+            : ""}
       </div>
       <div class="button-row" style="margin:0;">
         ${actions.map((a, i) => `
@@ -906,17 +949,10 @@ async function renderClock(pushState = true) {
     </div>
 
     ${myHoursCard(history.ok ? history.shifts : [])}
-    ${can("manage_users") ? teamHoursCard() : ""}
   `;
 
   markActiveNav("clock");
   wireClockButtons(() => renderClock(false));
-
-  const loadReportBtn = document.getElementById("loadReportBtn");
-  if (loadReportBtn) {
-    loadReportBtn.onclick = () => guard(loadTeamHours);
-    guard(loadTeamHours);
-  }
 }
 
 /* ---------- Appearance ---------- */

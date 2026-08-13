@@ -1099,22 +1099,27 @@ textarea::placeholder {
   font-weight: 600;
 }
 
-/* Full-width hero band under the header: 2px ink top and bottom. */
+/* The event's headline. Same card shape as the clock card — 2px outline all
+   round, chunky radius, hard shadow — rather than the mockup's full-bleed
+   strip, which only lines up inside a phone frame. */
 .hero-band {
-  border-top: 2px solid var(--ink);
-  border-bottom: 2px solid var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 4px 0 var(--shadow);
   padding: 14px;
-  margin: 0 -12px 13px;
+  margin: 0 0 13px;
 }
 
 .hero-band.warm {
   background: var(--warm);
   color: var(--on-warm);
+  box-shadow: 0 4px 0 var(--warm-deep);
 }
 
 .hero-band.brand {
   background: var(--brand);
   color: var(--on-brand);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--brand) 62%, black);
 }
 
 .hero-band h2 {
@@ -1522,10 +1527,11 @@ textarea::placeholder {
 
 .event-band {
   background: var(--warm);
-  border-top: 2px solid var(--ink);
-  border-bottom: 2px solid var(--ink);
-  padding: 9px 14px;
-  margin: 0 -12px 13px;
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 4px 0 var(--warm-deep);
+  padding: 10px 13px;
+  margin: 0 0 13px;
   display: flex;
   align-items: center;
   gap: 9px;
