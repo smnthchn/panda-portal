@@ -345,6 +345,29 @@ describe("api routing", () => {
     expect(await response.json()).toEqual({ ok: false, error: "Not found" });
   });
 
+  // Staff records carry phone numbers and notes, so an anonymous caller must
+  // never get past the door — and the routes must actually be wired up.
+  it("guards the staff endpoints behind a login", async () => {
+    for (const [path, method] of [
+      ["/api/admin/staff", "GET"],
+      ["/api/admin/staff/1", "GET"],
+      ["/api/admin/staff/1", "PATCH"],
+      ["/api/convention-shifts/1/assign", "PUT"]
+    ]) {
+      const response = await call(request(path, method));
+      expect(response.status, `${method} ${path}`).toBe(200);
+      expect(await response.json(), `${method} ${path}`).toEqual({
+        ok: false,
+        error: "Not logged in"
+      });
+    }
+  });
+
+  it("does not let the staff id swallow a nested route", () => {
+    expect(matchPath("/api/admin/staff", "/api/admin/staff/:id")).toBeNull();
+    expect(matchPath("/api/admin/staff/12", "/api/admin/staff/:id")).toEqual({ id: "12" });
+  });
+
   it("returns 404 when the path matches but the method does not", async () => {
     const response = await call(request("/api/login", "GET"));
     expect(response.status).toBe(404);

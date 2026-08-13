@@ -56,10 +56,20 @@ const NAV_ITEMS = [
   // they use it for. Same screen, different job.
   { id: "navClock", label: "Clock", bossLabel: "Hours", group: "Today", permission: "clock", view: "clock", nav: true },
   { id: "navConventions", label: "Events", group: "Operations", permission: "conventions", view: "conventions", nav: true },
-  { id: "navKnowledgeBase", label: "Docs", group: "Reference", permission: "knowledge_base", view: "knowledge-base", nav: true },
+  { id: "navStaff", label: "Staff", group: "Operations", permission: "manage_users", view: "staff" },
+  { id: "navKnowledgeBase", label: "Docs", group: "Reference", permission: "knowledge_base", view: "knowledge-base" },
   { id: "navMyFolder", label: "My Folder", group: "Reference", permission: "employee_folder", view: "my-folder" },
   { id: "navUsers", label: "Users & Roles", group: "Admin", permission: "manage_users", view: "users-roles" },
   { id: "navAppearance", label: "Appearance", group: "Admin", permission: null, view: "appearance" }
+];
+
+/* The phone's four-item bar. Everything else lives behind More, which is the
+   only way to reach the sidebar-only screens when the sidebar is hidden. */
+const BOTTOM_NAV = [
+  { label: "Home", view: "dashboard", permission: null },
+  { label: "Clock", bossLabel: "Hours", view: "clock", permission: "clock" },
+  { label: "Events", view: "conventions", permission: "conventions" },
+  { label: "More", view: "more", permission: null }
 ];
 
 /* Nav entries for work that isn't built yet — shown greyed so the shape of
@@ -117,11 +127,15 @@ function renderShell(user) {
       </main>
 
       <nav class="bottom-nav" id="bottomNav">
-        ${items.filter(item => item.nav).map(item => `
-          <a href="#" data-bottom-nav="${esc(item.view)}">
-            <div class="nav-dot"></div>${esc(item.label)}
-          </a>
-        `).join("")}
+        ${BOTTOM_NAV
+          .filter(item => !item.permission || can(item.permission))
+          .map(item => `
+            <a href="#" data-bottom-nav="${esc(item.view)}">
+              <div class="nav-dot"></div>${esc(
+                item.bossLabel && can("manage_users") ? item.bossLabel : item.label
+              )}
+            </a>
+          `).join("")}
       </nav>
     </div>
   `;
@@ -1007,6 +1021,63 @@ async function renderClock(pushState = true) {
   wireClockButtons(() => renderClock(false));
 }
 
+/* ---------- More (phone) ---------- */
+
+/**
+ * The phone bar only holds four items, so everything else lands here. On a
+ * desktop these are all in the sidebar, but the sidebar is hidden on a phone
+ * and without this screen those pages would be unreachable.
+ */
+function renderMore(pushState = true) {
+  if (pushState) pushPageState("more");
+
+  const items = visibleNavItems().filter(item =>
+    !BOTTOM_NAV.some(nav => nav.view === item.view)
+  );
+
+  pageArea().innerHTML = `
+    <div class="page-header">
+      <h2>More</h2>
+      <p>${esc(state.user.full_name)} · ${esc(roleDisplayName(state.user.role))}</p>
+    </div>
+
+    <div class="card stripped">
+      <div class="strip">EVERYTHING ELSE</div>
+      <div>
+        ${items.map(item => `
+          <a href="#" data-more="${esc(item.view)}"
+             style="display:flex; align-items:center; gap:11px; padding:13px; border-bottom:2px solid var(--track); text-decoration:none; color:inherit;">
+            <span style="flex:1; font-family:'Fredoka',sans-serif; font-weight:600; font-size:14px;">
+              ${esc(item.label)}
+            </span>
+            <span style="font-family:'Fredoka',sans-serif; font-size:15px; color:var(--muted);">›</span>
+          </a>
+        `).join("")}
+        <a href="#" id="moreLogout"
+           style="display:flex; align-items:center; gap:11px; padding:13px; text-decoration:none; color:var(--alert);">
+          <span style="flex:1; font-family:'Fredoka',sans-serif; font-weight:600; font-size:14px;">Log out</span>
+        </a>
+      </div>
+    </div>
+  `;
+
+  markActiveNav("more");
+
+  document.querySelectorAll("[data-more]").forEach(link => {
+    link.onclick = (e) => {
+      e.preventDefault();
+      goToView(link.dataset.more);
+    };
+  });
+
+  document.getElementById("moreLogout").onclick = async (e) => {
+    e.preventDefault();
+    await api("/api/logout", { method: "POST" });
+    state.user = null;
+    await loadApp();
+  };
+}
+
 /* ---------- Appearance ---------- */
 
 async function renderAppearance(pushState = true) {
@@ -1087,6 +1158,9 @@ function viewForPath(pathname) {
   const convention = path.match(/^\/conventions\/([^/]+)$/);
   if (convention) return { view: "convention", slug: decodeURIComponent(convention[1]) };
 
+  const staff = path.match(/^\/staff\/(\d+)$/);
+  if (staff) return { view: "staff-member", id: Number(staff[1]) };
+
   const doc = path.match(/^\/doc\/([^/]+)$/);
   if (doc) return { view: "doc", id: decodeURIComponent(doc[1]) };
 
@@ -1096,8 +1170,10 @@ function viewForPath(pathname) {
     "/knowledge-base": "knowledge-base",
     "/my-folder": "my-folder",
     "/clock": "clock",
+    "/staff": "staff",
     "/users-roles": "users-roles",
-    "/appearance": "appearance"
+    "/appearance": "appearance",
+    "/more": "more"
   };
   return { view: flat[path] || "dashboard" };
 }
@@ -1109,8 +1185,11 @@ const POPSTATE_VIEWS = {
   "knowledge-base": () => renderKnowledgeBase(false),
   "my-folder": () => renderMyFolder(false),
   clock: () => renderClock(false),
+  staff: () => renderStaff(false),
+  "staff-member": (s) => openStaffMember(s.id, false),
   "users-roles": () => renderUsersRoles(false),
   appearance: () => renderAppearance(false),
+  more: () => renderMore(false),
   doc: (s) => openDoc(s.id, s.name, s.origin, false)
 };
 

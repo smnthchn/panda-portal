@@ -89,8 +89,11 @@ const PAGE_URLS = {
   "knowledge-base": () => "/knowledge-base",
   "my-folder": () => "/my-folder",
   clock: () => "/clock",
+  staff: () => "/staff",
+  "staff-member": (d) => `/staff/${encodeURIComponent(d.id)}`,
   "users-roles": () => "/users-roles",
   appearance: () => "/appearance",
+  more: () => "/more",
   doc: (d) => `/doc/${encodeURIComponent(d.id)}`
 };
 

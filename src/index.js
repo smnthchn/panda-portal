@@ -1,6 +1,12 @@
 import { json, matchPath, BadRequest } from "./lib/http.js";
 import { handleMe, handleLogin, handleLogout, handleSetTheme } from "./routes/session.js";
 import { handleDashboard } from "./routes/dashboard.js";
+import {
+  handleStaffList,
+  handleStaffDetail,
+  handleUpdateStaff,
+  handleAssignShift
+} from "./routes/staff.js";
 import { handleKnowledgeBase, handleMyFolder, handleDocContent } from "./routes/knowledge.js";
 import {
   handleClockStatus,
@@ -61,6 +67,11 @@ const ROUTES = [
   ["POST", "/api/clock-out", (req, env) => handleClockEvent(req, env, "clock_out")],
   ["POST", "/api/break-start", (req, env) => handleClockEvent(req, env, "break_start")],
   ["POST", "/api/break-end", (req, env) => handleClockEvent(req, env, "break_end")],
+
+  ["GET", "/api/admin/staff", handleStaffList],
+  ["GET", "/api/admin/staff/:id", handleStaffDetail],
+  ["PATCH", "/api/admin/staff/:id", handleUpdateStaff],
+  ["PUT", "/api/convention-shifts/:id/assign", handleAssignShift],
 
   ["GET", "/api/admin/users", handleAdminUsers],
   ["POST", "/api/admin/users", handleCreateUser],

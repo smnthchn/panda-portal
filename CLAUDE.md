@@ -10,7 +10,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 47 tests
+npm test               # vitest, 49 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -40,10 +40,11 @@ src/
     permissions.js      roles, permission keys, effective-permission resolution
     google.js           service-account JWT, Drive listing, Google Doc -> HTML
     http.js             json(), matchPath(), cookies, field validation
-  routes/               session, dashboard, knowledge, clock, admin, conventions
+  routes/               session, dashboard, knowledge, clock, admin, staff, conventions
 public/
   core.js               shared helpers — MUST load first (esc, api, themes, battery)
   admin.js              Users & Roles
+  staff.js              Staff — details, folders, shift assignment
   conventions.js        Conventions
   app.js                shell, login, dashboard, KB, My Folder, Clock, Appearance
 migrations/             numbered SQL, applied via wrangler
@@ -73,7 +74,11 @@ shared iPad. `arcade` is dark: pills over a coloured band use `.pill-paper`
 (paper fill, ink border), and inputs read `--field`, which is dark there.
 
 The desktop sidebar is kept for the boss's longer screens; below 800px it's
-replaced by the four-item bottom nav (Home / Clock / Events / Docs).
+replaced by the four-item bottom nav (Home / Clock / Events / More). **More is
+load-bearing, not a nicety** — the sidebar is hidden on a phone, so it's the
+only way to reach Staff, Docs, My Folder, Users & Roles and Appearance there.
+Anything added to the sidebar and not to `BOTTOM_NAV` shows up in More
+automatically.
 
 Screens that are a phone screen stay in a 560px column on desktop. Data-dense
 ones opt into the full width by passing `markActiveNav(view, { wide: true })` —
@@ -167,6 +172,30 @@ This replaced an AI web-search lookup (removed Aug 2026). The lookup took ~20s p
 run, its results were lost on every save, and it mostly rediscovered hours that
 don't change year to year. Setup and load-in times still aren't public either way —
 they live in the exhibitor kit, so the boss fills those in by hand.
+
+## Staff vs Users & Roles
+
+Deliberately two screens over the same `employees` table:
+
+- **Staff** (`routes/staff.js`, `public/staff.js`) — the person. Name, the
+  Google account they sign in with, phone, location, start date, notes, their
+  Drive folder, and their shifts. Boss-only.
+- **Users & Roles** (`routes/admin.js`) — the login. Adding a person, roles,
+  active/inactive, and permission overrides. The guard rails around the last
+  active Boss live here.
+
+Editing a person's email changes the account they sign in with, so it's
+validated and kept unique the same way creating one is.
+
+`employees.google_drive_folder_id` is the folder behind that person's **My
+Folder** page (`/api/my-folder` lists it via the service account). Setting the
+ID here doesn't grant access — the folder still has to be shared with their
+Google account in Drive.
+
+Shifts can be assigned from either side: the event's own page, or a person's
+Staff page picking from unassigned shifts across every upcoming event. Both go
+through `PUT /api/convention-shifts/:id/assign`, which refuses a shift that
+overlaps one the person is already on that day.
 
 ## Clock
 
