@@ -8,6 +8,7 @@ import { pairClockEvents } from "../src/routes/clock.js";
 import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/dashboard.js";
 import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
 import { mergeIntervals, coverageGaps, toMinutes } from "../src/routes/schedule.js";
+import { fullWeek, availabilityConflict } from "../src/routes/availability.js";
 
 function request(path, method = "GET", headers = {}) {
   return new Request(`http://example.com${path}`, { method, headers });
@@ -448,6 +449,58 @@ describe("booth coverage", () => {
 
   it("drops a backwards or unparseable shift instead of inverting the maths", () => {
     expect(mergeIntervals([shift("18:00", "10:00"), shift("bad", "12:00")])).toEqual([]);
+  });
+});
+
+describe("availability", () => {
+  // Thursday 13 August 2026 is weekday 4.
+  const THURSDAY = { date: "2026-08-13", weekday: 4 };
+
+  it("treats a day nobody has spoken about as fully available", () => {
+    const week = fullWeek([]);
+    expect(week).toHaveLength(7);
+    expect(week.every(day => day.is_available)).toBe(true);
+    expect(availabilityConflict(week, [], THURSDAY)).toBeNull();
+  });
+
+  it("flags a weekday someone said they can't work", () => {
+    const week = fullWeek([{ weekday: 4, is_available: 0, earliest: null, latest: null }]);
+    expect(availabilityConflict(week, [], THURSDAY)).toEqual({
+      level: "clash",
+      reason: "not available Thursdays"
+    });
+  });
+
+  it("flags a shift starting before someone's earliest", () => {
+    const week = fullWeek([{ weekday: 4, is_available: 1, earliest: "17:00", latest: null }]);
+    expect(availabilityConflict(week, [], { ...THURSDAY, startsAt: "11:00" }))
+      .toEqual({ level: "warn", reason: "not before 17:00 on Thursdays" });
+
+    expect(availabilityConflict(week, [], { ...THURSDAY, startsAt: "18:00" })).toBeNull();
+  });
+
+  it("flags a shift running past someone's latest", () => {
+    const week = fullWeek([{ weekday: 4, is_available: 1, earliest: null, latest: "15:00" }]);
+    expect(availabilityConflict(week, [], { ...THURSDAY, endsAt: "19:00" }))
+      .toEqual({ level: "warn", reason: "not after 15:00 on Thursdays" });
+  });
+
+  // Approved time off beats the weekly pattern — it's the more specific answer.
+  it("treats approved time off covering the day as a clash", () => {
+    const timeOff = [{ starts_on: "2026-08-10", ends_on: "2026-08-17", status: "approved" }];
+    expect(availabilityConflict(fullWeek([]), timeOff, THURSDAY))
+      .toEqual({ level: "clash", reason: "on approved time off" });
+  });
+
+  it("mentions a pending request without calling it a clash", () => {
+    const timeOff = [{ starts_on: "2026-08-13", ends_on: "2026-08-13", status: "pending" }];
+    expect(availabilityConflict(fullWeek([]), timeOff, THURSDAY))
+      .toEqual({ level: "warn", reason: "has time off pending" });
+  });
+
+  it("ignores time off that doesn't cover the day", () => {
+    const timeOff = [{ starts_on: "2026-08-01", ends_on: "2026-08-12", status: "approved" }];
+    expect(availabilityConflict(fullWeek([]), timeOff, THURSDAY)).toBeNull();
   });
 });
 

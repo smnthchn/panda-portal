@@ -1,6 +1,7 @@
 import { readJsonBody, optionalText, requiredText, BadRequest } from "../lib/http.js";
 import { requireUser } from "../lib/auth.js";
 import { avatarUrlFor } from "./staff.js";
+import { loadTeamAvailability, availabilityConflict } from "./availability.js";
 
 /**
  * The schedule builder: a convention's shifts laid out day by day, with the
@@ -88,7 +89,7 @@ export async function handleScheduleView(request, env, slug) {
 
   if (!convention) return { ok: false, error: "Convention not found." };
 
-  const [shiftRows, dayRows, staffRows] = await Promise.all([
+  const [shiftRows, dayRows, staffRows, availability] = await Promise.all([
     env.DB.prepare(
       `SELECT s.*, e.full_name AS employee_name, e.role AS employee_role,
               e.avatar IS NOT NULL AS has_avatar, e.updated_at AS employee_updated_at
@@ -105,11 +106,25 @@ export async function handleScheduleView(request, env, slug) {
     env.DB.prepare(
       `SELECT id, full_name, role, avatar IS NOT NULL AS has_avatar, updated_at
        FROM employees WHERE is_active = 1 ORDER BY full_name ASC`
-    ).all()
+    ).all(),
+
+    loadTeamAvailability(
+      env.DB,
+      convention.setup_on && convention.setup_on < convention.starts_on
+        ? convention.setup_on
+        : convention.starts_on || "0000-01-01",
+      convention.ends_on || convention.starts_on || "9999-12-31"
+    )
   ]);
 
   const allShifts = shiftRows.results || [];
   const daysByDate = new Map((dayRows.results || []).map(day => [day.day_date, day]));
+  const staff = (staffRows.results || []).map(person => ({
+    id: person.id,
+    full_name: person.full_name,
+    role: person.role,
+    avatar_url: person.has_avatar ? avatarUrlFor(person.id, person.updated_at) : null
+  }));
 
   const days = scheduleDates(convention, allShifts.map(s => s.shift_date)).map(date => {
     const shifts = allShifts.filter(s => s.shift_date === date);
@@ -151,21 +166,12 @@ export async function handleScheduleView(request, env, slug) {
         ? { from: toHhmm(merged[0].start), to: toHhmm(merged[merged.length - 1].end) }
         : null,
       gaps: coverageGaps(shifts, hallStart, hallEnd),
-      unassigned: shifts.filter(s => !s.employee_id).length
+      unassigned: shifts.filter(s => !s.employee_id).length,
+      unavailable: unavailableOn(availability, staff, date)
     };
   });
 
-  return {
-    ok: true,
-    convention,
-    days,
-    staff: (staffRows.results || []).map(person => ({
-      id: person.id,
-      full_name: person.full_name,
-      role: person.role,
-      avatar_url: person.has_avatar ? avatarUrlFor(person.id, person.updated_at) : null
-    }))
-  };
+  return { ok: true, convention, days, staff };
 }
 
 function assertTime(value, field) {
@@ -382,6 +388,25 @@ function addDays(isoDate, days) {
 }
 
 /**
+ * Who can't work a given day, and why — so the builder can say so at the
+ * moment you're picking someone rather than after the schedule is out.
+ */
+function unavailableOn(availability, staff, date) {
+  const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+  const out = {};
+
+  for (const person of staff) {
+    const entry = availability.get(person.id);
+    if (!entry) continue;
+
+    const conflict = availabilityConflict(entry.week, entry.timeOff, { date, weekday });
+    if (conflict) out[person.id] = conflict;
+  }
+
+  return out;
+}
+
+/**
  * A week of ordinary store days: who's on, and whether the shop is covered
  * for the hours it's open. Convention shifts are shown alongside but not
  * edited here — those belong to the event's own builder.
@@ -395,7 +420,7 @@ export async function handleStoreSchedule(request, env) {
   const from = weekStart(/^\d{4}-\d{2}-\d{2}$/.test(param) ? param : new Date().toISOString().slice(0, 10));
   const to = addDays(from, 6);
 
-  const [shiftRows, hoursRows, staffRows] = await Promise.all([
+  const [shiftRows, hoursRows, staffRows, availability] = await Promise.all([
     env.DB.prepare(
       `SELECT s.*, e.full_name AS employee_name, e.role AS employee_role,
               e.avatar IS NOT NULL AS has_avatar, e.updated_at AS employee_updated_at,
@@ -412,11 +437,19 @@ export async function handleStoreSchedule(request, env) {
     env.DB.prepare(
       `SELECT id, full_name, role, avatar IS NOT NULL AS has_avatar, updated_at
        FROM employees WHERE is_active = 1 ORDER BY full_name ASC`
-    ).all()
+    ).all(),
+
+    loadTeamAvailability(env.DB, from, to)
   ]);
 
   const allShifts = shiftRows.results || [];
   const hoursByWeekday = new Map((hoursRows.results || []).map(row => [row.weekday, row]));
+  const staff = (staffRows.results || []).map(person => ({
+    id: person.id,
+    full_name: person.full_name,
+    role: person.role,
+    avatar_url: person.has_avatar ? avatarUrlFor(person.id, person.updated_at) : null
+  }));
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const date = addDays(from, i);
@@ -447,7 +480,8 @@ export async function handleStoreSchedule(request, env) {
       covered: merged.length
         ? { from: toHhmm(merged[0].start), to: toHhmm(merged[merged.length - 1].end) }
         : null,
-      gaps: closed ? [] : coverageGaps(storeShifts, open, close)
+      gaps: closed ? [] : coverageGaps(storeShifts, open, close),
+      unavailable: unavailableOn(availability, staff, date)
     };
   });
 
@@ -468,12 +502,7 @@ export async function handleStoreSchedule(request, env) {
         is_closed: Boolean(row?.is_closed)
       };
     }),
-    staff: (staffRows.results || []).map(person => ({
-      id: person.id,
-      full_name: person.full_name,
-      role: person.role,
-      avatar_url: person.has_avatar ? avatarUrlFor(person.id, person.updated_at) : null
-    }))
+    staff
   };
 }
 

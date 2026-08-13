@@ -92,6 +92,7 @@ const PAGE_URLS = {
   "knowledge-base": () => "/knowledge-base",
   "my-folder": () => "/my-folder",
   clock: () => "/clock",
+  availability: () => "/availability",
   staff: () => "/staff",
   "staff-member": (d) => `/staff/${encodeURIComponent(d.id)}`,
   "users-roles": () => "/users-roles",

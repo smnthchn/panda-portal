@@ -1385,6 +1385,45 @@ textarea::placeholder {
   background: var(--go);
 }
 
+/* ---------- Availability ---------- */
+
+.avail-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 2px solid var(--track);
+  flex-wrap: wrap;
+}
+
+.avail-row:last-of-type {
+  border-bottom: none;
+}
+
+.avail-day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 130px;
+  flex: none;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.avail-times {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 210px;
+}
+
+.avail-times input:disabled {
+  opacity: 0.45;
+}
+
 /* ---------- Schedule builder ---------- */
 
 .day-tabs {

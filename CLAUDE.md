@@ -10,7 +10,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 65 tests
+npm test               # vitest, 72 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -212,6 +212,28 @@ that already has shifts rather than silently doubling them.
 There's no per-day publish state: `conventions.is_published` already gates
 whether staff see the event at all, which is the real switch for a team this
 size.
+
+## Availability & time off
+
+Two things, deliberately separate: **availability** is the recurring weekly
+pattern ("can't do Mondays", "not before 5 on Thursdays"), **time off** is a
+specific stretch of dates that gets requested and answered.
+
+Everyone manages their own on **My availability**; a boss edits anyone's from
+their Staff page and approves or declines requests there. A boss requesting
+their own time off has it approved on the spot — there's nobody above them to
+ask.
+
+`employee_availability` holds only the days someone has spoken about;
+`fullWeek()` fills the rest in as available with no limits, so an empty table
+means "everyone, any time" rather than "nobody, ever".
+
+**The point is that the scheduler reads it.** `availabilityConflict()` is
+called per person per day by both builders: the picker labels people
+("Kevin — not available Mondays", "— on approved time off") and a saved shift
+keeps the warning on its card. It **flags, never blocks** — a boss may well
+have asked someone to come in on a day they'd normally not. Approved time off
+outranks the weekly pattern; a pending request is reported in weaker words.
 
 ## Staff vs Users & Roles
 

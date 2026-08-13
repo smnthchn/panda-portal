@@ -113,6 +113,8 @@ function drawStaffMember() {
   const today = todayLocal();
   const upcoming = shifts.filter(s => s.shift_date >= today);
   const past = shifts.filter(s => s.shift_date < today);
+  const upcomingTimeOff = staffMember.timeOff.filter(r => r.ends_on >= today);
+  const pendingTimeOff = upcomingTimeOff.filter(r => r.status === "pending");
 
   pageArea().innerHTML = `
     <div class="title-row">
@@ -202,6 +204,30 @@ function drawStaffMember() {
     </div>
 
     <div class="card stripped">
+      <div class="strip">THEIR USUAL WEEK</div>
+      <div class="card-body">
+        ${availabilityEditor(staffMember.availability)}
+        <p class="form-error" id="staffAvailError"></p>
+        <div class="button-row">
+          <button id="saveStaffAvailBtn" style="flex:1;">Save their week</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card stripped">
+      <div class="strip">
+        TIME OFF
+        ${pendingTimeOff.length ? `<span class="strip-side">${pendingTimeOff.length} to answer</span>` : ""}
+      </div>
+      <div class="card-body">
+        ${upcomingTimeOff.length
+          ? upcomingTimeOff.map(r => timeOffRow(r, { canDecide: true })).join("")
+          : `<p class="empty-state">No time off booked.</p>`}
+        <p class="form-error" id="staffTimeOffError"></p>
+      </div>
+    </div>
+
+    <div class="card stripped">
       <div class="strip">
         SHIFTS
         <span class="strip-side">${upcoming.length} upcoming</span>
@@ -285,6 +311,26 @@ async function saveAvatar(dataUri) {
 
 function wireStaffMember() {
   document.getElementById("staffBackBtn").onclick = () => renderStaff();
+
+  const reload = () => openStaffMember(staffMember.person.id, false);
+
+  wireAvailabilityEditor();
+  wireTimeOff("staffTimeOff", reload, "staffTimeOffError");
+
+  document.getElementById("saveStaffAvailBtn").onclick = async () => {
+    const result = await apiSend(
+      `/api/admin/staff/${staffMember.person.id}/availability`,
+      "PUT",
+      { week: readAvailabilityEditor(staffMember.availability) }
+    );
+
+    if (!result.ok) {
+      showFormError("staffAvailError", result.error || "Could not save that.");
+      return;
+    }
+
+    await reload();
+  };
 
   const avatarInput = document.getElementById("avatarInput");
   avatarInput.onchange = async () => {

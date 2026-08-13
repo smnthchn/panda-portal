@@ -60,6 +60,7 @@ const NAV_ITEMS = [
   { id: "navStaff", label: "Staff", group: "Operations", permission: "manage_users", view: "staff" },
   { id: "navKnowledgeBase", label: "Docs", group: "Reference", permission: "knowledge_base", view: "knowledge-base" },
   { id: "navMyFolder", label: "My Folder", group: "Reference", permission: "employee_folder", view: "my-folder" },
+  { id: "navAvailability", label: "My availability", group: "Reference", permission: null, view: "availability" },
   { id: "navUsers", label: "Users & Roles", group: "Admin", permission: "manage_users", view: "users-roles" },
   { id: "navAppearance", label: "Appearance", group: "Admin", permission: null, view: "appearance" }
 ];
@@ -1178,6 +1179,7 @@ function viewForPath(pathname) {
     "/my-folder": "my-folder",
     "/clock": "clock",
     "/schedule": "schedule",
+    "/availability": "availability",
     "/staff": "staff",
     "/users-roles": "users-roles",
     "/appearance": "appearance",
@@ -1195,6 +1197,7 @@ const POPSTATE_VIEWS = {
   "knowledge-base": () => renderKnowledgeBase(false),
   "my-folder": () => renderMyFolder(false),
   clock: () => renderClock(false),
+  availability: () => renderMyAvailability(false),
   staff: () => renderStaff(false),
   "staff-member": (s) => openStaffMember(s.id, false),
   "users-roles": () => renderUsersRoles(false),

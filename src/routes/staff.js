@@ -1,6 +1,7 @@
 import { readJsonBody, optionalText, BadRequest } from "../lib/http.js";
 import { requireUser } from "../lib/auth.js";
 import { ROLES, ROLE_LABELS } from "../lib/permissions.js";
+import { loadPersonAvailability } from "./availability.js";
 
 /* ---------- Avatars ---------- */
 
@@ -172,7 +173,7 @@ export async function handleStaffDetail(request, env, staffId) {
     return { ok: false, error: "That person no longer exists." };
   }
 
-  const [shiftRows, openRows] = await Promise.all([
+  const [shiftRows, openRows, availability] = await Promise.all([
     // LEFT JOIN: a store shift has no convention, and dropping those here
     // would quietly hide half of someone's week.
     env.DB.prepare(
@@ -195,7 +196,9 @@ export async function handleStaffDetail(request, env, staffId) {
        WHERE s.employee_id IS NULL AND s.shift_date >= date('now')
        ORDER BY s.shift_date ASC, s.starts_at ASC
        LIMIT 50`
-    ).all()
+    ).all(),
+
+    loadPersonAvailability(env.DB, id)
   ]);
 
   return {
@@ -207,6 +210,8 @@ export async function handleStaffDetail(request, env, staffId) {
     },
     shifts: shiftRows.results || [],
     openShifts: openRows.results || [],
+    availability: availability.week,
+    timeOff: availability.timeOff,
     roles: ROLES.map(role => ({ key: role, label: ROLE_LABELS[role] })),
     isSelf: id === auth.user.id
   };

@@ -132,10 +132,10 @@ function daySection(day) {
     ${coverageCard(day)}
 
     ${day.shifts.map(shift =>
-      editingShiftId === shift.id ? shiftEditor(shift) : shiftCard(shift)
+      editingShiftId === shift.id ? shiftEditor(shift, day) : shiftCard(shift, day)
     ).join("")}
 
-    ${addingShift ? shiftEditor(null) : `
+    ${addingShift ? shiftEditor(null, day) : `
       <button class="btn-dashed" id="addShiftBtn" style="width:100%; margin-bottom:13px;">
         + Add shift
       </button>
@@ -167,10 +167,14 @@ function daySection(day) {
   `;
 }
 
-function shiftCard(shift) {
+function shiftCard(shift, day) {
   const person = shift.employee_id
     ? { name: shift.employee_name, avatar_url: shift.avatar_url }
     : null;
+
+  // Someone can be put on a shift they said they can't do — a boss may have
+  // asked them. It's flagged, not blocked.
+  const clash = shift.employee_id ? day?.unavailable?.[shift.employee_id] : null;
 
   return `
     <div class="card shift-card" data-edit-shift="${shift.id}">
@@ -198,12 +202,17 @@ function shiftCard(shift) {
         </span>
         <span style="margin-left:auto; font-family:'Fredoka',sans-serif; font-size:15px; color:var(--muted);">›</span>
       </div>
+      ${clash ? `
+        <div class="note-block" style="margin-top:9px;">
+          ${esc(shift.employee_name)} is ${esc(clash.reason)}.
+        </div>
+      ` : ""}
     </div>
   `;
 }
 
 /** The inline editor. A null shift means we're adding a new one. */
-function shiftEditor(shift) {
+function shiftEditor(shift, day) {
   const { staff } = scheduleData;
   const minutes = shift ? shift.break_allotment_minutes : 30;
   const count = shift ? shift.break_count : 1;
@@ -216,11 +225,14 @@ function shiftEditor(shift) {
         <label>Who
           <select id="shiftWho">
             <option value="">Unassigned</option>
-            ${staff.map(person => `
-              <option value="${person.id}" ${shift?.employee_id === person.id ? "selected" : ""}>
-                ${esc(person.full_name)}
-              </option>
-            `).join("")}
+            ${staff.map(person => {
+              const clash = day.unavailable?.[person.id];
+              return `
+                <option value="${person.id}" ${shift?.employee_id === person.id ? "selected" : ""}>
+                  ${esc(person.full_name)}${clash ? ` — ${esc(clash.reason)}` : ""}
+                </option>
+              `;
+            }).join("")}
           </select>
         </label>
         <label>What
@@ -472,7 +484,7 @@ function storeDaySection(day) {
     ` : ""}
 
     ${day.shifts.map(shift =>
-      editingStoreShift === shift.id ? storeShiftEditor(shift, day) : shiftCard(shift)
+      editingStoreShift === shift.id ? storeShiftEditor(shift, day) : shiftCard(shift, day)
     ).join("")}
 
     ${addingStoreShift ? storeShiftEditor(null, day) : `
@@ -568,11 +580,14 @@ function storeShiftEditor(shift, day) {
         <label>Who
           <select id="storeWho">
             <option value="">Unassigned</option>
-            ${staff.map(person => `
-              <option value="${person.id}" ${shift?.employee_id === person.id ? "selected" : ""}>
-                ${esc(person.full_name)}
-              </option>
-            `).join("")}
+            ${staff.map(person => {
+              const clash = day.unavailable?.[person.id];
+              return `
+                <option value="${person.id}" ${shift?.employee_id === person.id ? "selected" : ""}>
+                  ${esc(person.full_name)}${clash ? ` — ${esc(clash.reason)}` : ""}
+                </option>
+              `;
+            }).join("")}
           </select>
         </label>
         <label>What

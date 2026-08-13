@@ -2,6 +2,15 @@ import { json, matchPath, BadRequest } from "./lib/http.js";
 import { handleMe, handleLogin, handleLogout, handleSetTheme } from "./routes/session.js";
 import { handleDashboard } from "./routes/dashboard.js";
 import {
+  handleMyAvailability,
+  handleSaveMyAvailability,
+  handleSaveStaffAvailability,
+  handleRequestTimeOff,
+  handleDeleteTimeOff,
+  handleDecideTimeOff,
+  handlePendingTimeOff
+} from "./routes/availability.js";
+import {
   handleScheduleView,
   handleUpdateShift,
   handleCopyDay,
@@ -100,6 +109,14 @@ const ROUTES = [
 
   ["POST", "/api/conventions/:id/days", handleSaveConventionDay],
   ["DELETE", "/api/convention-days/:id", handleDeleteConventionDay],
+
+  ["GET", "/api/my-availability", handleMyAvailability],
+  ["PUT", "/api/my-availability", handleSaveMyAvailability],
+  ["POST", "/api/time-off", handleRequestTimeOff],
+  ["DELETE", "/api/time-off/:id", handleDeleteTimeOff],
+  ["PUT", "/api/time-off/:id/decision", handleDecideTimeOff],
+  ["GET", "/api/admin/time-off", handlePendingTimeOff],
+  ["PUT", "/api/admin/staff/:id/availability", handleSaveStaffAvailability],
 
   ["GET", "/api/schedule/store", handleStoreSchedule],
   ["PUT", "/api/schedule/store-hours", handleSaveStoreHours],
