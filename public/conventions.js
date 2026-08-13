@@ -702,7 +702,10 @@ function scheduleCard() {
     <div class="card stripped">
       <div class="strip">
         FULL SCHEDULE
-        ${manageJumpButton("shiftFormHeading", shifts.length ? "Edit" : "Add")}
+        ${canManage
+          ? `<button class="btn-quiet" style="font-size:11.5px; padding:5px 9px; border-bottom-width:2px;"
+                     id="buildScheduleBtn">${shifts.length ? "Build" : "Build schedule"}</button>`
+          : ""}
       </div>
       <div class="card-body">
         ${shifts.length
@@ -835,6 +838,9 @@ function wireConventionDetail() {
 
   const clockBtn = document.getElementById("goToClockBtn");
   if (clockBtn) clockBtn.onclick = () => goToView("clock");
+
+  const buildBtn = document.getElementById("buildScheduleBtn");
+  if (buildBtn) buildBtn.onclick = () => renderSchedule(detailData.convention.slug);
 
   // Floorplan / Booth switch the one plan card; Maps opens the address.
   document.querySelectorAll("[data-plan]").forEach(btn => {

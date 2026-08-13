@@ -86,6 +86,7 @@ const PAGE_URLS = {
   dashboard: () => "/",
   conventions: () => "/conventions",
   convention: (d) => `/conventions/${encodeURIComponent(d.slug)}`,
+  schedule: (d) => `/conventions/${encodeURIComponent(d.slug)}/schedule`,
   "knowledge-base": () => "/knowledge-base",
   "my-folder": () => "/my-folder",
   clock: () => "/clock",

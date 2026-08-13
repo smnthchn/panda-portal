@@ -2,6 +2,11 @@ import { json, matchPath, BadRequest } from "./lib/http.js";
 import { handleMe, handleLogin, handleLogout, handleSetTheme } from "./routes/session.js";
 import { handleDashboard } from "./routes/dashboard.js";
 import {
+  handleScheduleView,
+  handleUpdateShift,
+  handleCopyDay
+} from "./routes/schedule.js";
+import {
   handleStaffList,
   handleStaffDetail,
   handleUpdateStaff,
@@ -93,7 +98,11 @@ const ROUTES = [
   ["POST", "/api/conventions/:id/days", handleSaveConventionDay],
   ["DELETE", "/api/convention-days/:id", handleDeleteConventionDay],
 
+  ["GET", "/api/conventions/:slug/schedule", handleScheduleView],
+  ["POST", "/api/conventions/:id/copy-day", handleCopyDay],
+
   ["POST", "/api/conventions/:id/shifts", handleCreateShift],
+  ["PATCH", "/api/convention-shifts/:id", handleUpdateShift],
   ["DELETE", "/api/convention-shifts/:id", handleDeleteShift],
   ["PUT", "/api/convention-shifts/:id/break", handleSetShiftBreak],
 

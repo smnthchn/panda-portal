@@ -1155,6 +1155,9 @@ async function handleCredentialResponse(response) {
 function viewForPath(pathname) {
   const path = pathname.replace(/\/+$/, "") || "/";
 
+  const schedule = path.match(/^\/conventions\/([^/]+)\/schedule$/);
+  if (schedule) return { view: "schedule", slug: decodeURIComponent(schedule[1]) };
+
   const convention = path.match(/^\/conventions\/([^/]+)$/);
   if (convention) return { view: "convention", slug: decodeURIComponent(convention[1]) };
 
@@ -1182,6 +1185,7 @@ const POPSTATE_VIEWS = {
   dashboard: () => renderDashboard(state.user, false),
   conventions: () => renderConventions(false),
   convention: (s) => openConvention(s.slug, false),
+  schedule: (s) => renderSchedule(s.slug, false),
   "knowledge-base": () => renderKnowledgeBase(false),
   "my-folder": () => renderMyFolder(false),
   clock: () => renderClock(false),

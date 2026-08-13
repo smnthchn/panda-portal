@@ -10,7 +10,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 55 tests
+npm test               # vitest, 64 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -40,12 +40,14 @@ src/
     permissions.js      roles, permission keys, effective-permission resolution
     google.js           service-account JWT, Drive listing, Google Doc -> HTML
     http.js             json(), matchPath(), cookies, field validation
-  routes/               session, dashboard, knowledge, clock, admin, staff, conventions
+  routes/               session, dashboard, knowledge, clock, admin, staff,
+                        conventions, schedule
 public/
   core.js               shared helpers — MUST load first (esc, api, themes, battery)
   admin.js              Users & Roles
   staff.js              Staff — details, folders, shift assignment
   conventions.js        Conventions
+  schedule.js           Schedule builder
   app.js                shell, login, dashboard, KB, My Folder, Clock, Appearance
 migrations/             numbered SQL, applied via wrangler
 ```
@@ -172,6 +174,29 @@ This replaced an AI web-search lookup (removed Aug 2026). The lookup took ~20s p
 run, its results were lost on every save, and it mostly rediscovered hours that
 don't change year to year. Setup and load-in times still aren't public either way —
 they live in the exhibitor kit, so the boss fills those in by hand.
+
+## Schedule builder
+
+`/conventions/:slug/schedule` — a day at a time, reached from **Build** on the
+event's Full schedule card. Day tabs cover the event's run plus its setup day
+plus any date that already has shifts; a day nobody is on is amber, because
+that's the one that needs you. Opening the builder lands on the first day with
+gaps, unassigned shifts, or nobody on it.
+
+**Coverage is the point of the screen.** `coverageGaps()` in `routes/schedule.js`
+merges the day's shifts into stretches and reports the holes *inside hall
+opening hours* — including a late start and an early finish, which are the two
+that actually bite. A setup shift that ends before doors open contributes
+nothing, deliberately. No hall hours for a day means no claim is made rather
+than a false NO GAPS.
+
+Shifts are tapped to edit in place, and **Copy this day** duplicates everyone
+(times and break allotments included) onto an empty day — it refuses a target
+that already has shifts rather than silently doubling them.
+
+There's no per-day publish state: `conventions.is_published` already gates
+whether staff see the event at all, which is the real switch for a team this
+size.
 
 ## Staff vs Users & Roles
 

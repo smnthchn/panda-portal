@@ -7,6 +7,7 @@ import { optionalUrl } from "../src/routes/conventions.js";
 import { pairClockEvents } from "../src/routes/clock.js";
 import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/dashboard.js";
 import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
+import { mergeIntervals, coverageGaps, toMinutes } from "../src/routes/schedule.js";
 
 function request(path, method = "GET", headers = {}) {
   return new Request(`http://example.com${path}`, { method, headers });
@@ -376,6 +377,65 @@ describe("avatar uploads", () => {
   it("cache-busts the url on the person's last edit", () => {
     expect(avatarUrlFor(4, "2026-08-13 17:20:05")).toBe("/api/avatar/4?v=20260813172005");
     expect(avatarUrlFor(4, null)).toBe("/api/avatar/4?v=");
+  });
+});
+
+describe("booth coverage", () => {
+  const shift = (starts_at, ends_at) => ({ starts_at, ends_at });
+  const hall = (open, close) => [toMinutes(open), toMinutes(close)];
+
+  it("merges overlapping and touching shifts into one stretch", () => {
+    expect(mergeIntervals([
+      shift("10:00", "14:00"),
+      shift("13:00", "18:00"),
+      shift("18:00", "20:00")
+    ])).toEqual([{ start: 600, end: 1200 }]);
+  });
+
+  it("keeps a genuine break in cover as two stretches", () => {
+    expect(mergeIntervals([shift("10:00", "12:00"), shift("14:00", "18:00")]))
+      .toEqual([{ start: 600, end: 720 }, { start: 840, end: 1080 }]);
+  });
+
+  it("finds a hole in the middle of the day", () => {
+    const gaps = coverageGaps(
+      [shift("10:00", "12:00"), shift("14:00", "19:00")],
+      ...hall("10:00", "19:00")
+    );
+    expect(gaps).toEqual([{ from: "12:00", to: "14:00" }]);
+  });
+
+  // The two that actually bite: nobody there when the doors open, and
+  // everyone gone before they close.
+  it("flags a late start and an early finish", () => {
+    expect(coverageGaps([shift("11:00", "17:00")], ...hall("10:00", "19:00")))
+      .toEqual([{ from: "10:00", to: "11:00" }, { from: "17:00", to: "19:00" }]);
+  });
+
+  it("reports no gaps when the day is covered end to end", () => {
+    expect(coverageGaps(
+      [shift("10:00", "15:00"), shift("15:00", "19:00")],
+      ...hall("10:00", "19:00")
+    )).toEqual([]);
+  });
+
+  it("ignores cover outside hall hours rather than counting it", () => {
+    // Setup from 08:00 doesn't help once the doors open at 10:00.
+    expect(coverageGaps([shift("08:00", "10:00")], ...hall("10:00", "19:00")))
+      .toEqual([{ from: "10:00", to: "19:00" }]);
+  });
+
+  it("counts an empty day as entirely uncovered", () => {
+    expect(coverageGaps([], ...hall("10:00", "19:00")))
+      .toEqual([{ from: "10:00", to: "19:00" }]);
+  });
+
+  it("says nothing when there are no hall hours to compare against", () => {
+    expect(coverageGaps([shift("10:00", "18:00")], null, null)).toEqual([]);
+  });
+
+  it("drops a backwards or unparseable shift instead of inverting the maths", () => {
+    expect(mergeIntervals([shift("18:00", "10:00"), shift("bad", "12:00")])).toEqual([]);
   });
 });
 
