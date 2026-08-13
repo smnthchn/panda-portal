@@ -110,6 +110,7 @@ function linkAndLoadInFields(body) {
 
   return {
     mapUrl: optionalUrl(body.map_url, "Google Maps link"),
+    parkingMapUrl: optionalUrl(body.parking_map_url, "Parking map link"),
     websiteUrl: optionalUrl(body.website_url, "Official site URL"),
     loadInStart,
     loadInEnd
@@ -258,17 +259,18 @@ export async function handleCreateConvention(request, env) {
 
   const result = await env.DB.prepare(
     `INSERT INTO conventions
-       (name, slug, venue, address, map_url, website_url,
+       (name, slug, venue, address, map_url, parking_map_url, website_url,
         starts_on, ends_on, setup_on, store_close_on, load_in_start, load_in_end,
         booth_number, notes, drive_folder_id, booth_layout_file_id,
         venue_map_file_id, is_published)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     name,
     await uniqueSlug(env.DB, name),
     optionalText(body.venue),
     optionalText(body.address),
     links.mapUrl,
+    links.parkingMapUrl,
     links.websiteUrl,
     assertDate(body.starts_on, "Start date"),
     assertDate(body.ends_on, "End date"),
@@ -312,7 +314,8 @@ export async function handleUpdateConvention(request, env, conventionId) {
 
   await env.DB.prepare(
     `UPDATE conventions
-     SET name = ?, slug = ?, venue = ?, address = ?, map_url = ?, website_url = ?,
+     SET name = ?, slug = ?, venue = ?, address = ?, map_url = ?,
+         parking_map_url = ?, website_url = ?,
          starts_on = ?, ends_on = ?, setup_on = ?, store_close_on = ?,
          load_in_start = ?, load_in_end = ?,
          booth_number = ?, notes = ?, drive_folder_id = ?, booth_layout_file_id = ?,
@@ -324,6 +327,7 @@ export async function handleUpdateConvention(request, env, conventionId) {
     optionalText(body.venue),
     optionalText(body.address),
     links.mapUrl,
+    links.parkingMapUrl,
     links.websiteUrl,
     assertDate(body.starts_on, "Start date"),
     assertDate(body.ends_on, "End date"),

@@ -557,6 +557,17 @@ function gettingThereCard() {
             <span style="font-family:'Fredoka',sans-serif; font-size:15px; color:var(--muted);">›</span>
           </a>
         ` : ""}
+        ${convention.parking_map_url ? `
+          <a href="${esc(convention.parking_map_url)}" target="_blank" rel="noopener noreferrer"
+             style="display:flex; align-items:center; gap:11px; padding:12px 13px; border-bottom:2px solid var(--track); text-decoration:none; color:inherit;">
+            <div style="width:34px; height:34px; border:2px solid var(--ink); border-radius:10px; background:var(--go); color:var(--on-go); display:flex; align-items:center; justify-content:center; font-family:'Fredoka',sans-serif; font-weight:600; font-size:15px; flex:none;">P</div>
+            <div style="flex:1;">
+              <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:13.5px;">Where to park</div>
+              <div class="meta">Open the parking map</div>
+            </div>
+            <span style="font-family:'Fredoka',sans-serif; font-size:15px; color:var(--muted);">›</span>
+          </a>
+        ` : ""}
         ${convention.website_url ? `
           <a href="${esc(convention.website_url)}" target="_blank" rel="noopener noreferrer"
              style="display:flex; align-items:center; gap:11px; padding:12px 13px; text-decoration:none; color:inherit;">
@@ -1515,11 +1526,12 @@ function renderConventionForm(convention) {
       ${field("cWebsiteUrl", "Official site URL", "url", convention?.website_url, "This year's page")}
       <div class="form-grid" style="grid-template-columns:1fr; margin:10px 0 0;">
         ${field("cMapUrl", "Google Maps link", "url", convention?.map_url, "Optional — links the address if blank")}
+        ${field("cParkingMapUrl", "Parking map link", "url", convention?.parking_map_url, "Where to actually park")}
         ${field("cFolder", "Drive folder ID", "text", convention?.drive_folder_id, "Optional")}
         ${field("cLayout", "Booth layout file ID", "text", convention?.booth_layout_file_id, "Optional")}
         ${field("cVenueMapFileId", "Venue map file ID", "text", convention?.venue_map_file_id, "Optional")}
       </div>
-    `, 5)}
+    `, 6)}
 
     <label class="checkbox-label">
       <input type="checkbox" id="cPublished" ${convention?.is_published === false ? "" : "checked"}>
@@ -1607,6 +1619,7 @@ const CONVENTION_FIELD_IDS = {
   load_in_end: "cLoadInEnd",
   website_url: "cWebsiteUrl",
   map_url: "cMapUrl",
+  parking_map_url: "cParkingMapUrl",
   venue_map_file_id: "cVenueMapFileId",
   booth_number: "cBooth",
   drive_folder_id: "cFolder",

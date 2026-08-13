@@ -161,6 +161,12 @@ dead — the save handler always writes NULL there.
 Checklists are audience-gated (`all` / `staff` / `boss`) and anyone who can see one
 can tick its items; the tick records who and when.
 
+Two separate map links, because they're two different places: `map_url` is the
+venue (falls back to a Maps search of the address) and `parking_map_url` is
+where to actually park — the loading dock or staff lot is rarely the building's
+front door. Both surface as rows in **Getting there**, the last card in the
+scroll.
+
 ## Convention presets
 
 `OUR_CONVENTIONS` in `public/conventions.js` lists the shows Panda Hobby actually
