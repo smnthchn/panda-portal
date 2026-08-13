@@ -1488,6 +1488,453 @@ textarea::placeholder {
   margin-top: 2px;
 }
 
+/* ---------- Shelf plan ---------- */
+
+.stage-batteries {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 9px;
+  margin-bottom: 13px;
+}
+
+.stage-batteries.compact {
+  margin-bottom: 0;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+}
+
+.stage-battery-head {
+  display: flex;
+  justify-content: space-between;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.stage-battery-cells {
+  display: flex;
+  gap: 2px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 2px;
+  background: var(--surface);
+}
+
+.stage-battery-cells span {
+  flex: 1;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--cell-empty);
+}
+
+.stage-battery-cells span.on {
+  background: var(--go);
+}
+
+/* The grid. Fixed columns so the eye can run down a stage. */
+.shelf-grid-card {
+  overflow-x: auto;
+}
+
+.shelf-grid-head,
+.shelf-row {
+  display: grid;
+  grid-template-columns: 56px minmax(130px, 1fr) 78px 150px minmax(140px, 1fr) repeat(5, 62px);
+  gap: 8px;
+  align-items: center;
+  min-width: 900px;
+  padding: 5px 13px;
+}
+
+.shelf-grid-head {
+  background: var(--nav-bg);
+  border-bottom: 2px solid var(--ink);
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.shelf-grid-head .col-stage {
+  text-align: center;
+}
+
+.shelf-grid-head .col-stage em {
+  display: block;
+  font-style: normal;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.shelf-row {
+  border-bottom: 2px solid var(--track);
+  background: var(--surface);
+}
+
+.shelf-row.done {
+  background: color-mix(in srgb, var(--go) 10%, var(--surface));
+}
+
+.shelf-row .col-shelf {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.shelf-row .col-stage {
+  text-align: center;
+}
+
+.shelf-wall-row {
+  background: var(--chip);
+  border-bottom: 2px solid var(--shadow);
+  padding: 6px 13px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  min-width: 900px;
+}
+
+.shelf-grid-foot {
+  padding: 11px 13px;
+  border-top: 3px solid var(--ink);
+  min-width: 900px;
+}
+
+/* Edits in place: no edit mode, no modal. */
+.cell-input {
+  width: 100%;
+  height: 30px;
+  padding: 0 7px;
+  border: 2px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 12.5px;
+}
+
+.cell-input:hover {
+  border-color: var(--shadow);
+}
+
+.cell-input:focus {
+  border-color: var(--ink);
+  background: var(--field);
+  outline: none;
+}
+
+.type-pill {
+  width: 100%;
+  height: 25px;
+  padding: 0 6px;
+  border: 2px solid var(--shadow);
+  border-radius: 999px;
+  background: transparent;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  text-align: center;
+  appearance: none;
+  cursor: pointer;
+}
+
+.type-pill:hover {
+  border-color: var(--ink);
+  color: var(--text);
+}
+
+.signage-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  width: 100%;
+  padding: 3px;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.signage-cell:hover:not(:disabled) {
+  margin-top: 0;
+  background: var(--paper);
+}
+
+.sig-tag {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  padding: 3px 6px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.signage-empty {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  border: 2px dashed var(--shadow);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+
+.signage-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 9px 13px 9px 260px;
+  background: var(--paper);
+  border-bottom: 2px solid var(--track);
+  min-width: 900px;
+}
+
+.sig-toggle {
+  font-size: 9.5px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 2px dashed var(--shadow);
+  border-bottom-width: 2px;
+  background: transparent;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.sig-toggle.on {
+  border-style: solid;
+  border-color: var(--ink);
+}
+
+.sig-toggle:hover:not(:disabled) {
+  margin-top: 0;
+  border-bottom-width: 2px;
+}
+
+.stage-box {
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-bottom-width: 2px;
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--on-go);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.stage-box:hover:not(:disabled) {
+  margin-top: 0;
+  border-bottom-width: 2px;
+}
+
+.stage-box.on {
+  background: var(--go);
+}
+
+.stage-box.na {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--chip);
+  border-color: var(--shadow);
+  color: var(--muted);
+  cursor: default;
+}
+
+/* The booth map, to scale at 31px per foot. */
+.booth-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.booth-ruler {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.booth-frame {
+  position: relative;
+  border: 3px solid var(--ink);
+  border-radius: 4px;
+  background: var(--chip);
+  flex: none;
+}
+
+.booth-guide {
+  position: absolute;
+  border-color: var(--shadow);
+}
+
+.booth-guide.v {
+  top: 0;
+  bottom: 0;
+  border-left: 1px dashed var(--shadow);
+}
+
+.booth-guide.h {
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--shadow);
+}
+
+.booth-block {
+  position: absolute;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 4px 5px;
+  overflow: hidden;
+  user-select: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+}
+
+.booth-block.fresh {
+  background: var(--paper);
+}
+
+.booth-block.done {
+  background: #DCF3E6;
+  border-color: #2C8F6C;
+}
+
+.booth-block.other {
+  background: var(--note-bg);
+}
+
+.booth-block.selected {
+  border-width: 3px;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 28%, transparent);
+}
+
+/* An invalid plan must not be able to look valid. */
+.booth-block.conflict {
+  border-width: 3px;
+  border-color: var(--alert);
+}
+
+.booth-block.draggable {
+  cursor: grab;
+}
+
+.booth-block.dragging {
+  cursor: grabbing;
+  z-index: 5;
+  opacity: 0.85;
+}
+
+.block-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.block-head.wide {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.block-id {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.block-dots {
+  display: flex;
+  gap: 2px;
+}
+
+.block-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--cell-empty);
+}
+
+.block-dots span.on {
+  background: var(--go);
+}
+
+.block-dots span.na {
+  background: #E4DDC6;
+}
+
+.block-label {
+  font-size: 9px;
+  line-height: 1.15;
+  overflow: hidden;
+}
+
+/* A bar on the face a board stands on. */
+.spine {
+  position: absolute;
+}
+
+.spine.left { left: 0; top: 0; bottom: 0; width: 4px; }
+.spine.right { right: 0; top: 0; bottom: 0; width: 4px; }
+.spine.top { top: 0; left: 0; right: 0; height: 4px; }
+.spine.bottom { bottom: 0; left: 0; right: 0; height: 4px; }
+
+.booth-panel {
+  flex: 1;
+  min-width: 300px;
+}
+
+.panel-stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.panel-stage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nudge-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.sign-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 0;
+  border-bottom: 2px solid var(--track);
+  cursor: pointer;
+}
+
+.sign-row:last-child {
+  border-bottom: none;
+}
+
 /* ---------- Break battery ---------- */
 
 .battery-row {

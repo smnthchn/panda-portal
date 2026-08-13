@@ -2,6 +2,16 @@ import { json, matchPath, BadRequest } from "./lib/http.js";
 import { handleMe, handleLogin, handleLogout, handleSetTheme } from "./routes/session.js";
 import { handleDashboard } from "./routes/dashboard.js";
 import {
+  handleShelfPlan,
+  handleStartShelfPlan,
+  handleToggleStage,
+  handleUpdatePosition,
+  handleMovePosition,
+  handleResetArrangement,
+  handleAddPosition,
+  handleDeletePosition
+} from "./routes/shelves.js";
+import {
   handleMyAvailability,
   handleSaveMyAvailability,
   handleSaveStaffAvailability,
@@ -122,6 +132,15 @@ const ROUTES = [
   ["PUT", "/api/schedule/store-hours", handleSaveStoreHours],
   ["POST", "/api/schedule/copy-day", handleCopyDay],
   ["POST", "/api/shifts", handleCreateShiftAnywhere],
+
+  ["GET", "/api/conventions/:slug/shelf-plan", handleShelfPlan],
+  ["POST", "/api/conventions/:slug/shelf-plan", handleStartShelfPlan],
+  ["POST", "/api/conventions/:slug/shelf-positions", handleAddPosition],
+  ["POST", "/api/conventions/:slug/shelf-reset", handleResetArrangement],
+  ["POST", "/api/shelf-positions/:id/stage", handleToggleStage],
+  ["PATCH", "/api/shelf-positions/:id", handleUpdatePosition],
+  ["PUT", "/api/shelf-positions/:id/geometry", handleMovePosition],
+  ["DELETE", "/api/shelf-positions/:id", handleDeletePosition],
 
   ["GET", "/api/conventions/:slug/schedule", handleScheduleView],
 

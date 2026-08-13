@@ -87,6 +87,7 @@ const PAGE_URLS = {
   conventions: () => "/conventions",
   convention: (d) => `/conventions/${encodeURIComponent(d.slug)}`,
   "convention-schedule": (d) => `/conventions/${encodeURIComponent(d.slug)}/schedule`,
+  "shelf-plan": (d) => `/conventions/${encodeURIComponent(d.slug)}/shelf-plan`,
   schedule: () => "/schedule",
   "schedule-store": () => "/schedule",
   "knowledge-base": () => "/knowledge-base",

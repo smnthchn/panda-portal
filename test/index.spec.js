@@ -9,6 +9,15 @@ import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/da
 import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
 import { mergeIntervals, coverageGaps, toMinutes } from "../src/routes/schedule.js";
 import { fullWeek, availabilityConflict } from "../src/routes/availability.js";
+import {
+  layoutConflicts,
+  effectiveGeometry,
+  stageTotals,
+  stageApplies,
+  boardFaces,
+  signageList
+} from "../src/routes/shelves.js";
+import { templatePositions, BOOTH_FEET } from "../src/lib/booth-template.js";
 
 function request(path, method = "GET", headers = {}) {
   return new Request(`http://example.com${path}`, { method, headers });
@@ -501,6 +510,79 @@ describe("availability", () => {
   it("ignores time off that doesn't cover the day", () => {
     const timeOff = [{ starts_on: "2026-08-01", ends_on: "2026-08-12", status: "approved" }];
     expect(availabilityConflict(fullWeek([]), timeOff, THURSDAY)).toBeNull();
+  });
+});
+
+describe("booth layout", () => {
+  const at = (code, x, y, w, h) => ({ code, x, y, w, h, move_x: null, move_y: null, move_w: null, move_h: null });
+
+  it("uses an arrange override in place of the baseline", () => {
+    expect(effectiveGeometry({ x: 1, y: 2, w: 3, h: 4, move_x: 9, move_y: null, move_w: null, move_h: null }))
+      .toEqual({ x: 9, y: 2, w: 3, h: 4 });
+  });
+
+  it("finds nothing wrong with the shipped booth template", () => {
+    const positions = templatePositions().map(p => ({ ...p, move_x: null, move_y: null, move_w: null, move_h: null }));
+    expect(positions).toHaveLength(31);
+    expect(layoutConflicts(positions, BOOTH_FEET)).toEqual([]);
+  });
+
+  // The API hands this function positions that have already been mapped to a
+  // `geometry` object. Reading the raw columns instead found no conflicts at
+  // all — an invalid plan looked perfectly valid.
+  it("reads geometry off a mapped position, not just a raw row", () => {
+    const mapped = [
+      { code: "E1", geometry: { x: 0, y: 0.5, w: 1.6667, h: 4.1667 } },
+      { code: "E2", geometry: { x: 0, y: 4.1667, w: 1.6667, h: 4.1667 } }
+    ];
+
+    expect(effectiveGeometry(mapped[0])).toEqual({ x: 0, y: 0.5, w: 1.6667, h: 4.1667 });
+    expect(layoutConflicts(mapped)[0].message).toBe("E1 and E2 overlap by 6″");
+  });
+
+  it("reports an overlap in inches", () => {
+    const conflicts = layoutConflicts([at("E7", 0, 25, 1.6667, 3.1667), at("N1", 0, 28, 3.1667, 1.6667)]);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0].message).toBe("E7 and N1 overlap by 2″");
+  });
+
+  // Units stand right up against each other; a shared edge is not an overlap.
+  it("does not call a shared edge an overlap", () => {
+    expect(layoutConflicts([at("A", 0, 0, 2, 2), at("B", 2, 0, 2, 2)])).toEqual([]);
+  });
+
+  it("reports a unit hanging off the footprint", () => {
+    const conflicts = layoutConflicts([at("W9", 15, 0, 2, 2)], BOOTH_FEET);
+    expect(conflicts[0].message).toBe("W9 runs 12″ off the booth");
+  });
+
+  it("splits board names on the ampersand, back then side then front", () => {
+    expect(boardFaces({ board_name: "Space & Gunpla Corner" })).toEqual([
+      { face: "back", name: "Space" },
+      { face: "side", name: "Gunpla Corner" }
+    ]);
+    expect(boardFaces({ board_name: "" })).toEqual([]);
+  });
+
+  it("keeps only real signage codes", () => {
+    expect(signageList("bc, fb, nonsense")).toEqual(["bc", "fb"]);
+    expect(signageList(null)).toEqual([]);
+  });
+
+  // A shelf needing no signage has no boards to put up, so it must not drag
+  // the Boards denominator up — it should read 1 / 2, never 1 / 3.
+  it("leaves a shelf with no signage out of the Boards count entirely", () => {
+    const positions = [
+      { signage: "bc", stages: [true, true, true, true, true] },
+      { signage: "fb", stages: [true, true, true, true, false] },
+      { signage: "", stages: [true, true, true, true, false] }
+    ];
+
+    const totals = stageTotals(positions);
+    expect(totals[0]).toMatchObject({ label: "SIZED", done: 3, total: 3 });
+    expect(totals[4]).toMatchObject({ label: "BOARDS", done: 1, total: 2 });
+    expect(stageApplies(positions[2], 4)).toBe(false);
+    expect(stageApplies(positions[2], 0)).toBe(true);
   });
 });
 

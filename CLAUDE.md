@@ -10,7 +10,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 72 tests
+npm test               # vitest, 81 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -182,6 +182,36 @@ This replaced an AI web-search lookup (removed Aug 2026). The lookup took ~20s p
 run, its results were lost on every save, and it mostly rediscovered hours that
 don't change year to year. Setup and load-in times still aren't public either way —
 they live in the exhibitor kit, so the boss fills those in by hand.
+
+## Shelf plan
+
+The booth prep tool that replaced the spreadsheet, at
+`/conventions/:slug/shelf-plan`. Two surfaces: the **grid** (every field edits
+in place — no edit mode, no modal) and the to-scale **booth map**.
+
+`lib/booth-template.js` holds the standard 31-unit Fan Expo booth — geometry in
+feet, lifted from the design handoff's own tables rather than re-measured. A
+plan starts from that template or **carries a previous show's plan forward**,
+in which case last show's *arranged* positions become this show's baseline: you
+start from where you ended up, not where you'd planned to be.
+
+**Stage ticks are the hot path.** Several people tick boxes across the booth
+during setup, so each tick is its own row in `shelf_stage_flags` and its own
+small write — a read-modify-write of a whole record would lose other people's
+ticks. The UI updates optimistically and only reloads if the write fails.
+
+**BOARDS doesn't apply to a shelf needing no signage.** It drops out of both
+the numerator and the denominator, so the count reads `7 / 20`, not `7 / 31`.
+Adding signage to a shelf brings its Boards box to life and moves the
+denominator; removing all of it clears any stale tick.
+
+`layoutConflicts()` runs on every read and reports units hanging off the
+footprint or overlapping, **in inches** — the whole point is that an invalid
+plan can't look valid. It accepts either a raw row or an already-mapped
+position; reading the wrong shape once made it find no conflicts at all, which
+is the exact failure it exists to prevent. Arrange overrides
+(`move_x/y/w/h`) sit on top of the baseline and are never a copy of it, so a
+later change to a unit's real dimensions isn't silently ignored.
 
 ## Scheduling
 
