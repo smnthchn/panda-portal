@@ -216,16 +216,29 @@ function eventInfoCard() {
   `;
 }
 
-const DAY_WINDOWS = [
-  { key: "setup", label: "Setup" },
-  { key: "early", label: "Early access" },
-  { key: "regular", label: "Regular" }
-];
+/**
+ * A day's windows as [label, text] display lines. Setup and early access are
+ * start-only: setup is "be there from", and early access runs until doors
+ * open, so its end is the regular start.
+ */
+function dayWindowTexts(day) {
+  const lines = [];
 
-function windowText(day, key) {
-  const start = day[`${key}_start`];
-  const end = day[`${key}_end`];
-  return start && end ? `${formatTime(start)} – ${formatTime(end)}` : null;
+  if (day.setup_start) {
+    lines.push(["Setup", `from ${formatTime(day.setup_start)}`]);
+  }
+
+  if (day.early_start) {
+    lines.push(["Early access", day.regular_start
+      ? `${formatTime(day.early_start)} – ${formatTime(day.regular_start)}`
+      : `from ${formatTime(day.early_start)}`]);
+  }
+
+  if (day.regular_start && day.regular_end) {
+    lines.push(["Regular", `${formatTime(day.regular_start)} – ${formatTime(day.regular_end)}`]);
+  }
+
+  return lines;
 }
 
 /**
@@ -264,10 +277,9 @@ function hoursCard() {
           <div class="hours-day">
             <h4>${esc(formatDate(day.day_date))}</h4>
             <dl class="info-list">
-              ${DAY_WINDOWS.map(({ key, label }) => {
-                const text = windowText(day, key);
-                return text ? `<dt>${esc(label)}</dt><dd>${esc(text)}</dd>` : "";
-              }).join("")}
+              ${dayWindowTexts(day).map(([label, text]) =>
+                `<dt>${esc(label)}</dt><dd>${esc(text)}</dd>`
+              ).join("")}
             </dl>
             ${day.notes ? `<p class="meta">${esc(day.notes)}</p>` : ""}
           </div>
@@ -549,10 +561,9 @@ function manageSection() {
               <li class="manage-row">
                 <span>
                   <strong>${esc(formatDate(day.day_date))}</strong>
-                  ${DAY_WINDOWS.map(({ key, label }) => {
-                    const text = windowText(day, key);
-                    return text ? ` · ${esc(label)} ${esc(text)}` : "";
-                  }).join("")}
+                  ${dayWindowTexts(day).map(([label, text]) =>
+                    ` · ${esc(label)} ${esc(text)}`
+                  ).join("")}
                 </span>
                 <span class="button-row">
                   <button class="btn-quiet" data-edit-day="${day.id}">Edit</button>
@@ -567,18 +578,17 @@ function manageSection() {
 
       <h4 id="dayFormHeading">Add a day</h4>
       <p class="meta">
-        Saving a date that already has hours replaces them. Setup start fills in
-        automatically as one hour before the earliest opening time, and you can
-        change it. Leave a window blank if it doesn't apply that day.
+        Saving a date that already has hours replaces them. Early access fills in
+        automatically as an hour before doors and runs until they open; setup
+        start fills in as an hour before that. Change either if the show differs,
+        or clear what doesn't apply.
       </p>
       <div class="form-grid">
         <label>Date <input type="date" id="dayDate" value="${esc(nextUnsetDay())}"></label>
-        <label>Early access start <input type="time" id="dayEarlyStart"></label>
-        <label>Early access end <input type="time" id="dayEarlyEnd"></label>
         <label>Regular start <input type="time" id="dayRegularStart"></label>
         <label>Regular end <input type="time" id="dayRegularEnd"></label>
+        <label>Early access start <input type="time" id="dayEarlyStart"></label>
         <label>Setup start <input type="time" id="daySetupStart"></label>
-        <label>Setup end <input type="time" id="daySetupEnd"></label>
         <label>Notes <input type="text" id="dayNotes" placeholder="Optional"></label>
       </div>
       <div class="button-row">
@@ -678,9 +688,7 @@ function manageSection() {
 const DAY_FIELD_IDS = {
   day_date: "dayDate",
   setup_start: "daySetupStart",
-  setup_end: "daySetupEnd",
   early_start: "dayEarlyStart",
-  early_end: "dayEarlyEnd",
   regular_start: "dayRegularStart",
   regular_end: "dayRegularEnd",
   notes: "dayNotes"
@@ -726,10 +734,9 @@ function suggestedDaysBlock() {
         <li class="manage-row">
           <span>
             <strong>${esc(formatDate(day.day_date))}</strong>
-            ${DAY_WINDOWS.map(({ key, label }) => {
-              const text = windowText(day, key);
-              return text ? ` · ${esc(label)} ${esc(text)}` : "";
-            }).join("")}
+            ${dayWindowTexts(day).map(([label, text]) =>
+              ` · ${esc(label)} ${esc(text)}`
+            ).join("")}
             ${day.notes ? `<div class="meta">${esc(day.notes)}</div>` : ""}
           </span>
           <button class="btn-quiet" data-use-suggested="${i}">Load into form</button>
@@ -757,28 +764,26 @@ function wireDayForm(conventionId, reload) {
     };
   });
 
+  const earlyStart = document.getElementById("dayEarlyStart");
   const setupStart = document.getElementById("daySetupStart");
-  const setupEnd = document.getElementById("daySetupEnd");
 
-  // Setup runs the hour before doors, so derive it from whichever opening time
-  // comes first — but never overwrite a value that's already been typed in.
-  const suggestSetup = () => {
-    const opens = [
-      document.getElementById("dayEarlyStart").value,
-      document.getElementById("dayRegularStart").value
-    ].filter(Boolean).sort()[0];
+  // Early access opens an hour before doors, setup starts an hour before
+  // that — filled automatically, but never overwriting something typed in.
+  const suggestFromRegular = () => {
+    const regular = document.getElementById("dayRegularStart").value;
+    if (!regular) return;
 
-    if (!opens) return;
+    if (!earlyStart.value) {
+      earlyStart.value = oneHourEarlier(regular) || "";
+    }
 
-    const hourBefore = oneHourEarlier(opens);
-    if (!hourBefore) return;
-
-    if (!setupStart.value) setupStart.value = hourBefore;
-    if (!setupEnd.value) setupEnd.value = opens;
+    if (!setupStart.value) {
+      setupStart.value = oneHourEarlier(earlyStart.value || regular) || "";
+    }
   };
 
-  document.getElementById("dayEarlyStart").onchange = suggestSetup;
-  document.getElementById("dayRegularStart").onchange = suggestSetup;
+  document.getElementById("dayRegularStart").onchange = suggestFromRegular;
+  document.getElementById("dayEarlyStart").onchange = suggestFromRegular;
 
   document.getElementById("clearDayBtn").onclick = () => {
     fillDayForm(null);
@@ -965,7 +970,7 @@ const OUR_CONVENTIONS = [
     website_url: "https://fanexpohq.com/fanexpocanada/",
     typicalHours: {
       4: {
-        early_start: "14:00", early_end: "16:00",
+        early_start: "14:00",
         regular_start: "16:00", regular_end: "21:00",
         notes: "2 PM preview for VIP, Ultimate and 4-Day pass holders."
       },
@@ -1002,7 +1007,14 @@ function suggestedDays() {
        d.setDate(d.getDate() + 1)) {
     const iso = d.toISOString().slice(0, 10);
     const hours = preset.typicalHours[d.getDay()];
-    if (hours && !taken.has(iso)) out.push({ day_date: iso, notes: "", ...hours });
+    if (!hours || taken.has(iso)) continue;
+
+    // House rule unless the show publishes otherwise: early access opens an
+    // hour before doors, setup starts an hour before that.
+    const early = hours.early_start || oneHourEarlier(hours.regular_start || "") || "";
+    const setup = hours.setup_start || oneHourEarlier(early || hours.regular_start || "") || "";
+
+    out.push({ day_date: iso, notes: "", ...hours, early_start: early, setup_start: setup });
   }
 
   return out;

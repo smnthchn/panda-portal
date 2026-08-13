@@ -77,7 +77,12 @@ in Drive, linked per convention.
 Two different setup concepts, deliberately kept separate:
 
 - `setup_on` + `load_in_start/end` on the convention — the move-in day before doors
-- per-day `setup_start/end` in `convention_days` — the hour before opening each day
+- per-day `setup_start` in `convention_days` — when to be at the booth each day
+
+Per-day setup and early access are start-only: early access runs until doors
+open, so the form derives early (doors − 1h) and setup (an hour before that)
+from the regular start, editable. The `setup_end` and `early_end` columns are
+dead — the save handler always writes NULL there.
 
 Checklists are audience-gated (`all` / `staff` / `boss`) and anyone who can see one
 can tick its items; the tick records who and when.

@@ -363,36 +363,37 @@ export async function handleDeleteConvention(request, env, conventionId) {
   return { ok: true };
 }
 
-const DAY_WINDOWS = [
-  { key: "setup", label: "Setup" },
-  { key: "early", label: "Early access" },
-  { key: "regular", label: "Regular" }
-];
-
 /**
- * Validates the three optional windows on a day. Each is all-or-nothing: a start
- * without an end (or the reverse) is a half-entered row, not a valid window.
+ * Validates a day's windows. Regular hours need both ends. Early access and
+ * setup are start-only — early access runs until doors open, and setup is just
+ * a "be there from" time — so their end columns are always NULL now.
  */
 function dayWindows(body) {
-  const values = {};
+  const regularStart = optionalTime(body.regular_start, "Regular start");
+  const regularEnd = optionalTime(body.regular_end, "Regular end");
 
-  for (const { key, label } of DAY_WINDOWS) {
-    const start = optionalTime(body[`${key}_start`], `${label} start`);
-    const end = optionalTime(body[`${key}_end`], `${label} end`);
-
-    if (Boolean(start) !== Boolean(end)) {
-      throw new BadRequest(`${label} needs both a start and an end time.`);
-    }
-
-    if (start && end && end <= start) {
-      throw new BadRequest(`${label} hours must end after they start.`);
-    }
-
-    values[`${key}_start`] = start;
-    values[`${key}_end`] = end;
+  if (Boolean(regularStart) !== Boolean(regularEnd)) {
+    throw new BadRequest("Regular hours need both a start and an end time.");
   }
 
-  return values;
+  if (regularStart && regularEnd <= regularStart) {
+    throw new BadRequest("Regular hours must end after they start.");
+  }
+
+  const earlyStart = optionalTime(body.early_start, "Early access start");
+
+  if (earlyStart && regularStart && earlyStart >= regularStart) {
+    throw new BadRequest("Early access has to start before regular hours open.");
+  }
+
+  return {
+    setup_start: optionalTime(body.setup_start, "Setup start"),
+    setup_end: null,
+    early_start: earlyStart,
+    early_end: null,
+    regular_start: regularStart,
+    regular_end: regularEnd
+  };
 }
 
 /** Creates a day, or replaces the hours on one already saved for that date. */
