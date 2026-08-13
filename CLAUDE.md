@@ -196,8 +196,16 @@ Three surfaces, chosen by who's looking and on what:
 - **List** (phone) — a card per unit with its five boxes spelled out. The grid
   is 900px of columns; dragging that sideways on a phone is not a tool. The two
   swap on a `matchMedia` breakpoint listener, so rotating a phone redraws.
-- **Booth map** (to scale) — scrolls inside its own box on a phone rather than
-  taking the page with it.
+- **Booth map** — drawn to scale at whatever fits its column. The design's
+  31px per foot is 502px wide, which no phone can show and which can't be
+  pinch-zoomed inside the app, so `measureScale()` divides the available width
+  by the booth's 16 ft and caps at the design scale — never scaling up. A
+  phone lands around 21px/ft with the whole booth visible.
+
+A `ResizeObserver` on the page column redraws all three: the grid/list swap at
+the breakpoint, and the map re-scales. It watches the column rather than the
+window because the sidebar appearing changes the width without the window
+resizing.
 
 **Staff tick boxes and nothing else.** The server already enforces it —
 everything except reading the plan and toggling a stage needs

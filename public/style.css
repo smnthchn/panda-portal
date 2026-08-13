@@ -534,6 +534,34 @@ button:disabled {
 
 .title-row .meta {
   display: block;
+  margin-top: 2px;
+}
+
+/* A stacked title: kicker over heading over summary. Without the spacing the
+   three lines read as one block of text. */
+.screen-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.screen-title .kicker-line {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+
+.screen-title h2 {
+  font-size: 21px;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0 0 4px;
+}
+
+.screen-title .meta {
+  margin: 0;
 }
 
 /* ---------- Bottom nav (phone) ---------- */
@@ -1832,11 +1860,11 @@ textarea::placeholder {
   max-width: 100%;
 }
 
-/* The booth is 502px wide; a phone scrolls it rather than the whole page. */
+/* The map is drawn at whatever scale fits the column, so this only catches
+   the odd pixel of rounding rather than being the way you read the plan. */
 .booth-scroll {
   overflow-x: auto;
   max-width: 100%;
-  padding-bottom: 4px;
 }
 
 .booth-ruler {
