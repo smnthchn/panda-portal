@@ -5,6 +5,7 @@ import { matchPath, getCookie, optionalText, requiredText, BadRequest } from "..
 import { roleOutranks, isValidRole } from "../src/lib/permissions.js";
 import { optionalUrl } from "../src/routes/conventions.js";
 import { pairClockEvents } from "../src/routes/clock.js";
+import { segmentsFor } from "../src/routes/dashboard.js";
 
 function request(path, method = "GET", headers = {}) {
   return new Request(`http://example.com${path}`, { method, headers });
@@ -191,6 +192,39 @@ describe("clock event pairing", () => {
     ]);
 
     expect(shifts.map(s => s.net_minutes)).toEqual([180, 240]);
+  });
+});
+
+describe("hall hours segments", () => {
+  it("lays setup, early access and open out proportionally", () => {
+    const layout = segmentsFor({
+      setup_start: "08:00", early_start: "09:00",
+      regular_start: "10:00", regular_end: "19:00"
+    });
+
+    // 8:00–19:00 is 11 hours: 1h setup, 1h early, 9h open.
+    expect(layout.span_start).toBe(480);
+    expect(layout.span_end).toBe(1140);
+    expect(layout.segments.map(s => s.kind)).toEqual(["set", "vip", "open"]);
+    expect(layout.segments.map(s => Math.round(s.width))).toEqual([9, 9, 82]);
+  });
+
+  it("is just the open block when there's no setup or early access", () => {
+    const layout = segmentsFor({ regular_start: "10:00", regular_end: "17:00" });
+    expect(layout.segments).toHaveLength(1);
+    expect(layout.segments[0].width).toBe(100);
+    expect(layout.span_start).toBe(600);
+  });
+
+  it("returns null for a day with no usable regular hours", () => {
+    expect(segmentsFor({ setup_start: "08:00" })).toBeNull();
+    expect(segmentsFor({ regular_start: "18:00", regular_end: "10:00" })).toBeNull();
+    expect(segmentsFor(null)).toBeNull();
+  });
+
+  it("ignores an early access that isn't before doors", () => {
+    const layout = segmentsFor({ early_start: "10:00", regular_start: "10:00", regular_end: "17:00" });
+    expect(layout.segments.map(s => s.kind)).toEqual(["open"]);
   });
 });
 

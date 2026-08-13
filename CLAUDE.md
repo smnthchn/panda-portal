@@ -10,7 +10,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 35 tests
+npm test               # vitest, 39 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -40,17 +40,65 @@ src/
     permissions.js      roles, permission keys, effective-permission resolution
     google.js           service-account JWT, Drive listing, Google Doc -> HTML
     http.js             json(), matchPath(), cookies, field validation
-  routes/               session, knowledge, clock, admin, conventions
+  routes/               session, dashboard, knowledge, clock, admin, conventions
 public/
-  core.js               shared helpers — MUST load first (esc, api, formatting)
+  core.js               shared helpers — MUST load first (esc, api, themes, battery)
   admin.js              Users & Roles
   conventions.js        Conventions
-  app.js                shell, login, KB, My Folder, Clock — boots the app, loads last
+  app.js                shell, login, dashboard, KB, My Folder, Clock, Appearance
 migrations/             numbered SQL, applied via wrangler
 ```
 
 Script order in `index.html` matters: `core.js` defines the helpers, `app.js` calls
 `loadApp()` at the end.
+
+## Design language
+
+Phone-first retro UI, from the Claude Design handoff (`design_handoff_panda_portal/`,
+kept outside the repo). The rules that make it cohere:
+
+- **2px solid ink outlines** on every card, never a 1px hairline.
+- **Chunky radii**: cards 16px, inner blocks 14px, buttons 12px, pills 999px.
+- **Hard offset shadows, no blur**: `0 4px 0 var(--shadow)`.
+- **Buttons depress on hover** — `border-bottom-width` 4px → 2px plus `margin-top: 2px`.
+  Green and amber buttons outline in a deeper shade of their own fill, never ink.
+- **Section headers are tinted strips** across the top of a card (`.card.stripped`
+  + `.strip`), not floating headings.
+- Fredoka for numbers/labels/buttons, Public Sans for body copy.
+
+**Every colour comes from a CSS custom property**, never a literal — five palettes
+ship (`habbo`, `mario`, `bubble`, `sherbet`, `arcade`) and staff pick one in
+Appearance. It's stored in `employees.theme_id`, so it follows a person to the
+shared iPad. `arcade` is dark: pills over a coloured band use `.pill-paper`
+(paper fill, ink border), and inputs read `--field`, which is dark there.
+
+The desktop sidebar is kept for the boss's longer screens; below 800px it's
+replaced by the four-item bottom nav (Home / Clock / Events / Docs).
+
+## Dashboard
+
+`/api/dashboard` answers the whole home screen in one request, and decides the
+day server-side so the screen can't disagree with the schedule. The browser
+passes its own local date (`?today=`) because the worker runs UTC and the store
+is in Toronto.
+
+A staff member sees the fixed spine (date + identity, clock card, shift), then a
+block set chosen by the day: store day gets the roster and the upcoming-event
+nudge; a convention day swaps in the amber event band, break battery, hall-hours
+bar and booth roster. **The boss gets no clock card** — hall hours gain coverage
+metrics and the roster shows live status instead.
+
+## Break battery
+
+The allotment is set on the shift by the boss (`break_allotment_minutes`,
+`break_count` on `convention_shifts`) — nothing is derived from shift length.
+`batteryHtml()` in `core.js` draws six cells that **empty left to right**, so
+the charge that's left sits against the terminal nub; a two-break allotment gets
+a divider marking the split. Cells are a proportion of the allotment rather than
+a fixed ten minutes each — identical to the handoff's `ceil(left / 10)` on its
+60-minute example, but a 30-minute allotment still shows a full battery when
+nothing's been used. Minutes used come from the punch log, so the battery and
+the hours report can't disagree.
 
 ## Auth & permissions
 

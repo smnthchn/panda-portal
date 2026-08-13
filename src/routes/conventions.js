@@ -456,11 +456,13 @@ export async function handleCreateShift(request, env, conventionId) {
   }
 
   const employeeId = body.employee_id ? Number(body.employee_id) : null;
+  const { minutes, count } = breakAllotment(body);
 
   await env.DB.prepare(
     `INSERT INTO convention_shifts
-       (convention_id, employee_id, title, shift_date, starts_at, ends_at, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+       (convention_id, employee_id, title, shift_date, starts_at, ends_at, notes,
+        break_allotment_minutes, break_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     Number(conventionId),
     employeeId,
@@ -468,8 +470,55 @@ export async function handleCreateShift(request, env, conventionId) {
     requiredDate(body.shift_date, "Shift date"),
     startsAt,
     endsAt,
-    optionalText(body.notes)
+    optionalText(body.notes),
+    minutes,
+    count
   ).run();
+
+  return { ok: true };
+}
+
+/** Break allotment: 0–240 minutes, taken as one break or two. */
+function breakAllotment(body) {
+  const raw = Number(body.break_allotment_minutes);
+  const minutes = Number.isFinite(raw) ? Math.max(0, Math.min(240, Math.round(raw))) : 0;
+  const count = Number(body.break_count) === 2 ? 2 : 1;
+  return { minutes, count };
+}
+
+/**
+ * Sets a shift's break allotment. This is the only place it's set — the
+ * staff battery reads what's saved here. apply_to_day pushes the same
+ * allotment to every other shift that day, so a six-shift day is one edit.
+ */
+export async function handleSetShiftBreak(request, env, shiftId) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const body = await readJsonBody(request);
+  const { minutes, count } = breakAllotment(body);
+
+  const shift = await env.DB.prepare(
+    `SELECT id, convention_id, shift_date FROM convention_shifts WHERE id = ?`
+  ).bind(Number(shiftId)).first();
+
+  if (!shift) {
+    return { ok: false, error: "That shift no longer exists." };
+  }
+
+  if (body.apply_to_day) {
+    await env.DB.prepare(
+      `UPDATE convention_shifts
+       SET break_allotment_minutes = ?, break_count = ?
+       WHERE convention_id = ? AND shift_date = ?`
+    ).bind(minutes, count, shift.convention_id, shift.shift_date).run();
+  } else {
+    await env.DB.prepare(
+      `UPDATE convention_shifts
+       SET break_allotment_minutes = ?, break_count = ?
+       WHERE id = ?`
+    ).bind(minutes, count, shift.id).run();
+  }
 
   return { ok: true };
 }

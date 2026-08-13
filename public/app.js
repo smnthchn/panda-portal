@@ -1,10 +1,4 @@
-/* Portal shell, login, and the Knowledge Base / My Folder / Clock views. */
-
-function getStatusClass(status) {
-  if (status === "in") return "status-badge status-in";
-  if (status === "break") return "status-badge status-break";
-  return "status-badge status-out";
-}
+/* Portal shell, login, dashboard, Knowledge Base / My Folder / Clock / Appearance. */
 
 function showLoadingScreen() {
   document.getElementById("app").innerHTML = `
@@ -16,32 +10,9 @@ function showLoadingScreen() {
   `;
 }
 
-function closeMobileMenu() {
-  document.getElementById("sidebar")?.classList.remove("mobile-open");
-  document.getElementById("mobileMenuOverlay")?.classList.remove("show");
-}
-
-function openMobileMenu() {
-  document.getElementById("sidebar")?.classList.add("mobile-open");
-  document.getElementById("mobileMenuOverlay")?.classList.add("show");
-}
-
-function attachMobileMenuHandlers() {
-  const toggle = document.getElementById("mobileMenuToggle");
-  const overlay = document.getElementById("mobileMenuOverlay");
-
-  if (toggle) {
-    toggle.onclick = () => {
-      const sidebar = document.getElementById("sidebar");
-      if (sidebar && sidebar.classList.contains("mobile-open")) closeMobileMenu();
-      else openMobileMenu();
-    };
-  }
-
-  if (overlay) overlay.onclick = () => closeMobileMenu();
-}
-
 function renderLogin(clientId = "") {
+  applyTheme("habbo");
+
   document.getElementById("app").innerHTML = `
     <div class="login-wrap">
       <div class="login-card">
@@ -80,130 +51,436 @@ function renderLogin(clientId = "") {
 /* ---------- Shell ---------- */
 
 const NAV_ITEMS = [
-  { id: "navDashboard", label: "Dashboard", permission: null, view: () => renderDashboard(state.user) },
-  { id: "navConventions", label: "Conventions", permission: "conventions", view: () => renderConventions() },
-  { id: "navKnowledgeBase", label: "Knowledge Base", permission: "knowledge_base", view: () => renderKnowledgeBase() },
-  { id: "navMyFolder", label: "My Folder", permission: "employee_folder", view: () => renderMyFolder() },
-  { id: "navClock", label: "Clock", permission: "clock", view: () => renderClock() },
-  { id: "navUsers", label: "Users & Roles", permission: "manage_users", view: () => renderUsersRoles() }
+  { id: "navDashboard", label: "Home", group: "Today", permission: null, view: "dashboard", nav: true },
+  { id: "navClock", label: "Clock", group: "Today", permission: "clock", view: "clock", nav: true },
+  { id: "navConventions", label: "Events", group: "Operations", permission: "conventions", view: "conventions", nav: true },
+  { id: "navKnowledgeBase", label: "Docs", group: "Reference", permission: "knowledge_base", view: "knowledge-base", nav: true },
+  { id: "navMyFolder", label: "My Folder", group: "Reference", permission: "employee_folder", view: "my-folder" },
+  { id: "navUsers", label: "Users & Roles", group: "Admin", permission: "manage_users", view: "users-roles" },
+  { id: "navAppearance", label: "Appearance", group: "Admin", permission: null, view: "appearance" }
 ];
+
+/* Nav entries for work that isn't built yet — shown greyed so the shape of
+   the system is visible without pretending the screens exist. */
+const NAV_STUBS = ["Inventory", "Purchasing"];
 
 function visibleNavItems() {
   return NAV_ITEMS.filter(item => !item.permission || can(item.permission));
 }
 
+function goToView(view) {
+  const target = { view };
+  pushPageState(view);
+  guard(() => POPSTATE_VIEWS[view](target));
+}
+
 function renderShell(user) {
   state.user = user;
+  applyTheme(user.theme_id);
+
   const items = visibleNavItems();
+  const groups = [];
+  for (const item of items) {
+    const last = groups[groups.length - 1];
+    if (last && last.name === item.group) last.items.push(item);
+    else groups.push({ name: item.group, items: [item] });
+  }
 
   document.getElementById("app").innerHTML = `
     <div class="portal-shell">
-      <div id="mobileMenuOverlay" class="mobile-menu-overlay"></div>
-
       <aside class="sidebar" id="sidebar">
-        <h1>Panda Portal</h1>
+        <h1><span class="app-tile">P</span> Panda Portal</h1>
         <nav>
-          ${items.map(item => `<a href="#" id="${item.id}">${esc(item.label)}</a>`).join("")}
-          <a href="#" id="navLogout">Logout</a>
+          ${groups.map(group => `
+            <div class="nav-group">${esc(group.name)}</div>
+            ${group.items.map(item =>
+              `<a href="#" id="${item.id}">${esc(item.label === "Home" ? "Dashboard" : item.label)}</a>`
+            ).join("")}
+          `).join("")}
+          <div class="nav-group">Not built yet</div>
+          ${NAV_STUBS.map(label => `<div class="nav-stub">${esc(label)}</div>`).join("")}
         </nav>
+        <a href="#" id="navLogout">Log out</a>
       </aside>
 
       <main class="main">
-        <div class="mobile-topbar">
-          <button id="mobileMenuToggle" class="hamburger-btn" aria-label="Open menu">☰</button>
-          <div class="mobile-topbar-title">Panda Portal</div>
-        </div>
-        <div id="pageArea"></div>
+        <div class="page" id="pageArea"></div>
       </main>
+
+      <nav class="bottom-nav" id="bottomNav">
+        ${items.filter(item => item.nav).map(item => `
+          <a href="#" data-bottom-nav="${esc(item.view)}">
+            <div class="nav-dot"></div>${esc(item.label)}
+          </a>
+        `).join("")}
+      </nav>
     </div>
   `;
-
-  attachMobileMenuHandlers();
 
   for (const item of items) {
     document.getElementById(item.id).onclick = (e) => {
       e.preventDefault();
-      closeMobileMenu();
-      guard(item.view);
+      goToView(item.view);
     };
   }
 
+  document.querySelectorAll("[data-bottom-nav]").forEach(link => {
+    link.onclick = (e) => {
+      e.preventDefault();
+      goToView(link.dataset.bottomNav);
+    };
+  });
+
   document.getElementById("navLogout").onclick = async (e) => {
     e.preventDefault();
-    closeMobileMenu();
     await api("/api/logout", { method: "POST" });
     state.user = null;
     await loadApp();
   };
+}
 
-  // Land on whatever the URL says, so a refresh or shared link opens that
-  // page rather than the dashboard. history.state wins when present — the
-  // browser keeps it across refreshes and it can carry more than the URL
-  // does (a doc's origin, for the breadcrumb).
-  const target = POPSTATE_VIEWS[history.state?.view] ? history.state : viewForPath(location.pathname);
-  history.replaceState(target, "", PAGE_URLS[target.view](target));
-  guard(() => POPSTATE_VIEWS[target.view](target));
+/** Marks the current view active in both navs. Called by every render. */
+function markActiveNav(view) {
+  document.querySelectorAll("[data-bottom-nav]").forEach(link => {
+    link.classList.toggle("active", link.dataset.bottomNav === view);
+  });
+
+  for (const item of NAV_ITEMS) {
+    document.getElementById(item.id)?.classList.toggle("active", item.view === view);
+  }
 }
 
 /* ---------- Dashboard ---------- */
 
-const DASHBOARD_CARDS = [
-  {
-    permission: "conventions",
-    title: "Conventions",
-    body: "Schedules, booth layout, checklists and event details.",
-    view: () => renderConventions()
-  },
-  {
-    permission: "knowledge_base",
-    title: "Knowledge Base",
-    body: "View SOPs, docs, and internal reference materials.",
-    view: () => renderKnowledgeBase()
-  },
-  {
-    permission: "employee_folder",
-    title: "My Folder",
-    body: "Open your employee folder and personal internal files.",
-    view: () => renderMyFolder()
-  },
-  {
-    permission: "clock",
-    title: "Clock",
-    body: "Clock in, clock out, and check your current status.",
-    view: () => renderClock()
-  },
-  {
-    permission: "manage_users",
-    title: "Users & Roles",
-    body: "Add people and control what each role can see.",
-    view: () => renderUsersRoles()
-  }
-];
+/** "14:30" -> "2:30 PM". */
+function hhmmToLabel(hhmm) {
+  return formatTime(hhmm);
+}
 
-function renderDashboard(user, pushState = true) {
-  if (pushState) pushPageState("dashboard");
+/** Short "2 PM" / "10:30 AM" for the ends of the hours bar. */
+function shortTimeLabel(hhmm) {
+  const [h, m] = String(hhmm || "").split(":").map(Number);
+  if (!Number.isFinite(h)) return "";
+  const suffix = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return m ? `${hour}:${String(m).padStart(2, "0")} ${suffix}` : `${hour} ${suffix}`;
+}
 
-  const cards = DASHBOARD_CARDS.filter(card => can(card.permission));
-
-  pageArea().innerHTML = `
-    <div class="page-header">
-      <h2>Welcome, ${esc(user.full_name)}</h2>
-      <p>${esc(roleDisplayName(user.role))} • ${esc(user.email)}</p>
-    </div>
-
-    <div class="card-grid">
-      ${cards.map((card, i) => `
-        <div class="action-card">
-          <h3>${esc(card.title)}</h3>
-          <p>${esc(card.body)}</p>
-          <button data-dash="${i}">Open</button>
+function dashHeader(data) {
+  return `
+    <div class="dash-header">
+      <div class="who">
+        <div class="app-tile">P</div>
+        <div>
+          <div class="date">${esc(formatDate(data.today))}</div>
+          <div class="meta">${esc(data.user.full_name.split(" ")[0])} · ${esc(roleDisplayName(data.user.role))}</div>
         </div>
-      `).join("")}
+      </div>
+      <div class="avatar">${esc(data.user.initials)}</div>
     </div>
   `;
+}
 
-  document.querySelectorAll("[data-dash]").forEach(btn => {
-    btn.onclick = () => guard(cards[Number(btn.dataset.dash)].view);
+function eventBand(data) {
+  const { event } = data;
+  return `
+    <div class="event-band" data-open-event="${esc(event.slug)}">
+      <span class="pill pill-ink">DAY ${event.day_index} OF ${event.day_count}</span>
+      <span class="band-title">
+        ${esc(event.name)}${event.booth_number ? ` · Booth ${esc(event.booth_number)}` : ""}
+      </span>
+    </div>
+  `;
+}
+
+/** Elapsed time on the clock, from the punch that opened the shift. */
+function elapsedSince(utcStamp) {
+  if (!utcStamp) return "On the clock";
+  const started = new Date(utcStamp.replace(" ", "T") + "Z");
+  return formatMinutes((Date.now() - started.getTime()) / 60000);
+}
+
+function clockCard(data) {
+  const { clock } = data;
+  const onBreak = clock.status === "break";
+  const clockedIn = clock.status === "in" || onBreak;
+
+  if (!clockedIn) {
+    return `
+      <div class="card navy">
+        <div class="kicker" style="color:var(--clock-sub);">NOT CLOCKED IN</div>
+        <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:23px; margin:6px 0 13px;">
+          ${data.my_shift ? "Ready when you are" : "Off today"}
+        </div>
+        <div class="button-row" style="margin:0;">
+          <button class="btn-go" style="flex:1;" data-clock-action="/api/clock-in">Clock in</button>
+        </div>
+        <p class="form-error" id="clockError"></p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="card navy${onBreak ? " on-break" : ""}"
+         ${onBreak ? 'style="background:var(--warm-deep-bg,#5C4413); box-shadow:0 4px 0 #42300B;"' : ""}>
+      <div class="kicker" style="color:${onBreak ? "var(--warm)" : "var(--go)"};">
+        ${onBreak ? "ON BREAK" : "ON THE CLOCK"}
+      </div>
+      <div style="display:flex; align-items:baseline; justify-content:space-between; margin:6px 0 13px;">
+        <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:23px; line-height:1.1;">
+          ${onBreak ? "Break running" : esc(elapsedSince(clock.since))}
+        </div>
+        <div style="font-size:12px; color:${onBreak ? "#E4CE9B" : "var(--clock-sub)"};">
+          Since ${esc(timeOf(clock.since))}
+        </div>
+      </div>
+      <div class="button-row" style="margin:0;">
+        <button class="btn-go" style="flex:1;" data-clock-action="/api/clock-out">Clock out</button>
+        ${onBreak
+          ? `<button class="btn-warm" data-clock-action="/api/break-end">End break</button>`
+          : `<button class="btn-ghost-go" data-clock-action="/api/break-start">Start break</button>`}
+      </div>
+      <p class="form-error" id="clockError"></p>
+    </div>
+  `;
+}
+
+/**
+ * Break battery. The allotment is set on the shift by the boss; what's left
+ * is that minus what today's punches have already used.
+ */
+function breakBatteryCard(data) {
+  const shift = data.my_shift;
+  if (!shift || !shift.break_allotment_minutes) return "";
+
+  const total = shift.break_allotment_minutes;
+  const used = Math.round(data.clock.break_minutes_used || 0);
+  const left = Math.max(0, total - used);
+  const onBreak = data.clock.status === "break";
+  const low = left <= 20;
+
+  return `
+    <div class="card">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:9px;">
+        <div>
+          <div class="kicker" style="font-weight:600; font-size:11.5px; letter-spacing:0.06em; color:var(--muted);">
+            BREAK LEFT TODAY
+          </div>
+          <div class="meta" style="margin-top:2px;">${esc(breakBasisText(total, shift.break_count))}</div>
+        </div>
+        <span style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:13px; color:${low ? "var(--alert)" : "var(--text)"};">
+          ${esc(formatMinutes(left))} left
+        </span>
+      </div>
+      ${batteryHtml(left, total, shift.break_count, { draining: onBreak })}
+      <div class="meta" style="margin-top:8px;">
+        ${onBreak
+          ? "Draining now. Ends automatically at zero."
+          : `${esc(formatMinutes(used))} of ${esc(formatMinutes(total))} used`}
+      </div>
+    </div>
+  `;
+}
+
+function myShiftCard(data) {
+  const shift = data.my_shift;
+
+  if (!shift) {
+    return `
+      <div class="card stripped">
+        <div class="strip brand">YOUR SHIFT</div>
+        <div class="card-body"><p class="empty-state">You're not on the schedule today.</p></div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="card stripped">
+      <div class="strip brand">YOUR SHIFT</div>
+      <div class="card-body" style="display:flex; align-items:center; gap:12px;">
+        <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:17px;">
+          ${esc(hhmmToLabel(shift.starts_at))} – ${esc(hhmmToLabel(shift.ends_at))}
+        </div>
+        <div class="meta" style="flex:1;">${esc(shift.title)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function hallHoursCard(data) {
+  const { hall } = data;
+  if (!hall || !hall.segments) return "";
+
+  const showMetrics = data.can_manage && data.coverage;
+
+  return `
+    <div class="card stripped">
+      <div class="strip cool">
+        HALL OPEN TODAY
+        <span class="strip-side">
+          ${esc(shortTimeLabel(hall.regular_start))} – ${esc(shortTimeLabel(hall.regular_end))}
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="segbar">
+          ${hall.segments.map(seg => `
+            <div class="seg ${esc(seg.kind)}" style="width:${seg.width.toFixed(1)}%;">
+              ${seg.kind === "open"
+                ? `OPEN ${esc(shortTimeLabel(hall.regular_start))} – ${esc(shortTimeLabel(hall.regular_end))}`
+                : esc(seg.label)}
+            </div>
+          `).join("")}
+          ${nowMarkerHtml(hall)}
+        </div>
+        <div class="segbar-scale">
+          <span>${esc(shortTimeLabel(minutesToHhmm(hall.span_start)))}</span>
+          <span>${esc(shortTimeLabel(minutesToHhmm(hall.span_end)))}</span>
+        </div>
+
+        ${showMetrics ? `
+          <div style="margin-top:11px; display:flex; gap:16px; border-top:2px solid var(--track); padding-top:11px;">
+            <div>
+              <div class="meta" style="letter-spacing:0.07em;">BOOTH STAFFED</div>
+              <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:16px;">
+                ${esc(hhmmToLabel(data.coverage.from))} – ${esc(hhmmToLabel(data.coverage.to))}
+              </div>
+            </div>
+            <div>
+              <div class="meta" style="letter-spacing:0.07em;">SHIFTS TODAY</div>
+              <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:16px;">${data.coverage.count}</div>
+            </div>
+          </div>
+        ` : data.my_shift ? `
+          <div style="margin-top:11px; display:flex; align-items:center; gap:10px; border-top:2px solid var(--track); padding-top:11px;">
+            <span class="kicker" style="font-weight:600; font-size:11.5px; letter-spacing:0.06em; color:var(--muted);">YOUR SHIFT</span>
+            <span style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:16px; margin-left:auto;">
+              ${esc(hhmmToLabel(data.my_shift.starts_at))} – ${esc(hhmmToLabel(data.my_shift.ends_at))}
+            </span>
+          </div>
+        ` : ""}
+
+        ${hall.notes ? `<div class="note-block" style="margin-top:11px;">${esc(hall.notes)}</div>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function minutesToHhmm(minutes) {
+  if (!Number.isFinite(minutes)) return "";
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+/** A 4px ink bar at the current time's position, if we're inside the day. */
+function nowMarkerHtml(hall) {
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  if (minutes < hall.span_start || minutes > hall.span_end) return "";
+
+  const pct = ((minutes - hall.span_start) / (hall.span_end - hall.span_start)) * 100;
+  return `<div class="now-marker" style="left:${pct.toFixed(1)}%;"></div>`;
+}
+
+/** Who else is on. The boss sees live status pills; staff see presence. */
+function rosterCard(data) {
+  if (!data.roster.length) return "";
+
+  const boss = data.can_manage;
+  const onNow = data.roster.filter(p => p.clocked_in).length;
+
+  return `
+    <div class="card stripped">
+      <div class="strip">
+        ${boss ? "WHO'S WORKING" : data.day_type === "event" ? "AT THE BOOTH TODAY" : "ON WITH YOU"}
+        <span class="strip-side">
+          ${boss ? `${onNow} on now · ${data.roster.length} today` : data.roster.length}
+        </span>
+      </div>
+      <div class="card-body">
+        ${data.roster.map(person => `
+          <div class="roster-row${person.clocked_in ? "" : " later"}">
+            <div class="avatar small${person.clocked_in ? " present" : ""}">${esc(person.initials)}</div>
+            <div style="flex:1;">
+              <div style="font-size:13px;">${esc(person.name)}</div>
+              ${boss ? `<div class="meta">${esc(person.title)} · ${esc(hhmmToLabel(person.starts_at))}–${esc(hhmmToLabel(person.ends_at))}</div>` : ""}
+            </div>
+            ${boss
+              ? `<span class="pill ${person.clocked_in ? "pill-go" : ""}">${person.clocked_in ? "IN" : esc(shortTimeLabel(person.starts_at))}</span>`
+              : `<span class="meta" style="color:${person.clocked_in ? "var(--brand-text)" : "var(--muted)"};">${person.clocked_in ? "now" : `from ${esc(shortTimeLabel(person.starts_at))}`}</span>`}
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+/** The only forward-looking element on a store day. */
+function upcomingNudge(data) {
+  const { event } = data;
+  if (!event || data.day_type === "event") return "";
+
+  return `
+    <div class="card" style="background:var(--note-bg); border-color:var(--ink); display:flex; align-items:center; gap:10px; cursor:pointer;"
+         data-open-event="${esc(event.slug)}">
+      <span style="width:10px; height:10px; border-radius:3px; background:var(--warm); flex:none;"></span>
+      <div style="flex:1; font-size:13px; color:var(--note-text);">
+        ${esc(event.name)} in ${event.days_away} day${event.days_away === 1 ? "" : "s"}
+        <div class="meta" style="color:var(--note-text); opacity:0.8;">
+          ${event.my_shift_count
+            ? `You're on ${event.my_shift_count} shift${event.my_shift_count === 1 ? "" : "s"}`
+            : "No shifts for you yet"}
+        </div>
+      </div>
+      <span style="font-family:'Fredoka',sans-serif; font-size:15px; color:var(--note-text);">›</span>
+    </div>
+  `;
+}
+
+async function renderDashboard(user, pushState = true) {
+  if (pushState) pushPageState("dashboard");
+
+  const data = await api(`/api/dashboard?today=${encodeURIComponent(todayLocal())}`);
+
+  if (!data.ok) {
+    renderError(data.error || "Could not load your dashboard");
+    return;
+  }
+
+  // The boss gets the floor, not a clock card.
+  const showClock = data.clock && !data.can_manage;
+
+  pageArea().innerHTML = `
+    ${dashHeader(data)}
+    ${data.day_type === "event" && data.event ? eventBand(data) : ""}
+    ${showClock ? clockCard(data) : ""}
+    ${showClock && data.day_type === "event" ? breakBatteryCard(data) : ""}
+    ${data.day_type === "event" ? hallHoursCard(data) : myShiftCard(data)}
+    ${rosterCard(data)}
+    ${upcomingNudge(data)}
+  `;
+
+  markActiveNav("dashboard");
+  wireClockButtons(() => renderDashboard(user, false));
+
+  document.querySelectorAll("[data-open-event]").forEach(el => {
+    el.onclick = () => openConvention(el.dataset.openEvent);
+  });
+}
+
+/** Clock in / out / break buttons, wherever they appear. */
+function wireClockButtons(reload) {
+  document.querySelectorAll("[data-clock-action]").forEach(btn => {
+    btn.onclick = async () => {
+      btn.disabled = true;
+      const result = await apiSend(btn.dataset.clockAction, "POST");
+
+      if (!result.ok) {
+        showFormError("clockError", result.error || "That didn't work.");
+        btn.disabled = false;
+        return;
+      }
+
+      await reload();
+    };
   });
 }
 
@@ -223,11 +500,7 @@ async function renderKnowledgeBase(pushState = true) {
     return;
   }
 
-  const crumbs = [{ label: "Knowledge Base" }];
-
   pageArea().innerHTML = `
-    ${setBreadcrumb(crumbs)}
-
     <div class="page-header">
       <h2>Knowledge Base</h2>
       <p>Internal documents and SOP folders</p>
@@ -235,24 +508,26 @@ async function renderKnowledgeBase(pushState = true) {
 
     ${data.sections.length
       ? data.sections.map(section => `
-          <div class="card">
-            <h3>${esc(section.name)}</h3>
-            ${section.files.length
-              ? `<ul class="file-list">
-                  ${section.files.map(file => `
-                    <li>
-                      <a href="#" data-doc-id="${esc(file.id)}" data-doc-name="${esc(file.name)}"
-                         data-section="${esc(section.name)}">${esc(file.name)}</a>
-                    </li>
-                  `).join("")}
-                </ul>`
-              : `<p class="empty-state">No files in this section yet.</p>`}
+          <div class="card stripped">
+            <div class="strip">${esc(section.name)}</div>
+            <div class="card-body">
+              ${section.files.length
+                ? `<ul class="file-list">
+                    ${section.files.map(file => `
+                      <li>
+                        <a href="#" data-doc-id="${esc(file.id)}" data-doc-name="${esc(file.name)}"
+                           data-section="${esc(section.name)}">${esc(file.name)}</a>
+                      </li>
+                    `).join("")}
+                  </ul>`
+                : `<p class="empty-state">No files in this section yet.</p>`}
+            </div>
           </div>
         `).join("")
       : `<div class="card"><p class="empty-state">No sections are shared with your role yet.</p></div>`}
   `;
 
-  attachBreadcrumb(crumbs);
+  markActiveNav("knowledge-base");
 
   document.querySelectorAll("[data-doc-id]").forEach(link => {
     link.onclick = (e) => {
@@ -276,11 +551,7 @@ async function renderMyFolder(pushState = true) {
     return;
   }
 
-  const crumbs = [{ label: "My Folder" }];
-
   pageArea().innerHTML = `
-    ${setBreadcrumb(crumbs)}
-
     <div class="page-header">
       <h2>My Folder</h2>
       <p>Your employee documents and assigned files</p>
@@ -297,7 +568,7 @@ async function renderMyFolder(pushState = true) {
     </div>
   `;
 
-  attachBreadcrumb(crumbs);
+  markActiveNav("my-folder");
 
   document.querySelectorAll("[data-doc-id]").forEach(link => {
     link.onclick = (e) => {
@@ -328,35 +599,21 @@ async function openDoc(id, name, origin = { kind: "kb", label: "Knowledge Base" 
   }
 
   const back = originView(origin);
-  const crumbs = [{ label: origin.label, view: back }];
-  if (origin.section) crumbs.push({ label: origin.section });
 
   pageArea().innerHTML = `
-    ${setBreadcrumb(crumbs)}
-
-    <div class="page-header">
+    <div class="title-row">
+      <button class="back-tile" id="docBackBtn">‹</button>
       <h2>${esc(data.title || name)}</h2>
-      <p>Read only document view</p>
-    </div>
-
-    <div class="button-row" style="margin-bottom:16px;">
-      <button id="docBackBtn">← Back</button>
     </div>
 
     <div class="card doc-viewer">${data.html}</div>
   `;
 
-  attachBreadcrumb(crumbs);
+  markActiveNav(origin?.kind === "folder" ? "my-folder" : "knowledge-base");
   document.getElementById("docBackBtn").onclick = () => guard(back);
 }
 
 /* ---------- Clock ---------- */
-
-function formatMinutes(total) {
-  const h = Math.floor(total / 60);
-  const m = Math.round(total % 60);
-  return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
-}
 
 /** Local calendar date (YYYY-MM-DD) of a UTC "YYYY-MM-DD HH:MM:SS" timestamp. */
 function localDateOf(dt) {
@@ -368,15 +625,11 @@ function timeOf(dt) {
     .toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
-function todayLocal() {
-  return new Date().toLocaleDateString("en-CA");
-}
-
 /** Monday of the week containing a local YYYY-MM-DD date. */
 function weekStartOf(isoDate) {
   const d = new Date(`${isoDate}T00:00:00`);
   d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  return d.toISOString().slice(0, 10);
+  return d.toLocaleDateString("en-CA");
 }
 
 /**
@@ -424,9 +677,11 @@ function shiftRow(shift, fixIndex) {
 function myHoursCard(shifts) {
   if (!shifts.length) {
     return `
-      <div class="card">
-        <h3>Your hours</h3>
-        <p class="empty-state">Worked shifts will show up here once you've clocked in and out.</p>
+      <div class="card stripped">
+        <div class="strip">YOUR HOURS</div>
+        <div class="card-body">
+          <p class="empty-state">Worked shifts will show up here once you've clocked in and out.</p>
+        </div>
       </div>
     `;
   }
@@ -440,16 +695,18 @@ function myHoursCard(shifts) {
   }
 
   return `
-    <div class="card">
-      <h3>Your hours</h3>
-      ${[...weeks.entries()].map(([week, rows]) => {
-        const total = rows.reduce((sum, s) => sum + (s.net_minutes || 0), 0);
-        return `
-          <h4>Week of ${esc(formatDate(week))} <span class="meta">· ${esc(formatMinutes(total))}</span></h4>
-          <table class="hours-table"><tbody>${rows.map(shiftRow).join("")}</tbody></table>
-        `;
-      }).join("")}
-      <p class="meta">The last nine weeks, breaks deducted from the totals.</p>
+    <div class="card stripped">
+      <div class="strip">YOUR HOURS<span class="strip-side">Last nine weeks</span></div>
+      <div class="card-body">
+        ${[...weeks.entries()].map(([week, rows]) => {
+          const total = rows.reduce((sum, s) => sum + (s.net_minutes || 0), 0);
+          return `
+            <h4>Week of ${esc(formatDate(week))} <span class="meta">· ${esc(formatMinutes(total))}</span></h4>
+            <table class="hours-table"><tbody>${rows.map(s => shiftRow(s)).join("")}</tbody></table>
+          `;
+        }).join("")}
+        <p class="meta">Breaks deducted from the totals.</p>
+      </div>
     </div>
   `;
 }
@@ -459,19 +716,21 @@ function teamHoursCard() {
   start.setDate(start.getDate() - 13);
 
   return `
-    <div class="card">
-      <h3>Team hours</h3>
-      <div class="inline-form report-range">
-        <label>From <input type="date" id="reportFrom" value="${esc(start.toLocaleDateString("en-CA"))}"></label>
-        <label>To <input type="date" id="reportTo" value="${esc(todayLocal())}"></label>
-        <button id="loadReportBtn">Show</button>
+    <div class="card stripped">
+      <div class="strip">TEAM HOURS</div>
+      <div class="card-body">
+        <div class="inline-form report-range">
+          <label>From <input type="date" id="reportFrom" value="${esc(start.toLocaleDateString("en-CA"))}"></label>
+          <label>To <input type="date" id="reportTo" value="${esc(todayLocal())}"></label>
+          <button id="loadReportBtn">Show</button>
+        </div>
+        <p class="form-error" id="reportError"></p>
+        <div id="reportArea"><p class="meta">Loading…</p></div>
+        <p class="meta">
+          Fix a wrong or missing clock-out with a row's Fix button — the correction
+          is stamped with your name in the punch log.
+        </p>
       </div>
-      <p class="form-error" id="reportError"></p>
-      <div id="reportArea"><p class="meta">Loading…</p></div>
-      <p class="meta">
-        Fix a wrong or missing clock-out with a row's Fix button — the correction
-        is stamped with your name in the punch log.
-      </p>
     </div>
   `;
 }
@@ -587,15 +846,6 @@ function openFixEditor(row, shift) {
   };
 }
 
-const CLOCK_ACTIONS = {
-  out: [{ label: "Clock In", path: "/api/clock-in" }],
-  in: [
-    { label: "Start Break", path: "/api/break-start" },
-    { label: "Clock Out", path: "/api/clock-out" }
-  ],
-  break: [{ label: "End Break", path: "/api/break-end" }]
-};
-
 async function renderClock(pushState = true) {
   if (pushState) pushPageState("clock");
 
@@ -610,31 +860,47 @@ async function renderClock(pushState = true) {
   }
 
   const status = data.profile?.clock_user_status || "out";
-  const actions = CLOCK_ACTIONS[status] || [];
-  const crumbs = [{ label: "Clock" }];
+  const onBreak = status === "break";
+  const clockedIn = status === "in" || onBreak;
 
-  const lastEventText = data.last_event
-    ? `${data.last_event.event_type.replace("_", " ")} at ${formatDateTime(data.last_event.created_at)}`
-    : "No clock activity yet";
+  const actions = {
+    out: [{ label: "Clock in", path: "/api/clock-in", cls: "btn-go" }],
+    in: [
+      { label: "Clock out", path: "/api/clock-out", cls: "btn-go" },
+      { label: "Start break", path: "/api/break-start", cls: "btn-ghost-go" }
+    ],
+    break: [
+      { label: "Clock out", path: "/api/clock-out", cls: "btn-go" },
+      { label: "End break", path: "/api/break-end", cls: "btn-warm" }
+    ]
+  }[status] || [];
 
   pageArea().innerHTML = `
-    ${setBreadcrumb(crumbs)}
-
     <div class="page-header">
       <h2>Clock</h2>
-      <p>Clock status and actions</p>
+      <p>${esc(data.employee.full_name)} · ${esc(roleDisplayName(data.employee.role))}</p>
     </div>
 
-    <div class="card">
-      <p><strong>Name:</strong> ${esc(data.employee.full_name)}</p>
-      <p><strong>Role:</strong> ${esc(roleDisplayName(data.employee.role))}</p>
-      <p><strong>Status:</strong> <span class="${getStatusClass(status)}">${esc(status)}</span></p>
-      <p><strong>Last Event:</strong> ${esc(lastEventText)}</p>
-
-      <div class="button-row">
-        ${actions.length
-          ? actions.map((a, i) => `<button data-clock="${i}">${esc(a.label)}</button>`).join("")
-          : `<p class="empty-state">Unknown clock status: ${esc(status)}</p>`}
+    <div class="card navy" ${onBreak ? 'style="background:#5C4413; box-shadow:0 4px 0 #42300B;"' : ""}>
+      <div class="kicker" style="color:${onBreak ? "var(--warm)" : clockedIn ? "var(--go)" : "var(--clock-sub)"};">
+        ${onBreak ? "ON BREAK" : clockedIn ? "ON THE CLOCK" : "NOT CLOCKED IN"}
+      </div>
+      <div style="display:flex; align-items:baseline; justify-content:space-between; margin:6px 0 13px;">
+        <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:23px; line-height:1.1;">
+          ${onBreak ? "Break running" : clockedIn && data.last_event
+            ? esc(elapsedSince(data.last_event.created_at))
+            : "Off the clock"}
+        </div>
+        ${data.last_event
+          ? `<div style="font-size:12px; color:${onBreak ? "#E4CE9B" : "var(--clock-sub)"};">
+               Since ${esc(timeOf(data.last_event.created_at))}
+             </div>`
+          : ""}
+      </div>
+      <div class="button-row" style="margin:0;">
+        ${actions.map((a, i) => `
+          <button class="${a.cls}" ${i === 0 ? 'style="flex:1;"' : ""} data-clock-action="${a.path}">${esc(a.label)}</button>
+        `).join("")}
       </div>
       <p class="form-error" id="clockError"></p>
     </div>
@@ -643,26 +909,66 @@ async function renderClock(pushState = true) {
     ${can("manage_users") ? teamHoursCard() : ""}
   `;
 
-  attachBreadcrumb(crumbs);
+  markActiveNav("clock");
+  wireClockButtons(() => renderClock(false));
 
   const loadReportBtn = document.getElementById("loadReportBtn");
   if (loadReportBtn) {
     loadReportBtn.onclick = () => guard(loadTeamHours);
     guard(loadTeamHours);
   }
+}
 
-  document.querySelectorAll("[data-clock]").forEach(btn => {
-    btn.onclick = async () => {
-      btn.disabled = true;
-      const result = await apiSend(actions[Number(btn.dataset.clock)].path, "POST");
+/* ---------- Appearance ---------- */
 
-      if (!result.ok) {
-        showFormError("clockError", result.error || "That didn't work.");
-        btn.disabled = false;
-        return;
-      }
+async function renderAppearance(pushState = true) {
+  if (pushState) pushPageState("appearance");
 
-      await renderClock(false);
+  const current = state.user.theme_id || "habbo";
+
+  pageArea().innerHTML = `
+    <div class="page-header">
+      <h2>Appearance</h2>
+      <p>Just for you — nobody else sees your pick</p>
+    </div>
+
+    ${THEMES.map(theme => `
+      <div class="theme-row" data-theme="${esc(theme.id)}">
+        <div class="swatches">
+          ${theme.swatches.map(color =>
+            `<span class="swatch" style="background:${esc(color)}; border-color:${esc(theme.ink)};"></span>`
+          ).join("")}
+        </div>
+        <div style="flex:1;">
+          <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:14.5px;">${esc(theme.name)}</div>
+          <div class="meta">${esc(theme.blurb)}</div>
+        </div>
+        <span class="picked${theme.id === current ? " on" : ""}">${theme.id === current ? "✓" : ""}</span>
+      </div>
+    `).join("")}
+
+    <div class="card cool">
+      <h3>One thing stays fixed</h3>
+      <p style="margin:0; font-size:12.5px; line-height:1.45;">
+        Green always means on the clock and red always means needs attention, in
+        every theme. Only the decoration changes.
+      </p>
+    </div>
+  `;
+
+  markActiveNav("appearance");
+
+  document.querySelectorAll("[data-theme]").forEach(row => {
+    row.onclick = async () => {
+      const themeId = row.dataset.theme;
+
+      // Repaint immediately; the save is a formality that follows.
+      applyTheme(themeId);
+      state.user.theme_id = themeId;
+      renderAppearance(false);
+
+      const result = await apiSend("/api/theme", "PUT", { theme_id: themeId });
+      if (!result.ok) alert(result.error || "Could not save that theme.");
     };
   });
 }
@@ -702,7 +1008,8 @@ function viewForPath(pathname) {
     "/knowledge-base": "knowledge-base",
     "/my-folder": "my-folder",
     "/clock": "clock",
-    "/users-roles": "users-roles"
+    "/users-roles": "users-roles",
+    "/appearance": "appearance"
   };
   return { view: flat[path] || "dashboard" };
 }
@@ -715,6 +1022,7 @@ const POPSTATE_VIEWS = {
   "my-folder": () => renderMyFolder(false),
   clock: () => renderClock(false),
   "users-roles": () => renderUsersRoles(false),
+  appearance: () => renderAppearance(false),
   doc: (s) => openDoc(s.id, s.name, s.origin, false)
 };
 
@@ -745,6 +1053,14 @@ async function loadApp() {
     }
 
     renderShell(me.user);
+
+    // Land on whatever the URL says, so a refresh or shared link opens that
+    // page rather than the dashboard. history.state wins when present — the
+    // browser keeps it across refreshes and it can carry more than the URL
+    // does (a doc's origin, for the breadcrumb).
+    const target = POPSTATE_VIEWS[history.state?.view] ? history.state : viewForPath(location.pathname);
+    history.replaceState(target, "", PAGE_URLS[target.view](target));
+    guard(() => POPSTATE_VIEWS[target.view](target));
   } catch (err) {
     document.getElementById("app").innerHTML = `
       <div class="login-wrap">
@@ -759,6 +1075,7 @@ async function loadApp() {
 
 window.handleCredentialResponse = handleCredentialResponse;
 window.openDoc = openDoc;
+window.markActiveNav = markActiveNav;
 
 showLoadingScreen();
 loadApp();

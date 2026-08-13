@@ -18,11 +18,7 @@ async function renderUsersRoles(pushState = true) {
 }
 
 function drawUsersRoles() {
-  const crumbs = [{ label: "Users & Roles" }];
-
   pageArea().innerHTML = `
-    ${setBreadcrumb(crumbs)}
-
     <div class="page-header">
       <h2>Users &amp; Roles</h2>
       <p>Who can sign in, and what each person can see</p>
@@ -33,7 +29,7 @@ function drawUsersRoles() {
     ${addPersonCard()}
   `;
 
-  attachBreadcrumb(crumbs);
+  markActiveNav("users-roles");
   wireRoleDefaults();
   wirePeople();
   wireAddPerson();

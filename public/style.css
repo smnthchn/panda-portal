@@ -1,26 +1,237 @@
+/* Panda Portal — retro phone-first design language.
+   Every color comes from a theme token. Five palettes ship; the token tables
+   are lifted from the design handoff (Convention screens.dc.html THEMES,
+   supplemented by Theme picker.dc.html for alert/cool/clockSub). Rules:
+   2px ink outlines, chunky radii, hard offset shadows (no blur), buttons with
+   a thick bottom border that compresses on hover. */
+
 * {
   box-sizing: border-box;
 }
 
+:root,
+body.theme-habbo {
+  --ink: #23324A;
+  --paper: #F4F0E4;
+  --surface: #FFFFFF;
+  --chip: #EDE7D6;
+  --field: #FFFFFF;
+  --text: #23324A;
+  --muted: #7A7461;
+  --shadow: #CFC7B0;
+  --track: #EDE7D6;
+  --brand: #17879B;
+  --on-brand: #F4F0E4;
+  --brand-text: #17879B;
+  --warm: #F2B53B;
+  --on-warm: #5C4413;
+  --cool: #17879B;
+  --on-cool: #FFFFFF;
+  --cool-bg: #DDEAEE;
+  --cool-text: #186071;
+  --cool-muted: #7C949C;
+  --note-bg: #FBEFD6;
+  --note-border: #EADFBE;
+  --note-text: #6B5A2E;
+  --go: #5FD1A0;
+  --on-go: #16223A;
+  --alert: #C6412F;
+  --clock-bg: #23324A;
+  --clock-shadow: #16223A;
+  --clock-text: #E8EDF3;
+  --clock-sub: #9BAAC0;
+  --nav-bg: #E8E1CB;
+  --nav-dot: #C9C2A6;
+  --nav-muted: #8A8468;
+}
+
+body.theme-mario {
+  --ink: #2B2118;
+  --paper: #FFF6E2;
+  --surface: #FFFFFF;
+  --chip: #FFE9B8;
+  --field: #FFFFFF;
+  --text: #2B2118;
+  --muted: #8A7A5E;
+  --shadow: #D6CBB0;
+  --track: #F0EBE0;
+  --brand: #E03A2F;
+  --on-brand: #FFF6E2;
+  --brand-text: #C22A20;
+  --warm: #FBC01D;
+  --on-warm: #4A3708;
+  --cool: #2A63C4;
+  --on-cool: #FFFFFF;
+  --cool-bg: #D9EDF7;
+  --cool-text: #1B4694;
+  --cool-muted: #7E8894;
+  --note-bg: #FFF1CE;
+  --note-border: #EFD9A0;
+  --note-text: #6B5312;
+  --go: #3FA34A;
+  --on-go: #FFF6E2;
+  --alert: #C22A20;
+  --clock-bg: #2A63C4;
+  --clock-shadow: #1B4694;
+  --clock-text: #EAF3FF;
+  --clock-sub: #BFDCFF;
+  --nav-bg: #FFE9B8;
+  --nav-dot: #D6C69C;
+  --nav-muted: #A08F6E;
+}
+
+body.theme-bubble {
+  --ink: #3A3350;
+  --paper: #FFF7F4;
+  --surface: #FFFFFF;
+  --chip: #F6E3EC;
+  --field: #FFFFFF;
+  --text: #3A3350;
+  --muted: #8A8299;
+  --shadow: #D8CFE0;
+  --track: #F1ECF4;
+  --brand: #8E7BD6;
+  --on-brand: #FFF7F4;
+  --brand-text: #6F5CB8;
+  --warm: #FFD98E;
+  --on-warm: #5C4A20;
+  --cool: #8E7BD6;
+  --on-cool: #FFFFFF;
+  --cool-bg: #EDE8FA;
+  --cool-text: #5B4A93;
+  --cool-muted: #8A85A0;
+  --note-bg: #FFF2DC;
+  --note-border: #F0DFC0;
+  --note-text: #6B5730;
+  --go: #5FCFA8;
+  --on-go: #1F3A31;
+  --alert: #D9527A;
+  --clock-bg: #3A3350;
+  --clock-shadow: #262035;
+  --clock-text: #F0EBF7;
+  --clock-sub: #B7AECB;
+  --nav-bg: #F6E3EC;
+  --nav-dot: #DCC9D5;
+  --nav-muted: #A093AA;
+}
+
+body.theme-sherbet {
+  --ink: #33261F;
+  --paper: #FFF3E9;
+  --surface: #FFFFFF;
+  --chip: #FFE2CF;
+  --field: #FFFFFF;
+  --text: #33261F;
+  --muted: #8C7A6B;
+  --shadow: #DCC9B8;
+  --track: #F4EADF;
+  --brand: #FF7A59;
+  --on-brand: #4A1D0D;
+  --brand-text: #C93F24;
+  --warm: #FFC94D;
+  --on-warm: #4A3406;
+  --cool: #2FB6A8;
+  --on-cool: #0E3733;
+  --cool-bg: #D9F0EC;
+  --cool-text: #14615A;
+  --cool-muted: #7C8F8C;
+  --note-bg: #FFF0D8;
+  --note-border: #EFDCB6;
+  --note-text: #6B5228;
+  --go: #2FB6A8;
+  --on-go: #0E3733;
+  --alert: #D2472B;
+  --clock-bg: #1F6F6B;
+  --clock-shadow: #14504D;
+  --clock-text: #E9F6F4;
+  --clock-sub: #A8D8D2;
+  --nav-bg: #FFE2CF;
+  --nav-dot: #E3C6B2;
+  --nav-muted: #A8907E;
+}
+
+body.theme-arcade {
+  --ink: #241C2E;
+  --paper: #2E2540;
+  --surface: #3E3352;
+  --chip: #241C2E;
+  --field: #251E33;
+  --text: #F4EFFA;
+  --muted: #A79CBB;
+  --shadow: #241C2E;
+  --track: #2E2540;
+  --brand: #FF5C8A;
+  --on-brand: #3D0E20;
+  --brand-text: #FF7FA4;
+  --warm: #FFC94D;
+  --on-warm: #3A2A05;
+  --cool: #7FC6F0;
+  --on-cool: #123049;
+  --cool-bg: #2A3B52;
+  --cool-text: #CFE3F2;
+  --cool-muted: #8296AB;
+  --note-bg: #3A3352;
+  --note-border: #4E4470;
+  --note-text: #DCD2EC;
+  --go: #5FE3C0;
+  --on-go: #123B32;
+  --alert: #FF5C8A;
+  --clock-bg: #3E3352;
+  --clock-shadow: #241C2E;
+  --clock-text: #EDE7F7;
+  --clock-sub: #A99CBE;
+  --nav-bg: #241C2E;
+  --nav-dot: #4A4060;
+  --nav-muted: #8B81A0;
+}
+
 body {
+  /* Derived shades, valid in every palette. */
+  --go-deep: color-mix(in srgb, var(--go) 62%, black);
+  --warm-deep: color-mix(in srgb, var(--warm) 62%, black);
+  --cell-empty: color-mix(in srgb, var(--paper) 80%, var(--muted));
+  --present: color-mix(in srgb, var(--go) 22%, var(--surface));
+
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f5f6f8;
-  color: #1f2937;
+  font-family: "Public Sans", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  background: var(--paper);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
-  color: inherit;
+  color: var(--brand-text);
+  text-decoration: none;
 }
 
+a:hover {
+  text-decoration: underline;
+}
+
+h1, h2, h3, h4,
 button {
-  padding: 10px 14px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  background: #111827;
-  color: white;
+  font-family: "Fredoka", sans-serif;
+}
+
+/* ---------- Buttons: thick bottom border that depresses on hover ---------- */
+
+button {
+  font-weight: 600;
   font-size: 14px;
+  padding: 10px 14px;
+  border: 2px solid var(--ink);
+  border-bottom-width: 4px;
+  border-radius: 12px;
+  background: var(--brand);
+  color: var(--on-brand);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-bottom-width: 2px;
+  margin-top: 2px;
 }
 
 button:disabled {
@@ -28,157 +239,551 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.btn-quiet {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.btn-danger {
+  background: var(--surface);
+  color: var(--alert);
+  padding: 7px 11px;
+  font-size: 13px;
+}
+
+/* Green and amber buttons take a deeper shade of their own fill, never ink. */
+.btn-go {
+  background: var(--go);
+  color: var(--on-go);
+  border-color: var(--go-deep);
+}
+
+.btn-warm {
+  background: var(--warm);
+  color: var(--on-warm);
+  border-color: var(--warm-deep);
+}
+
+.btn-ghost-go {
+  background: transparent;
+  color: var(--go);
+  border-color: var(--go);
+}
+
+.btn-dashed {
+  border-style: dashed;
+  border-bottom-width: 2px;
+  background: transparent;
+  color: var(--text);
+  border-radius: 14px;
+}
+
+.btn-dashed:hover:not(:disabled) {
+  background: var(--surface);
+  margin-top: 0;
+}
+
+/* A pill-shaped button (Floorplan / Booth / Maps rows). */
+.btn-pill {
+  border-radius: 999px;
+  font-size: 12.5px;
+  padding: 9px 10px;
+}
+
+.btn-pill.on {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+.btn-pill.off {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ---------- Shell ---------- */
+
 .portal-shell {
   display: flex;
   min-height: 100vh;
 }
 
 .sidebar {
-  width: 240px;
-  background: #111827;
-  color: white;
-  padding: 24px 16px;
+  width: 236px;
+  flex: none;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 20px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .sidebar h1 {
-  font-size: 20px;
-  margin: 0 0 24px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  padding: 0 6px;
+}
+
+.sidebar h1 .app-tile {
+  color: var(--on-brand);
 }
 
 .sidebar nav {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 3px;
+  flex: 1;
+}
+
+.sidebar .nav-group {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  opacity: 0.55;
+  padding: 14px 8px 5px;
 }
 
 .sidebar a {
-  text-decoration: none;
-  color: white;
-  padding: 12px 14px;
-  border-radius: 10px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  font-size: 13.5px;
+  color: var(--paper);
+  padding: 9px 10px;
+  border-radius: 9px;
   display: block;
 }
 
 .sidebar a:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+}
+
+.sidebar a.active {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+.sidebar .nav-stub {
+  font-family: "Fredoka", sans-serif;
+  font-size: 13.5px;
+  padding: 9px 10px;
+  opacity: 0.4;
+  cursor: default;
 }
 
 .main {
   flex: 1;
-  padding: 24px;
+  min-width: 0;
+  padding: 20px 12px 90px;
 }
 
+.page {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/* The 30x30 teal app tile and round avatar from the header spec. */
+.app-tile {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  background: var(--brand);
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  color: var(--on-brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  background: var(--nav-bg);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.avatar.small {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+
+.avatar.mid {
+  width: 26px;
+  height: 26px;
+  font-size: 10px;
+}
+
+.avatar.present {
+  background: var(--present);
+}
+
+/* Back-chevron square used at the top of detail screens. */
+.back-tile {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.back-tile:hover:not(:disabled) {
+  border-bottom-width: 2px;
+  margin-top: 0;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.title-row h2 {
+  flex: 1;
+  font-weight: 600;
+  font-size: 16px;
+  margin: 0;
+}
+
+.title-row .meta {
+  display: block;
+}
+
+/* ---------- Bottom nav (phone) ---------- */
+
+.bottom-nav {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+  border-top: 3px solid var(--ink);
+  background: var(--nav-bg);
+  padding: 9px 4px calc(15px + env(safe-area-inset-bottom, 0px));
+}
+
+.bottom-nav a {
+  flex: 1;
+  text-align: center;
+  font-family: "Fredoka", sans-serif;
+  font-size: 11px;
+  color: var(--nav-muted);
+  text-decoration: none;
+}
+
+.bottom-nav a .nav-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--nav-dot);
+  margin: 0 auto 6px;
+}
+
+.bottom-nav a.active {
+  font-weight: 600;
+  color: var(--brand-text);
+}
+
+.bottom-nav a.active .nav-dot {
+  background: var(--brand);
+}
+
+@media (max-width: 800px) {
+  .sidebar {
+    display: none;
+  }
+
+  .bottom-nav {
+    display: flex;
+  }
+
+  .main {
+    padding: 12px 12px 110px;
+  }
+}
+
+/* ---------- Page header ---------- */
+
 .page-header {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .page-header h2 {
-  margin: 0 0 6px 0;
-  font-size: 28px;
+  margin: 0 0 3px 0;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.015em;
 }
 
 .page-header p {
   margin: 0;
-  color: #6b7280;
+  color: var(--muted);
+  font-size: 12.5px;
 }
+
+/* ---------- Cards ---------- */
 
 .card {
-  background: white;
+  background: var(--surface);
+  border: 2px solid var(--ink);
   border-radius: 16px;
-  padding: 18px;
-  margin-bottom: 18px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  padding: 12px 13px;
+  margin-bottom: 13px;
+  box-shadow: 0 4px 0 var(--shadow);
 }
 
-.card h3,
+.card h3 {
+  margin: 0 0 10px 0;
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .card h4 {
-  margin-top: 0;
+  font-weight: 600;
+  font-size: 13.5px;
+  margin: 14px 0 8px;
+}
+
+/* A card whose first child is a tinted section strip. */
+.card.stripped {
+  padding: 0;
+  overflow: hidden;
+}
+
+.card.stripped > .strip {
+  border-bottom: 2px solid var(--ink);
+}
+
+.card.stripped > .card-body {
+  padding: 12px 13px;
+}
+
+.strip {
+  background: var(--chip);
+  padding: 8px 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.strip.cool {
+  background: var(--cool-bg);
+  color: var(--cool-text);
+}
+
+.strip.brand {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+.strip.warm {
+  background: var(--warm);
+  color: var(--on-warm);
+}
+
+.strip .strip-side {
+  font-weight: 500;
+  font-size: 11.5px;
+}
+
+/* The navy clock-style card. */
+.card.navy {
+  background: var(--clock-bg);
+  color: var(--clock-text);
+  box-shadow: 0 4px 0 var(--clock-shadow);
+}
+
+.card.navy .kicker {
+  color: var(--go);
+}
+
+.kicker {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Cool info card (checklists, notices). */
+.card.cool {
+  background: var(--cool-bg);
+  color: var(--cool-text);
+}
+
+.card.cool h3 {
+  color: var(--cool-text);
+}
+
+/* Amber note callout. */
+.note-block {
+  background: var(--note-bg);
+  border: 2px solid var(--note-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--note-text);
 }
 
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 13px;
+  margin-bottom: 13px;
 }
 
 .action-card {
-  background: white;
+  background: var(--surface);
+  border: 2px solid var(--ink);
   border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  padding: 14px;
+  box-shadow: 0 4px 0 var(--shadow);
 }
 
 .action-card h3 {
-  margin-top: 0;
-  margin-bottom: 8px;
+  margin: 0 0 6px;
+  font-weight: 600;
+  font-size: 15px;
 }
 
 .action-card p {
-  margin-top: 0;
-  margin-bottom: 14px;
-  color: #6b7280;
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12.5px;
 }
 
-.file-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
+/* ---------- Pills & badges ---------- */
 
-.file-list li {
-  padding: 10px 0;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.file-list li:last-child {
-  border-bottom: none;
-}
-
-.file-list a {
-  text-decoration: none;
-  color: #2563eb;
-}
-
-.file-list a:hover {
-  text-decoration: underline;
-}
-
-.meta {
-  color: #6b7280;
-  font-size: 14px;
-}
-
+.pill,
+.phase-badge,
 .status-badge {
   display: inline-block;
-  padding: 6px 10px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  padding: 3px 9px;
+  border: 2px solid var(--ink);
   border-radius: 999px;
-  font-size: 13px;
-  font-weight: bold;
-  background: #e5e7eb;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.pill-ink {
+  background: var(--ink);
+  color: var(--warm);
+  border-color: var(--ink);
+}
+
+/* Over a colored band a paper pill stays legible in every palette (arcade!). */
+.pill-paper {
+  background: var(--paper);
+  color: var(--text);
+}
+
+.status-in,
+.pill-go {
+  background: var(--go);
+  color: var(--on-go);
+}
+
+.status-break,
+.pill-warm {
+  background: var(--warm);
+  color: var(--on-warm);
 }
 
 .status-out {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--chip);
+  color: var(--muted);
 }
 
-.status-in {
-  background: #dcfce7;
-  color: #166534;
+.pill-late {
+  background: var(--alert);
+  color: #fff;
 }
 
-.status-break {
-  background: #fef3c7;
-  color: #92400e;
+.phase-upcoming {
+  background: var(--warm);
+  color: var(--on-warm);
+}
+
+.phase-active {
+  background: var(--go);
+  color: var(--on-go);
+}
+
+.phase-past {
+  background: var(--chip);
+  color: var(--muted);
+}
+
+.phase-draft {
+  background: var(--note-bg);
+  color: var(--note-text);
+}
+
+/* ---------- Meta text ---------- */
+
+.meta {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.empty-state {
+  color: var(--muted);
+  font-style: italic;
+  font-size: 12.5px;
 }
 
 .button-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
-  margin-top: 14px;
+  margin-top: 12px;
 }
+
+/* ---------- Login ---------- */
 
 .login-wrap {
   min-height: 100vh;
@@ -186,237 +791,130 @@ button:disabled {
   justify-content: center;
   align-items: center;
   padding: 24px;
+  background: var(--paper);
 }
 
 .login-card {
   width: 100%;
-  max-width: 420px;
-  background: white;
-  border-radius: 18px;
-  padding: 28px;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+  max-width: 400px;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  padding: 26px;
+  box-shadow: 0 4px 0 var(--shadow);
 }
 
 .login-card h1 {
-  margin-top: 0;
+  margin: 0 0 4px;
+  font-weight: 600;
+  font-size: 24px;
 }
 
-.empty-state {
-  color: #6b7280;
-  font-style: italic;
-}
-
-@media (max-width: 800px) {
-  .portal-shell {
-    flex-direction: column;
-  }
-
-  .sidebar {
-    width: 100%;
-  }
-
-  .main {
-    padding: 16px;
-  }
-}
-
-.doc-viewer {
-  line-height: 1.6;
-}
-
-.doc-viewer h1,
-.doc-viewer h2,
-.doc-viewer h3,
-.doc-viewer h4 {
-  margin-top: 1.2em;
-  margin-bottom: 0.5em;
-}
-
-.doc-viewer p {
-  margin: 0 0 1em 0;
-}
-
-.doc-viewer a {
-  color: #2563eb;
-  text-decoration: underline;
-}
-
-.doc-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1em 0;
-}
-
-.doc-table td {
-  border: 1px solid #d1d5db;
-  padding: 8px;
-  vertical-align: top;
-}
-
-.mobile-topbar {
-  display: none;
-}
-
-.hamburger-btn {
-  background: #111827;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.mobile-topbar-title {
-  font-weight: bold;
-  font-size: 18px;
-}
-
-.mobile-menu-overlay {
-  display: none;
-}
-
-.mobile-menu-overlay.show {
-  display: block;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  z-index: 20;
-}
-
-@media (max-width: 800px) {
-  .portal-shell {
-    flex-direction: column;
-  }
-
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 260px;
-    height: 100vh;
-    z-index: 30;
-    transform: translateX(-100%);
-    transition: transform 0.2s ease;
-  }
-
-  .sidebar.mobile-open {
-    transform: translateX(0);
-  }
-
-  .main {
-    padding: 16px;
-  }
-
-  .mobile-topbar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-}
-
-/* ---------- Forms, tables and shared bits ---------- */
+/* ---------- Forms ---------- */
 
 .breadcrumb {
-  margin-bottom: 12px;
-}
-
-.breadcrumb a {
-  color: #2563eb;
-  text-decoration: none;
-}
-
-.breadcrumb a:hover {
-  text-decoration: underline;
+  margin-bottom: 10px;
 }
 
 /* Style every text-ish input by exclusion, so adding a new input type (url,
-   number, tel…) can't silently fall back to the browser's default look. */
+   number, tel…) can't silently fall back to the browser's default look.
+   Fields use the field token, not white — inputs go dark in arcade. */
 input:not([type="checkbox"]):not([type="radio"]),
 select,
 textarea {
   width: 100%;
-  padding: 9px 10px;
-  border: 1px solid #d1d5db;
+  height: 38px;
+  padding: 0 11px;
+  border: 2px solid var(--ink);
   border-radius: 10px;
   font-size: 14px;
-  font-family: inherit;
-  background: white;
-  color: inherit;
+  font-family: "Public Sans", system-ui, sans-serif;
+  background: var(--field);
+  color: var(--text);
+}
+
+textarea {
+  height: auto;
+  padding: 9px 11px;
+  line-height: 1.45;
+  resize: vertical;
 }
 
 input[type="checkbox"] {
-  width: 17px;
-  height: 17px;
-  accent-color: #111827;
+  width: 19px;
+  height: 19px;
+  accent-color: var(--brand);
   cursor: pointer;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-  margin-bottom: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .form-grid label,
 .block-label {
   display: block;
-  font-size: 14px;
-  font-weight: bold;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .form-grid label > input,
 .form-grid label > select,
 .block-label > textarea {
-  margin-top: 6px;
+  margin-top: 4px;
   font-weight: normal;
 }
 
 .block-label {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .checkbox-label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  margin-bottom: 14px;
+  gap: 10px;
+  font-size: 13.5px;
+  margin-bottom: 12px;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  padding: 11px 12px;
+  cursor: pointer;
 }
 
 .checkbox-label input[type="checkbox"] {
-  width: auto;
+  width: 19px;
 }
 
 .inline-form {
   display: flex;
   gap: 8px;
   margin-top: 8px;
+  align-items: center;
 }
 
 .form-error {
   display: none;
-  color: #991b1b;
-  background: #fee2e2;
+  color: var(--alert);
+  background: color-mix(in srgb, var(--alert) 10%, var(--surface));
+  border: 2px solid var(--alert);
   border-radius: 10px;
   padding: 10px 12px;
-  font-size: 14px;
-  margin: 12px 0 0 0;
-}
-
-.btn-quiet {
-  background: #e5e7eb;
-  color: #111827;
-}
-
-.btn-danger {
-  background: #fee2e2;
-  color: #991b1b;
-  padding: 6px 10px;
   font-size: 13px;
+  margin: 12px 0 0 0;
 }
 
 .card-head {
@@ -427,9 +925,7 @@ input[type="checkbox"] {
   flex-wrap: wrap;
 }
 
-.card-head h3 {
-  margin-bottom: 8px;
-}
+/* ---------- Tables ---------- */
 
 .table-scroll {
   overflow-x: auto;
@@ -444,16 +940,18 @@ input[type="checkbox"] {
 .grid-table th,
 .grid-table td {
   text-align: left;
-  padding: 10px 12px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 10px 10px 10px 0;
+  border-bottom: 2px solid var(--track);
   vertical-align: middle;
 }
 
 .grid-table th {
-  font-size: 13px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #6b7280;
+  letter-spacing: 0.06em;
+  color: var(--muted);
 }
 
 .grid-table .center,
@@ -469,23 +967,13 @@ input[type="checkbox"] {
   opacity: 0.5;
 }
 
-.pill {
-  display: inline-block;
-  background: #e5e7eb;
-  color: #374151;
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 12px;
-  vertical-align: middle;
-}
-
 .detail-row td {
-  background: #f9fafb;
-  border-bottom: 2px solid #e5e7eb;
+  background: var(--paper);
+  border-bottom: 2px solid var(--track);
 }
 
 .detail-panel h4 {
-  margin: 18px 0 8px 0;
+  margin: 16px 0 8px 0;
 }
 
 .detail-panel h4:first-child {
@@ -494,105 +982,44 @@ input[type="checkbox"] {
 
 .perm-rows {
   display: grid;
-  gap: 10px;
+  gap: 9px;
 }
 
 .perm-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  background: white;
-  border: 1px solid #e5e7eb;
+  gap: 14px;
+  background: var(--surface);
+  border: 2px solid var(--ink);
   border-radius: 12px;
-  padding: 10px 12px;
-  font-size: 14px;
+  padding: 9px 11px;
+  font-size: 13px;
 }
 
 .perm-row select {
   width: auto;
-  min-width: 160px;
+  min-width: 150px;
 }
 
-/* ---------- Conventions ---------- */
+/* ---------- Lists ---------- */
 
-.badge-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.phase-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: bold;
-  background: #e5e7eb;
-  color: #374151;
-}
-
-.phase-upcoming {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.phase-active {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.phase-past {
-  background: #e5e7eb;
-  color: #4b5563;
-}
-
-.phase-draft {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.info-list {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 8px 20px;
-  margin: 0 0 4px 0;
-  font-size: 15px;
-}
-
-.info-list dt {
-  color: #6b7280;
-}
-
-.info-list dd {
+.file-list {
+  list-style: none;
+  padding: 0;
   margin: 0;
 }
 
-/* Brief highlight so it's obvious where a "jump to editor" button landed you. */
-.flash-target {
-  animation: flash-highlight 1.6s ease-out;
-  border-radius: 8px;
+.file-list li {
+  padding: 9px 0;
+  border-bottom: 2px solid var(--track);
 }
 
-@keyframes flash-highlight {
-  0%, 40% { background: #fef08a; box-shadow: 0 0 0 6px #fef08a; }
-  100% { background: transparent; box-shadow: 0 0 0 6px transparent; }
+.file-list li:last-child {
+  border-bottom: none;
 }
 
-.lookup-bar {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
-.lookup-bar .meta {
-  flex: 1;
-  min-width: 220px;
-  line-height: 1.5;
-}
+/* ---------- Clock page ---------- */
 
 .hours-table {
   width: 100%;
@@ -601,12 +1028,13 @@ input[type="checkbox"] {
 }
 
 .hours-table td {
-  padding: 6px 10px 6px 0;
-  border-bottom: 1px solid #f3f4f6;
-  font-size: 14px;
+  padding: 7px 10px 7px 0;
+  border-bottom: 2px solid var(--track);
+  font-size: 13px;
 }
 
 .hours-table .net-cell {
+  font-family: "Fredoka", sans-serif;
   text-align: right;
   font-weight: 600;
   white-space: nowrap;
@@ -618,43 +1046,183 @@ input[type="checkbox"] {
 }
 
 .shift-incomplete td {
-  color: #991b1b;
+  color: var(--alert);
 }
 
 .shift-long .net-cell {
-  color: #92400e;
+  color: var(--note-text);
 }
 
 .report-range {
   align-items: flex-end;
 }
 
-.hours-grid {
+.report-range label {
+  flex: 1;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.report-range input {
+  margin-top: 4px;
+}
+
+/* ---------- Conventions ---------- */
+
+.badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.info-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-}
-
-.hours-day {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 12px 14px;
-}
-
-.hours-day h4 {
-  margin: 0 0 8px 0;
-}
-
-.hours-day .info-list {
   grid-template-columns: max-content 1fr;
-  gap: 4px 14px;
-  font-size: 14px;
+  gap: 8px 18px;
+  margin: 0 0 4px 0;
+  font-size: 13px;
+}
+
+.info-list dt {
+  color: var(--muted);
+}
+
+.info-list dd {
+  margin: 0;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+}
+
+/* Full-width hero band under the header: 2px ink top and bottom. */
+.hero-band {
+  border-top: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  padding: 14px;
+  margin: 0 -12px 13px;
+}
+
+.hero-band.warm {
+  background: var(--warm);
+  color: var(--on-warm);
+}
+
+.hero-band.brand {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+.hero-band h2 {
+  margin: 6px 0 3px;
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: -0.015em;
+}
+
+.hero-band .hero-sub {
+  font-size: 13px;
+}
+
+.hero-band.center {
+  text-align: center;
+}
+
+/* Segmented hours bar. */
+.segbar {
+  position: relative;
+  display: flex;
+  height: 30px;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.segbar .seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.segbar .seg + .seg {
+  border-left: 2px solid var(--ink);
+}
+
+.segbar .seg.set {
+  background: var(--chip);
+  color: var(--muted);
+}
+
+.segbar .seg.vip {
+  background: var(--warm);
+  color: var(--on-warm);
+}
+
+.segbar .seg.open {
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: 11px;
+}
+
+.segbar .now-marker {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 4px;
+  background: var(--ink);
+  border-radius: 2px;
+}
+
+.segbar-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+/* Brief highlight so it's obvious where a "jump to editor" button landed you. */
+.flash-target {
+  animation: flash-highlight 1.6s ease-out;
+  border-radius: 8px;
+}
+
+@keyframes flash-highlight {
+  0%, 40% { background: var(--warm); box-shadow: 0 0 0 6px var(--warm); }
+  100% { background: transparent; box-shadow: 0 0 0 6px transparent; }
+}
+
+.lookup-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.lookup-bar .meta {
+  flex: 1;
+  min-width: 200px;
+  line-height: 1.5;
 }
 
 .notes-block {
   white-space: pre-wrap;
   line-height: 1.6;
   margin: 0;
+  font-size: 13px;
 }
 
 .shift-list {
@@ -665,10 +1233,9 @@ input[type="checkbox"] {
 
 .shift-list li {
   display: flex;
-  gap: 16px;
-  padding: 10px 12px;
-  border-bottom: 1px solid #e5e7eb;
-  border-radius: 10px;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 2px solid var(--track);
 }
 
 .shift-list li:last-child {
@@ -676,22 +1243,27 @@ input[type="checkbox"] {
 }
 
 .shift-mine {
-  background: #eff6ff;
+  background: color-mix(in srgb, var(--go) 12%, transparent);
+  border-radius: 8px;
+  padding: 9px 8px !important;
 }
 
 .shift-time {
-  min-width: 150px;
-  font-variant-numeric: tabular-nums;
-  color: #374151;
+  min-width: 130px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 13px;
 }
 
 .layout-frame {
   position: relative;
   width: 100%;
   padding-top: 62%;
-  border-radius: 12px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
   overflow: hidden;
-  background: #f3f4f6;
+  /* Fixed light plate so the empty state stays legible in arcade. */
+  background: #F4F0E4;
 }
 
 .layout-frame iframe {
@@ -709,12 +1281,7 @@ input[type="checkbox"] {
 }
 
 .checklist li {
-  padding: 10px 0;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.checklist li:last-child {
-  border-bottom: none;
+  padding: 8px 0;
 }
 
 .checklist label {
@@ -723,20 +1290,111 @@ input[type="checkbox"] {
   gap: 10px;
   cursor: pointer;
   line-height: 1.4;
+  font-size: 13px;
 }
 
 .checked-label {
   text-decoration: line-through;
-  color: #6b7280;
+  color: var(--cool-muted);
 }
 
 .check-meta {
-  margin-left: 27px;
-  font-size: 13px;
+  margin-left: 29px;
+  font-size: 11.5px;
 }
 
+/* Progress cells row (checklist progress, shift fill). */
+.cell-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.cell-row .cell {
+  flex: 1;
+  height: 10px;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  background: var(--track);
+}
+
+.cell-row .cell.done {
+  background: var(--go);
+}
+
+/* ---------- Break battery ---------- */
+
+.battery-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.battery {
+  flex: 1;
+  display: flex;
+  gap: 3px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  padding: 3px;
+  background: var(--chip);
+}
+
+.battery .bcell {
+  flex: 1;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--cell-empty);
+}
+
+.battery .bcell.full {
+  background: var(--go);
+}
+
+.battery .bcell.draining {
+  background: var(--warm);
+}
+
+.battery .bdivider {
+  width: 2px;
+  height: 16px;
+  background: var(--ink);
+  flex: none;
+}
+
+.battery-nub {
+  width: 5px;
+  height: 14px;
+  border: 2px solid var(--ink);
+  border-left: none;
+  border-radius: 0 3px 3px 0;
+  background: var(--ink);
+  flex: none;
+}
+
+/* Miniature battery (convention shift card, MARCUS SEES preview). */
+.battery.mini {
+  flex: none;
+  width: 74px;
+  padding: 2px;
+  border-color: var(--go);
+  background: transparent;
+}
+
+.battery.mini .bcell {
+  height: 11px;
+  background: var(--go);
+}
+
+.battery.mini .bdivider {
+  height: 11px;
+  background: var(--clock-bg);
+}
+
+/* ---------- Manage section ---------- */
+
 .manage-card {
-  border: 2px dashed #d1d5db;
+  border-style: dashed;
   box-shadow: none;
 }
 
@@ -744,29 +1402,173 @@ input[type="checkbox"] {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .manage-list {
-  border-top: 1px solid #e5e7eb;
+  border-top: 2px solid var(--track);
   padding-top: 12px;
   margin-top: 12px;
 }
 
-@media (max-width: 600px) {
-  .shift-list li {
-    flex-direction: column;
-    gap: 4px;
-  }
+/* ---------- Doc viewer ---------- */
 
-  .perm-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
+.doc-viewer {
+  line-height: 1.6;
+  font-size: 14px;
+}
 
-  .perm-row select {
-    width: 100%;
+.doc-viewer h1,
+.doc-viewer h2,
+.doc-viewer h3,
+.doc-viewer h4 {
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+}
+
+.doc-viewer p {
+  margin: 0 0 1em 0;
+}
+
+.doc-viewer a {
+  color: var(--brand-text);
+  text-decoration: underline;
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+
+.doc-table td {
+  border: 1px solid var(--track);
+  padding: 8px;
+  vertical-align: top;
+}
+
+/* ---------- Theme picker rows ---------- */
+
+.theme-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  padding: 11px 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--shadow);
+  margin-bottom: 10px;
+}
+
+.theme-row:hover {
+  opacity: 0.9;
+}
+
+.theme-row .swatches {
+  display: flex;
+  gap: 3px;
+  flex: none;
+}
+
+.theme-row .swatch {
+  width: 13px;
+  height: 30px;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+}
+
+.theme-row .picked {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--paper);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-row .picked.on {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+/* ---------- Dashboard bits ---------- */
+
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 12px;
+}
+
+.dash-header .who {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.dash-header .date {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.event-band {
+  background: var(--warm);
+  border-top: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+  padding: 9px 14px;
+  margin: 0 -12px 13px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+}
+
+.event-band .band-title {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--on-warm);
+  flex: 1;
+}
+
+.roster-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 0;
+  border-bottom: 2px solid var(--track);
+}
+
+.roster-row:last-child {
+  border-bottom: none;
+}
+
+.roster-row.later {
+  opacity: 0.6;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (min-width: 801px) {
+  .main {
+    padding: 26px 24px 60px;
   }
+}
+
+/* Legacy hooks kept so nothing 404s visually while screens are rebuilt. */
+.mobile-topbar {
+  display: none;
+}
+
+.mobile-menu-overlay {
+  display: none;
 }

@@ -90,8 +90,81 @@ const PAGE_URLS = {
   "my-folder": () => "/my-folder",
   clock: () => "/clock",
   "users-roles": () => "/users-roles",
+  appearance: () => "/appearance",
   doc: (d) => `/doc/${encodeURIComponent(d.id)}`
 };
+
+/** The five palettes. Applied as a class on <body> from the user's record. */
+const THEMES = [
+  { id: "habbo", name: "Panda", blurb: "Teal and cream · the default", swatches: ["#17879B", "#F2B53B", "#5FD1A0"], ink: "#23324A" },
+  { id: "mario", name: "Mushroom Kingdom", blurb: "Red, sky blue, coin yellow", swatches: ["#E03A2F", "#2A63C4", "#FBC01D"], ink: "#2B2118" },
+  { id: "bubble", name: "Bubblegum", blurb: "Pink, lavender, mint", swatches: ["#F2799B", "#8E7BD6", "#5FCFA8"], ink: "#3A3350" },
+  { id: "sherbet", name: "Sherbet", blurb: "Coral and turquoise", swatches: ["#FF7A59", "#2FB6A8", "#FFC94D"], ink: "#33261F" },
+  { id: "arcade", name: "Arcade night", blurb: "Dark · easier in a dim hall", swatches: ["#2E2540", "#FF5C8A", "#5FE3C0"], ink: "#241C2E" }
+];
+
+function applyTheme(themeId) {
+  const id = THEMES.some(t => t.id === themeId) ? themeId : "habbo";
+  document.body.className = `theme-${id}`;
+}
+
+/** "MK" from "Marcus Kwan" — used on avatars. */
+function initialsOf(fullName) {
+  const parts = String(fullName || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+}
+
+/** 95 -> "1h 35m", 40 -> "40m". */
+function formatMinutes(total) {
+  const mins = Math.max(0, Math.round(total));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
+}
+
+/** Today's date in the browser's own timezone, as YYYY-MM-DD. */
+function todayLocal() {
+  return new Date().toLocaleDateString("en-CA");
+}
+
+/**
+ * The break battery: six cells that empty left to right, so the charge that's
+ * left sits against the terminal nub. A two-break allotment gets a divider
+ * down the middle marking the split.
+ *
+ * Cells are a proportion of the allotment, not a fixed ten minutes each —
+ * on the design's 60-minute example that's the same ceil(left / 10), but a
+ * 30-minute allotment still shows a full battery when nothing's been used.
+ */
+function batteryHtml(leftMinutes, totalMinutes, breakCount, { draining = false, mini = false } = {}) {
+  const left = Math.max(0, leftMinutes);
+  const cellsRemaining = totalMinutes > 0 ? Math.ceil((left / totalMinutes) * 6) : 0;
+  const state = draining ? "draining" : "full";
+
+  const cell = (i) =>
+    `<div class="bcell ${i > 6 - cellsRemaining ? state : ""}"></div>`;
+
+  const cells = [1, 2, 3]
+    .map(cell)
+    .concat(breakCount > 1 ? ['<div class="bdivider"></div>'] : [])
+    .concat([4, 5, 6].map(cell))
+    .join("");
+
+  return `
+    <div class="battery-row">
+      <div class="battery${mini ? " mini" : ""}">${cells}</div>
+      <div class="battery-nub"></div>
+    </div>
+  `;
+}
+
+/** "2 × 30 min" when the allotment is split, else "60 min". */
+function breakBasisText(totalMinutes, breakCount) {
+  return breakCount > 1
+    ? `${breakCount} × ${Math.round(totalMinutes / breakCount)} min`
+    : `${totalMinutes} min`;
+}
 
 function pushPageState(view, data = {}) {
   const url = PAGE_URLS[view] ? PAGE_URLS[view](data) : location.pathname;

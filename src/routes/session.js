@@ -24,9 +24,30 @@ export async function handleMe(request, env) {
       full_name: user.full_name,
       email: user.email,
       role: user.role,
+      theme_id: user.theme_id || "habbo",
       permissions: user.permissions
     }
   });
+}
+
+export const THEME_IDS = ["habbo", "mario", "bubble", "sherbet", "arcade"];
+
+/** Appearance: everyone picks their own, stored on the user not the device. */
+export async function handleSetTheme(request, env) {
+  const user = await getCurrentUser(request, env);
+  if (!user) return { ok: false, error: "Not logged in" };
+
+  const body = await readJsonBody(request);
+
+  if (!THEME_IDS.includes(body.theme_id)) {
+    return { ok: false, error: "That isn't one of the themes." };
+  }
+
+  await env.DB.prepare(
+    `UPDATE employees SET theme_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+  ).bind(body.theme_id, user.id).run();
+
+  return { ok: true, theme_id: body.theme_id };
 }
 
 export async function handleLogin(request, env) {

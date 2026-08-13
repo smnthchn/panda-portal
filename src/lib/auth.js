@@ -179,7 +179,7 @@ export async function getCurrentUser(request, env) {
   if (!sessionId) return null;
 
   const row = await env.DB.prepare(
-    `SELECT e.id, e.full_name, e.email, e.role, e.google_drive_folder_id
+    `SELECT e.id, e.full_name, e.email, e.role, e.google_drive_folder_id, e.theme_id
      FROM sessions s
      JOIN employees e ON e.id = s.employee_id
      WHERE s.id = ? AND s.expires_at > datetime('now') AND e.is_active = 1`

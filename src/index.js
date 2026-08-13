@@ -1,5 +1,6 @@
 import { json, matchPath, BadRequest } from "./lib/http.js";
-import { handleMe, handleLogin, handleLogout } from "./routes/session.js";
+import { handleMe, handleLogin, handleLogout, handleSetTheme } from "./routes/session.js";
+import { handleDashboard } from "./routes/dashboard.js";
 import { handleKnowledgeBase, handleMyFolder, handleDocContent } from "./routes/knowledge.js";
 import {
   handleClockStatus,
@@ -25,6 +26,7 @@ import {
   handleDeleteConventionDay,
   handleCreateShift,
   handleDeleteShift,
+  handleSetShiftBreak,
   handleCreateChecklist,
   handleDeleteChecklist,
   handleCreateChecklistItem,
@@ -43,6 +45,9 @@ const ROUTES = [
   ["GET", "/api/me", handleMe, { raw: true }],
   ["POST", "/api/login", handleLogin, { raw: true }],
   ["POST", "/api/logout", handleLogout, { raw: true }],
+  ["PUT", "/api/theme", handleSetTheme],
+
+  ["GET", "/api/dashboard", handleDashboard],
 
   ["GET", "/api/knowledge-base", handleKnowledgeBase],
   ["GET", "/api/my-folder", handleMyFolder],
@@ -74,6 +79,7 @@ const ROUTES = [
 
   ["POST", "/api/conventions/:id/shifts", handleCreateShift],
   ["DELETE", "/api/convention-shifts/:id", handleDeleteShift],
+  ["PUT", "/api/convention-shifts/:id/break", handleSetShiftBreak],
 
   ["POST", "/api/conventions/:id/checklists", handleCreateChecklist],
   ["DELETE", "/api/convention-checklists/:id", handleDeleteChecklist],
