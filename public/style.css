@@ -1665,6 +1665,28 @@ textarea::placeholder {
   background: var(--paper);
 }
 
+/* Read-only versions of the editable cells, for anyone who isn't a boss. */
+.cell-static {
+  display: block;
+  padding: 0 7px;
+  font-size: 12.5px;
+}
+
+.type-pill.static {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+
+.signage-cell.static {
+  cursor: default;
+}
+
+.signage-cell.static:hover {
+  background: none;
+}
+
 .sig-tag {
   font-family: "Fredoka", sans-serif;
   font-weight: 600;
@@ -1750,12 +1772,71 @@ textarea::placeholder {
   cursor: default;
 }
 
+/* The phone surface: a card per unit instead of a spreadsheet you'd have to
+   drag sideways to read. */
+.shelf-list-wall {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 14px 2px 7px;
+}
+
+.shelf-list-card.done {
+  background: color-mix(in srgb, var(--go) 10%, var(--surface));
+}
+
+.shelf-list-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.shelf-list-code {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 17px;
+  min-width: 46px;
+}
+
+.shelf-list-stages {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 8px;
+  margin-top: 11px;
+  border-top: 2px solid var(--track);
+  padding-top: 10px;
+}
+
+.shelf-list-stage {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
 /* The booth map, to scale at 31px per foot. */
 .booth-layout {
   display: flex;
   gap: 20px;
   align-items: flex-start;
   flex-wrap: wrap;
+}
+
+.booth-map-column {
+  max-width: 100%;
+}
+
+/* The booth is 502px wide; a phone scrolls it rather than the whole page. */
+.booth-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  padding-bottom: 4px;
 }
 
 .booth-ruler {

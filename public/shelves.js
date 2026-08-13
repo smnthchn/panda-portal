@@ -34,20 +34,27 @@ async function renderShelfPlan(slug, pushState = true) {
   drawShelfPlan();
 }
 
+/** The grid is a spreadsheet; a phone gets a list of units instead. */
+function onPhone() {
+  return window.matchMedia("(max-width: 800px)").matches;
+}
+
 function drawShelfPlan() {
-  const { convention, positions, canManage } = shelfData;
+  const { positions } = shelfData;
 
   if (!positions.length) {
     drawEmptyShelfPlan();
     return;
   }
 
+  const list = onPhone();
+
   pageArea().innerHTML = `
     ${shelfHeader()}
-    ${shelfView === "grid" ? shelfGrid() : boothMap()}
+    ${shelfView === "map" ? boothMap() : list ? shelfList() : shelfGrid()}
   `;
 
-  markActiveNav("conventions", { wide: true });
+  markActiveNav("conventions", { wide: !list });
   wireShelfPlan();
 }
 
@@ -59,18 +66,17 @@ function drawEmptyShelfPlan() {
     <div class="title-row">
       <button class="back-tile" id="shelfBackBtn">‹</button>
       <div style="flex:1;">
-        <h2 style="margin:0;">Shelf plan</h2>
+        <h2 style="margin:0;">Booth Plan</h2>
         <div class="meta">${esc(convention.name)}</div>
       </div>
     </div>
 
     <div class="card">
-      <h3>No plan yet</h3>
+      <h3>No booth plan yet</h3>
       <p style="margin:0 0 12px; font-size:13px; line-height:1.5;">
-        A plan lists every shelving unit in the booth — what's on it, what
-        signage it needs, and how far through prep it is. Start from the
-        standard 31-unit booth, or carry forward a previous show's plan and
-        adjust it.
+        A booth plan lists every shelving unit — what's on it, what signage it
+        needs, and how far through prep it is. Start from the standard 31-unit
+        booth, or carry forward a previous show's plan and adjust it.
       </p>
       <p class="form-error" id="shelfError"></p>
       ${canManage ? `
@@ -129,7 +135,7 @@ function shelfHeader() {
           ${esc(convention.name.toUpperCase())}${convention.booth_number ? ` · BOOTH ${esc(convention.booth_number)}` : ""}
           · ${booth.width}′ × ${booth.depth}′
         </div>
-        <h2 style="margin:0;">Shelf plan</h2>
+        <h2 style="margin:0;">Booth Plan</h2>
         <div class="meta">${positions.length} positions · ${left} boxes left to tick</div>
       </div>
       <div class="button-row" style="margin:0;">
@@ -223,38 +229,56 @@ function shelfGrid() {
   `;
 }
 
+/**
+ * A row. Staff tick boxes and nothing else — the plan itself is the boss's,
+ * so for everyone else the editable fields render as plain text rather than
+ * as controls that would be refused by the server anyway.
+ */
 function shelfRow(position) {
   const applicable = position.stages.filter((_, stage) => stageApplies(position, stage));
   const complete = applicable.every(Boolean);
+  const canEdit = shelfData.canManage;
 
   return `
     <div class="shelf-row${complete ? " done" : ""}" data-row="${position.id}">
       <span class="col-shelf">${esc(position.code)}</span>
 
       <span class="col-product">
-        <input class="cell-input" type="text" value="${esc(position.product)}"
-               data-field="product" data-position="${position.id}" placeholder="—">
+        ${canEdit
+          ? `<input class="cell-input" type="text" value="${esc(position.product)}"
+                    data-field="product" data-position="${position.id}" placeholder="—">`
+          : `<span class="cell-static">${esc(position.product || "—")}</span>`}
       </span>
 
       <span class="col-type">
-        <select class="type-pill" data-field="unit_type" data-position="${position.id}">
-          ${shelfData.unitTypes.map(type => `
-            <option value="${esc(type)}" ${type === position.unit_type ? "selected" : ""}>${esc(type)}</option>
-          `).join("")}
-        </select>
+        ${canEdit
+          ? `<select class="type-pill" data-field="unit_type" data-position="${position.id}">
+              ${shelfData.unitTypes.map(type => `
+                <option value="${esc(type)}" ${type === position.unit_type ? "selected" : ""}>${esc(type)}</option>
+              `).join("")}
+            </select>`
+          : `<span class="type-pill static">${esc(position.unit_type || "—")}</span>`}
       </span>
 
       <span class="col-signage">
-        <button class="signage-cell" data-signage="${position.id}">
-          ${position.signage.length
-            ? position.signage.map(code => signageTag(code)).join("")
-            : `<span class="signage-empty">+ SIGNAGE</span>`}
-        </button>
+        ${canEdit
+          ? `<button class="signage-cell" data-signage="${position.id}">
+              ${position.signage.length
+                ? position.signage.map(code => signageTag(code)).join("")
+                : `<span class="signage-empty">+ SIGNAGE</span>`}
+            </button>`
+          : `<span class="signage-cell static">
+              ${position.signage.length
+                ? position.signage.map(code => signageTag(code)).join("")
+                : `<span class="meta">—</span>`}
+            </span>`}
       </span>
 
       <span class="col-board">
-        <input class="cell-input" type="text" value="${esc(position.board_name)}"
-               data-field="board_name" data-position="${position.id}" placeholder="—">
+        ${canEdit
+          ? `<input class="cell-input" type="text" value="${esc(position.board_name)}"
+                    data-field="board_name" data-position="${position.id}" placeholder="—">`
+          : `<span class="cell-static">${esc(position.board_name || "—")}</span>`}
       </span>
 
       ${position.stages.map((done, stage) => `
@@ -300,6 +324,65 @@ function signageStrip(position) {
   `;
 }
 
+/**
+ * The phone surface: one card per unit with its five boxes spelled out.
+ * This is what someone standing at the booth actually needs — the grid's
+ * columns only make sense when you can see all of them at once.
+ */
+function shelfList() {
+  const { positions, stages } = shelfData;
+
+  const shown = shelfFilter === "left"
+    ? positions.filter(p => p.stages.some((done, stage) => !done && stageApplies(p, stage)))
+    : positions;
+
+  if (!shown.length) {
+    return `<div class="card"><p class="empty-state">Everything is ticked. The booth is ready.</p></div>`;
+  }
+
+  const walls = [];
+  for (const position of shown) {
+    const last = walls[walls.length - 1];
+    if (last && last.wall === position.wall) last.positions.push(position);
+    else walls.push({ wall: position.wall, positions: [position] });
+  }
+
+  return walls.map(group => `
+    <div class="shelf-list-wall">${esc(group.wall)}</div>
+    ${group.positions.map(position => {
+      const applicable = position.stages.filter((_, stage) => stageApplies(position, stage));
+      const complete = applicable.every(Boolean);
+
+      return `
+        <div class="card shelf-list-card${complete ? " done" : ""}">
+          <div class="shelf-list-head">
+            <span class="shelf-list-code">${esc(position.code)}</span>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:13px;">${esc(position.product || "—")}</div>
+              <div class="meta">${esc(position.unit_type || "")}${
+                position.board_name ? ` · ${esc(position.board_name)}` : ""
+              }</div>
+            </div>
+          </div>
+
+          ${position.signage.length
+            ? `<div class="badge-row" style="margin:8px 0 0;">${position.signage.map(signageTag).join("")}</div>`
+            : ""}
+
+          <div class="shelf-list-stages">
+            ${position.stages.map((done, stage) => `
+              <div class="shelf-list-stage">
+                ${stageBox(position, stage, done)}
+                <span>${esc(stages[stage])}</span>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }).join("")}
+  `).join("");
+}
+
 /* ---------- The booth map ---------- */
 
 function boothMap() {
@@ -308,20 +391,30 @@ function boothMap() {
 
   return `
     <div class="booth-layout">
-      <div>
+      <div class="booth-map-column">
         <div class="button-row" style="margin:0 0 10px;">
           <button class="${signsMode ? "" : "btn-quiet"}" id="signsModeBtn">Signs</button>
-          <button class="${arrangeMode ? "" : "btn-quiet"}" id="arrangeModeBtn">Arrange</button>
-          ${arrangeMode ? `<button class="btn-danger" id="resetArrangeBtn">Reset all</button>` : ""}
+          ${shelfData.canManage && !onPhone() ? `
+            <button class="${arrangeMode ? "" : "btn-quiet"}" id="arrangeModeBtn">Arrange</button>
+            ${arrangeMode ? `<button class="btn-danger" id="resetArrangeBtn">Reset all</button>` : ""}
+          ` : ""}
         </div>
+        ${arrangeMode ? `
+          <p class="meta" style="margin:-4px 0 10px;">
+            Drag a unit, or select one and nudge it with the arrow keys —
+            1″ a press, 6″ with Shift.
+          </p>
+        ` : ""}
 
         <div class="booth-ruler">← ${booth.width} FT →</div>
+        <div class="booth-scroll">
         <div class="booth-frame" id="boothFrame"
              style="width:${booth.width * PX_PER_FOOT + 6}px; height:${booth.depth * PX_PER_FOOT + 6}px;">
           <div class="booth-guide v" style="left:${(booth.width / 2) * PX_PER_FOOT}px;"></div>
           <div class="booth-guide h" style="top:${(booth.depth / 3) * PX_PER_FOOT}px;"></div>
           <div class="booth-guide h" style="top:${(booth.depth * 2 / 3) * PX_PER_FOOT}px;"></div>
           ${positions.map(boothBlock).join("")}
+        </div>
         </div>
       </div>
 
@@ -686,7 +779,66 @@ function wireBoothMap(slug, reload) {
     await reload();
   });
 
+  wireArrowNudging(reload);
   if (arrangeMode) wireDragging(reload);
+}
+
+/* Arrow keys in Arrange mode. The block moves on screen immediately and the
+   save is debounced, so holding a key slides the unit rather than firing a
+   write per press. One listener, replaced on every draw. */
+let arrowHandler = null;
+let pendingNudge = null;
+
+function wireArrowNudging(reload) {
+  if (arrowHandler) {
+    window.removeEventListener("keydown", arrowHandler);
+    arrowHandler = null;
+  }
+
+  if (!arrangeMode || !shelfData.canManage) return;
+
+  const AXES = {
+    ArrowLeft: ["x", -1], ArrowRight: ["x", 1],
+    ArrowUp: ["y", -1], ArrowDown: ["y", 1]
+  };
+
+  arrowHandler = (event) => {
+    const axis = AXES[event.key];
+    if (!axis) return;
+
+    // Don't hijack the arrows while someone is in a text box.
+    const tag = document.activeElement?.tagName;
+    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+
+    const position = shelfData.positions.find(p => p.id === shelfSelected);
+    if (!position) return;
+
+    event.preventDefault();
+
+    const [key, direction] = axis;
+    const step = (event.shiftKey ? 6 : 1) / 12;
+    position.geometry[key] = Math.round((position.geometry[key] + direction * step) * 12) / 12;
+
+    const block = document.querySelector(`.booth-block[data-block="${position.id}"]`);
+    if (block) {
+      block.style.left = `${position.geometry.x * PX_PER_FOOT}px`;
+      block.style.top = `${position.geometry.y * PX_PER_FOOT}px`;
+    }
+
+    clearTimeout(pendingNudge);
+    pendingNudge = setTimeout(async () => {
+      const result = await apiSend(
+        `/api/shelf-positions/${position.id}/geometry`,
+        "PUT",
+        position.geometry
+      );
+
+      if (!result.ok) showFormError("shelfError", result.error || "Could not move that.");
+      await reload();
+    }, 350);
+  };
+
+  window.addEventListener("keydown", arrowHandler);
 }
 
 /** Dragging in Arrange mode. Snapped to the inch by the server. */
@@ -743,5 +895,14 @@ function wireDragging(reload) {
     };
   });
 }
+
+/* Rotating a phone or resizing a window crosses the breakpoint between the
+   grid and the list, so the plan redraws into whichever fits. A media-query
+   listener fires exactly on the crossing, rather than on every resize tick. */
+window.matchMedia("(max-width: 800px)").addEventListener("change", () => {
+  if (!shelfData) return;
+  if (!document.querySelector(".shelf-row, .shelf-list-card, .booth-frame")) return;
+  drawShelfPlan();
+});
 
 window.renderShelfPlan = renderShelfPlan;

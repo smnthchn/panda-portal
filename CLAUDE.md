@@ -183,11 +183,32 @@ run, its results were lost on every save, and it mostly rediscovered hours that
 don't change year to year. Setup and load-in times still aren't public either way —
 they live in the exhibitor kit, so the boss fills those in by hand.
 
-## Shelf plan
+## Booth Plan
 
-The booth prep tool that replaced the spreadsheet, at
-`/conventions/:slug/shelf-plan`. Two surfaces: the **grid** (every field edits
-in place — no edit mode, no modal) and the to-scale **booth map**.
+The booth prep tool that replaced the spreadsheet, reached from the **Booth
+Plan** pill at the top of an event. Called Booth Plan throughout the UI; the
+code and tables still say `shelf` (`shelf_positions`, `/api/…/shelf-plan`),
+which is the one naming seam in the project.
+
+Three surfaces, chosen by who's looking and on what:
+
+- **Grid** (desktop, boss) — every field edits in place, no edit mode, no modal.
+- **List** (phone) — a card per unit with its five boxes spelled out. The grid
+  is 900px of columns; dragging that sideways on a phone is not a tool. The two
+  swap on a `matchMedia` breakpoint listener, so rotating a phone redraws.
+- **Booth map** (to scale) — scrolls inside its own box on a phone rather than
+  taking the page with it.
+
+**Staff tick boxes and nothing else.** The server already enforces it —
+everything except reading the plan and toggling a stage needs
+`manage_conventions` — and the UI matches: for staff the editable cells render
+as plain text and Arrange doesn't appear at all, rather than offering controls
+the server would refuse.
+
+In Arrange, a selected unit moves with the **arrow keys** — 1″ a press, 6″ with
+Shift — moving on screen at once with the save debounced, so holding a key
+slides it rather than firing a write per press. Arrows are ignored while focus
+is in a text field.
 
 `lib/booth-template.js` holds the standard 31-unit Fan Expo booth — geometry in
 feet, lifted from the design handoff's own tables rather than re-measured. A

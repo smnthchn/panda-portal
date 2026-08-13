@@ -206,7 +206,11 @@ function pillRow() {
   const { convention } = detailData;
   const mapHref = addressHref(convention);
 
-  const buttons = [];
+  // Booth Plan leads: during setup it's the thing everyone opens.
+  const buttons = [
+    `<button class="btn-pill off" id="boothPlanPill">Booth Plan</button>`
+  ];
+
   if (convention.venue_map_file_id) {
     buttons.push(`<button class="btn-pill ${activePlan === "venue" ? "on" : "off"}" data-plan="venue">Floorplan</button>`);
   }
@@ -217,22 +221,7 @@ function pillRow() {
     buttons.push(`<button class="btn-pill off" data-maps="${esc(mapHref)}">Maps</button>`);
   }
 
-  if (!buttons.length) return "";
-  return `<div style="display:flex; gap:7px; margin-bottom:13px;">${buttons.join("")}</div>`;
-}
-
-/** Way into the shelf plan — the booth prep tool. */
-function boothPrepCard() {
-  return `
-    <div class="card" style="display:flex; align-items:center; gap:11px; cursor:pointer;" id="boothPrepCard">
-      <div style="width:34px; height:34px; border:2px solid var(--ink); border-radius:10px; background:var(--chip); color:var(--text); display:flex; align-items:center; justify-content:center; font-family:'Fredoka',sans-serif; font-weight:600; font-size:15px; flex:none;">▦</div>
-      <div style="flex:1;">
-        <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:13.5px;">Shelf plan</div>
-        <div class="meta">What stands where, and how far through prep the booth is</div>
-      </div>
-      <span style="font-family:'Fredoka',sans-serif; font-size:15px; color:var(--muted);">›</span>
-    </div>
-  `;
+  return `<div style="display:flex; gap:7px; margin-bottom:13px; flex-wrap:wrap;">${buttons.join("")}</div>`;
 }
 
 /** Navy card listing the shifts you're on across the run. */
@@ -652,7 +641,6 @@ function drawConvention() {
       ${documentsCard()}
     ` : `
       ${pillRow()}
-      ${boothPrepCard()}
       ${myShiftsCard()}
       ${hoursCard()}
       ${planCard()}
@@ -868,8 +856,8 @@ function wireConventionDetail() {
   const buildBtn = document.getElementById("buildScheduleBtn");
   if (buildBtn) buildBtn.onclick = () => renderSchedule(detailData.convention.slug);
 
-  const boothPrep = document.getElementById("boothPrepCard");
-  if (boothPrep) boothPrep.onclick = () => renderShelfPlan(detailData.convention.slug);
+  const boothPlan = document.getElementById("boothPlanPill");
+  if (boothPlan) boothPlan.onclick = () => renderShelfPlan(detailData.convention.slug);
 
   // Floorplan / Booth switch the one plan card; Maps opens the address.
   document.querySelectorAll("[data-plan]").forEach(btn => {
