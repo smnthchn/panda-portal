@@ -1,8 +1,8 @@
-﻿/* Shelf plan â€” the booth prep tool that replaced the spreadsheet.
+/* Shelf plan — the booth prep tool that replaced the spreadsheet.
 
    Two surfaces: the grid (every field edits in place) and the to-scale booth
-   map. Stage ticks are the hot path â€” several people tick boxes at once
-   during setup â€” so each one is its own small write and the UI updates
+   map. Stage ticks are the hot path — several people tick boxes at once
+   during setup — so each one is its own small write and the UI updates
    optimistically rather than waiting for a round trip. */
 
 let shelfData = null;
@@ -80,7 +80,7 @@ function drawEmptyShelfPlan() {
 
   pageArea().innerHTML = `
     <div class="title-row">
-      <button class="back-tile" id="shelfBackBtn">â€¹</button>
+      <button class="back-tile" id="shelfBackBtn">‹</button>
       <div style="flex:1;">
         <h2 style="margin:0;">Booth Plan</h2>
         <div class="meta">${esc(convention.name)}</div>
@@ -90,7 +90,7 @@ function drawEmptyShelfPlan() {
     <div class="card">
       <h3>No booth plan yet</h3>
       <p style="margin:0 0 12px; font-size:13px; line-height:1.5;">
-        A booth plan lists every shelving unit â€” what's on it, what signage it
+        A booth plan lists every shelving unit — what's on it, what signage it
         needs, and how far through prep it is. Start from the standard 31-unit
         booth, or carry forward a previous show's plan and adjust it.
       </p>
@@ -103,7 +103,7 @@ function drawEmptyShelfPlan() {
           <div class="inline-form" style="margin-top:10px;">
             <select id="copyPlanFrom">
               ${copyFrom.map(c => `
-                <option value="${esc(c.slug)}">${esc(c.name)} â€” ${c.positions} units</option>
+                <option value="${esc(c.slug)}">${esc(c.name)} — ${c.positions} units</option>
               `).join("")}
             </select>
             <button class="btn-quiet" id="startFromCopyBtn">Carry forward</button>
@@ -145,19 +145,19 @@ function shelfHeader() {
 
   return `
     <div class="title-row">
-      <button class="back-tile" id="shelfBackBtn">â€¹</button>
+      <button class="back-tile" id="shelfBackBtn">‹</button>
       <div class="screen-title">
         <div class="kicker-line">
-          ${esc(convention.name.toUpperCase())}${convention.booth_number ? ` Â· BOOTH ${esc(convention.booth_number)}` : ""}
-          Â· ${booth.width}â€² Ã— ${booth.depth}â€²
+          ${esc(convention.name.toUpperCase())}${convention.booth_number ? ` · BOOTH ${esc(convention.booth_number)}` : ""}
+          · ${booth.width}′ × ${booth.depth}′
         </div>
         <h2>Booth Plan</h2>
         <div class="meta">
-          ${positions.length} positions Â·
+          ${positions.length} positions ·
           ${left ? `${left} boxes left to tick` : "everything ticked"}
         </div>
       </div>
-      <div class="button-row" style="margin:0;">
+      <div class="button-row">
         <button class="${shelfView === "grid" && shelfFilter === "all" ? "" : "btn-quiet"}" data-shelf-view="grid-all">All shelves</button>
         <button class="${shelfView === "grid" && shelfFilter === "left" ? "" : "btn-quiet"}" data-shelf-view="grid-left">Still to do</button>
         <button class="${shelfView === "map" ? "" : "btn-quiet"}" data-shelf-view="map">Booth map</button>
@@ -231,7 +231,7 @@ function shelfGrid() {
       ${walls.map(group => `
         <div class="shelf-wall-row">
           ${esc(group.wall)}
-          ${group.note ? `<span class="meta"> â€” ${esc(group.note)}</span>` : ""}
+          ${group.note ? `<span class="meta"> — ${esc(group.note)}</span>` : ""}
         </div>
         ${group.positions.map(shelfRow).join("")}
       `).join("")}
@@ -249,7 +249,7 @@ function shelfGrid() {
 }
 
 /**
- * A row. Staff tick boxes and nothing else â€” the plan itself is the boss's,
+ * A row. Staff tick boxes and nothing else — the plan itself is the boss's,
  * so for everyone else the editable fields render as plain text rather than
  * as controls that would be refused by the server anyway.
  */
@@ -265,8 +265,8 @@ function shelfRow(position) {
       <span class="col-product">
         ${canEdit
           ? `<input class="cell-input" type="text" value="${esc(position.product)}"
-                    data-field="product" data-position="${position.id}" placeholder="â€”">`
-          : `<span class="cell-static">${esc(position.product || "â€”")}</span>`}
+                    data-field="product" data-position="${position.id}" placeholder="—">`
+          : `<span class="cell-static">${esc(position.product || "—")}</span>`}
       </span>
 
       <span class="col-type">
@@ -276,7 +276,7 @@ function shelfRow(position) {
                 <option value="${esc(type)}" ${type === position.unit_type ? "selected" : ""}>${esc(type)}</option>
               `).join("")}
             </select>`
-          : `<span class="type-pill static">${esc(position.unit_type || "â€”")}</span>`}
+          : `<span class="type-pill static">${esc(position.unit_type || "—")}</span>`}
       </span>
 
       <span class="col-signage">
@@ -289,15 +289,15 @@ function shelfRow(position) {
           : `<span class="signage-cell static">
               ${position.signage.length
                 ? position.signage.map(code => signageTag(code)).join("")
-                : `<span class="meta">â€”</span>`}
+                : `<span class="meta">—</span>`}
             </span>`}
       </span>
 
       <span class="col-board">
         ${canEdit
           ? `<input class="cell-input" type="text" value="${esc(position.board_name)}"
-                    data-field="board_name" data-position="${position.id}" placeholder="â€”">`
-          : `<span class="cell-static">${esc(position.board_name || "â€”")}</span>`}
+                    data-field="board_name" data-position="${position.id}" placeholder="—">`
+          : `<span class="cell-static">${esc(position.board_name || "—")}</span>`}
       </span>
 
       ${position.stages.map((done, stage) => `
@@ -311,12 +311,12 @@ function shelfRow(position) {
 
 function stageBox(position, stage, done) {
   if (!stageApplies(position, stage)) {
-    return `<span class="stage-box na" title="No signage needed">â€“</span>`;
+    return `<span class="stage-box na" title="No signage needed">–</span>`;
   }
 
   return `
     <button class="stage-box${done ? " on" : ""}"
-            data-stage-position="${position.id}" data-stage="${stage}">${done ? "âœ“" : ""}</button>
+            data-stage-position="${position.id}" data-stage="${stage}">${done ? "✓" : ""}</button>
   `;
 }
 
@@ -345,7 +345,7 @@ function signageStrip(position) {
 
 /**
  * The phone surface: one card per unit with its five boxes spelled out.
- * This is what someone standing at the booth actually needs â€” the grid's
+ * This is what someone standing at the booth actually needs — the grid's
  * columns only make sense when you can see all of them at once.
  */
 function shelfList() {
@@ -377,9 +377,9 @@ function shelfList() {
           <div class="shelf-list-head">
             <span class="shelf-list-code">${esc(position.code)}</span>
             <div style="flex:1; min-width:0;">
-              <div style="font-size:13px;">${esc(position.product || "â€”")}</div>
+              <div style="font-size:13px;">${esc(position.product || "—")}</div>
               <div class="meta">${esc(position.unit_type || "")}${
-                position.board_name ? ` Â· ${esc(position.board_name)}` : ""
+                position.board_name ? ` · ${esc(position.board_name)}` : ""
               }</div>
             </div>
           </div>
@@ -422,12 +422,12 @@ function boothMap() {
         </div>
         ${arrangeMode ? `
           <p class="meta" style="margin:-4px 0 10px;">
-            Drag a unit, or select one and nudge it with the arrow keys â€”
-            1â€³ a press, 6â€³ with Shift.
+            Drag a unit, or select one and nudge it with the arrow keys —
+            1″ a press, 6″ with Shift.
           </p>
         ` : ""}
 
-        <div class="booth-ruler">â† ${booth.width} FT â†’</div>
+        <div class="booth-ruler">← ${booth.width} FT →</div>
         <div class="booth-scroll">
         <div class="booth-frame" id="boothFrame"
              style="width:${booth.width * pxPerFoot + 6}px; height:${booth.depth * pxPerFoot + 6}px;">
@@ -475,7 +475,7 @@ function boothBlock(position) {
       </div>
       <div class="block-label">
         ${signsMode
-          ? (position.board_name ? esc(position.board_name) : `<span style="color:#B0A88F;">â€”</span>`)
+          ? (position.board_name ? esc(position.board_name) : `<span style="color:#B0A88F;">—</span>`)
           : esc(position.product || "")}
       </div>
     </div>
@@ -522,7 +522,7 @@ function selectedPositionCard(position) {
     <div class="card stripped">
       <div class="strip brand">
         ${esc(position.wall)}
-        <span class="strip-side">${inches(geometry.w)}â€³ Ã— ${inches(geometry.h)}â€³ Â· ${esc(position.unit_type)}</span>
+        <span class="strip-side">${inches(geometry.w)}″ × ${inches(geometry.h)}″ · ${esc(position.unit_type)}</span>
       </div>
       <div class="card-body">
         <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:24px;">${esc(position.code)}</div>
@@ -557,22 +557,22 @@ function selectedPositionCard(position) {
             <div>
               <div class="meta">FROM LEFT</div>
               <div class="inline-form" style="margin:2px 0 0;">
-                <button class="btn-quiet" data-nudge="x" data-by="-0.5">âˆ’6â€³</button>
-                <span style="font-family:'Fredoka',sans-serif; font-weight:600;">${inches(geometry.x)}â€³</span>
-                <button class="btn-quiet" data-nudge="x" data-by="0.5">+6â€³</button>
+                <button class="btn-quiet" data-nudge="x" data-by="-0.5">−6″</button>
+                <span style="font-family:'Fredoka',sans-serif; font-weight:600;">${inches(geometry.x)}″</span>
+                <button class="btn-quiet" data-nudge="x" data-by="0.5">+6″</button>
               </div>
             </div>
             <div>
               <div class="meta">FROM TOP</div>
               <div class="inline-form" style="margin:2px 0 0;">
-                <button class="btn-quiet" data-nudge="y" data-by="-0.5">âˆ’6â€³</button>
-                <span style="font-family:'Fredoka',sans-serif; font-weight:600;">${inches(geometry.y)}â€³</span>
-                <button class="btn-quiet" data-nudge="y" data-by="0.5">+6â€³</button>
+                <button class="btn-quiet" data-nudge="y" data-by="-0.5">−6″</button>
+                <span style="font-family:'Fredoka',sans-serif; font-weight:600;">${inches(geometry.y)}″</span>
+                <button class="btn-quiet" data-nudge="y" data-by="0.5">+6″</button>
               </div>
             </div>
           </div>
           <div class="button-row">
-            <button class="btn-quiet" id="turnBlockBtn">Turn 90Â°</button>
+            <button class="btn-quiet" id="turnBlockBtn">Turn 90°</button>
             ${position.moved ? `<button class="btn-quiet" id="resetBlockBtn">Reset this one</button>` : ""}
           </div>
         ` : ""}
@@ -616,7 +616,7 @@ function signsList() {
               <div class="meta">${position.boards.map(b => b.face.toUpperCase()).join(" + ")}</div>
             </span>
             ${position.stages[4]
-              ? `<span style="color:#1E8F68; font-weight:600; font-size:12px;">âœ“ up</span>`
+              ? `<span style="color:#1E8F68; font-weight:600; font-size:12px;">✓ up</span>`
               : ""}
           </div>
         `).join("")}

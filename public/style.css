@@ -521,6 +521,7 @@ button:disabled {
 .title-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 12px;
 }
@@ -542,6 +543,17 @@ button:disabled {
 .screen-title {
   flex: 1;
   min-width: 0;
+}
+
+/* A row of view pills next to the title needs a whole line to itself on a
+   phone. The title asks for 220px before it will shrink, so the pills wrap
+   underneath rather than squeezing the heading down to one word per line. */
+.title-row .screen-title {
+  flex: 1 1 220px;
+}
+
+.title-row .button-row {
+  margin: 0;
 }
 
 .screen-title .kicker-line {
