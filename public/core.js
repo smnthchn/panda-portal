@@ -118,6 +118,64 @@ function initialsOf(fullName) {
   return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
+/**
+ * A person's avatar: their own illustration if they have one, else their
+ * initials. Same 2px-outlined circle either way, so a team with a mix of
+ * both still lines up.
+ */
+function avatarHtml(person, extraClass = "") {
+  const name = person?.name || person?.full_name || "";
+  const initials = esc(person?.initials || initialsOf(name));
+  const url = person?.avatar_url;
+
+  if (!url) return `<div class="avatar ${extraClass}">${initials}</div>`;
+
+  // The initials stay in the markup underneath the picture, so a picture that
+  // fails to load leaves a proper avatar rather than a broken-image icon.
+  // alt is empty for the same reason — the initials are already the label.
+  return `<div class="avatar has-image ${extraClass}">
+    <span>${initials}</span>
+    <img src="${esc(url)}" alt="" decoding="async">
+  </div>`;
+}
+
+/**
+ * Shrinks a picked image to a square avatar in the browser, so what reaches
+ * the server is a few kilobytes rather than a phone camera's several
+ * megabytes. Crops to centre-cover and keeps transparency where the browser
+ * supports WebP, which illustrations usually want.
+ */
+function readImageAsAvatar(file, size = 256) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onerror = () => reject(new Error("Could not read that file."));
+    reader.onload = () => {
+      const img = new Image();
+
+      img.onerror = () => reject(new Error("That file isn't an image the browser can open."));
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+
+        const ctx = canvas.getContext("2d");
+        const scale = Math.max(size / img.width, size / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+
+        const webp = canvas.toDataURL("image/webp", 0.9);
+        resolve(webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/png"));
+      };
+
+      img.src = reader.result;
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
 /** 95 -> "1h 35m", 40 -> "40m". */
 function formatMinutes(total) {
   const mins = Math.max(0, Math.round(total));

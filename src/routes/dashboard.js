@@ -1,5 +1,6 @@
 import { requireUser } from "../lib/auth.js";
 import { pairClockEvents } from "./clock.js";
+import { avatarUrlFor } from "./staff.js";
 
 /**
  * Everything the home screen needs in one request: what today is, your shift,
@@ -82,7 +83,8 @@ async function peopleById(db, employeeIds) {
 
   const placeholders = employeeIds.map(() => "?").join(",");
   const rows = await db.prepare(
-    `SELECT id, full_name, role FROM employees WHERE id IN (${placeholders})`
+    `SELECT id, full_name, role, avatar IS NOT NULL AS has_avatar, updated_at
+     FROM employees WHERE id IN (${placeholders})`
   ).bind(...employeeIds).all();
 
   return new Map((rows.results || []).map(row => [row.id, row]));
@@ -160,9 +162,14 @@ export function buildRoster(shifts, eventsByEmployee, people, openShiftFor, nowM
       else if (startMinutes !== null && minutesNow > startMinutes + 15) status = "late";
       else status = "upcoming";
 
+      const record = people.get(person.employee_id);
+
       return {
         ...person,
         initials: initialsOf(person.name),
+        avatar_url: record?.has_avatar
+          ? avatarUrlFor(person.employee_id, record.updated_at)
+          : null,
         status,
         clocked_in: status === "in" || status === "break",
         clocked_in_at: open ? open.in_at : null
@@ -254,8 +261,11 @@ export async function handleDashboard(request, env) {
   // Who the boss should see today: everyone with a shift, plus anyone who
   // clocked in without one — on a store day that's the whole team, since
   // shifts only exist against conventions.
+  // The signed-in user is always in here, shift or not, so the header can
+  // show their own avatar on a day they aren't working.
   const people = await peopleById(env.DB, [
     ...new Set([
+      user.id,
       ...shifts.filter(s => s.employee_id).map(s => s.employee_id),
       ...eventsByEmployee.keys()
     ])
@@ -296,7 +306,10 @@ export async function handleDashboard(request, env) {
       full_name: user.full_name,
       initials: initialsOf(user.full_name),
       role: user.role,
-      theme_id: user.theme_id || "habbo"
+      theme_id: user.theme_id || "habbo",
+      avatar_url: people.get(user.id)?.has_avatar
+        ? avatarUrlFor(user.id, people.get(user.id).updated_at)
+        : null
     },
     day_type: isEventDay ? "event" : "store",
     clock: usesClock

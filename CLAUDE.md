@@ -10,7 +10,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 49 tests
+npm test               # vitest, 55 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -186,6 +186,22 @@ Deliberately two screens over the same `employees` table:
 
 Editing a person's email changes the account they sign in with, so it's
 validated and kept unique the same way creating one is.
+
+### Avatars
+
+Each person can have their own illustration. The browser shrinks the picked
+file to a 256px square (centre-cropped, WebP where supported so transparency
+survives) **before** upload, so what reaches D1 is a few KB — a column beats
+standing up R2 for a team this size.
+
+It's served from `GET /api/avatar/:id` behind a login, with a long
+`Cache-Control` and a `?v=` stamped from `updated_at`, so JSON payloads carry
+a URL rather than every face on the team inlined. `parseAvatarDataUri()`
+refuses anything that isn't base64 PNG/JPEG/WebP — **SVG especially**, since
+the string lands in an `<img src>` and an SVG there is script execution.
+
+`avatarHtml()` keeps the initials in the markup underneath the picture, so a
+picture that fails to load degrades to initials rather than a broken image.
 
 `employees.google_drive_folder_id` is the folder behind that person's **My
 Folder** page (`/api/my-folder` lists it via the service account). Setting the

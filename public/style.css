@@ -454,6 +454,30 @@ button:disabled {
   font-size: 12px;
 }
 
+/* An uploaded illustration fills the circle; the outline stays. The initials
+   sit underneath, so a picture that fails to load degrades to them. */
+.avatar.has-image {
+  position: relative;
+  overflow: hidden;
+  background: var(--nav-bg);
+}
+
+.avatar.has-image img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar.large {
+  width: 72px;
+  height: 72px;
+  font-size: 24px;
+  border-radius: 18px;
+}
+
 .avatar.small {
   width: 24px;
   height: 24px;

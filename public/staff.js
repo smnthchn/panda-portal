@@ -77,7 +77,7 @@ function staffCard(person) {
 
   return `
     <div class="action-card" style="display:flex; gap:12px; align-items:flex-start;">
-      <div class="avatar">${esc(initialsOf(person.full_name))}</div>
+      ${avatarHtml(person)}
       <div style="flex:1; min-width:0;">
         <div class="badge-row" style="margin-bottom:4px;">
           <span class="pill">${esc(roleDisplayName(person.role))}</span>
@@ -121,6 +121,29 @@ function drawStaffMember() {
         <h2 style="margin:0;">${esc(person.full_name)}</h2>
         <div class="meta">
           ${esc(roleDisplayName(person.role))}${person.is_active ? "" : " · no longer active"}
+        </div>
+      </div>
+    </div>
+
+    <div class="card stripped">
+      <div class="strip">
+        AVATAR
+        ${person.avatar_url ? `<button class="btn-danger strip-side" id="removeAvatarBtn">Remove</button>` : ""}
+      </div>
+      <div class="card-body" style="display:flex; align-items:center; gap:14px;">
+        ${avatarHtml(person, "large")}
+        <div style="flex:1;">
+          <label class="btn-quiet" for="avatarInput"
+                 style="display:inline-block; font-family:'Fredoka',sans-serif; font-weight:600;
+                        font-size:14px; padding:10px 14px; border:2px solid var(--ink);
+                        border-bottom-width:4px; border-radius:12px; cursor:pointer;">
+            ${person.avatar_url ? "Replace picture" : "Upload picture"}
+          </label>
+          <input type="file" id="avatarInput" accept="image/png,image/jpeg,image/webp" style="display:none;">
+          <p class="meta" style="margin:6px 0 0;">
+            Their illustration, squared off and shrunk to 256px here in the
+            browser before it's saved. PNG, JPEG or WebP.
+          </p>
         </div>
       </div>
     </div>
@@ -244,8 +267,42 @@ function shiftRowHtml(shift) {
   `;
 }
 
+async function saveAvatar(dataUri) {
+  showFormError("staffError", "");
+
+  const result = await apiSend(
+    `/api/admin/staff/${staffMember.person.id}/avatar`,
+    "PUT",
+    { avatar: dataUri }
+  );
+
+  if (!result.ok) {
+    showFormError("staffError", result.error || "Could not save that picture.");
+    return;
+  }
+
+  await openStaffMember(staffMember.person.id, false);
+}
+
 function wireStaffMember() {
   document.getElementById("staffBackBtn").onclick = () => renderStaff();
+
+  const avatarInput = document.getElementById("avatarInput");
+  avatarInput.onchange = async () => {
+    const file = avatarInput.files?.[0];
+    if (!file) return;
+
+    try {
+      await saveAvatar(await readImageAsAvatar(file));
+    } catch (err) {
+      showFormError("staffError", err.message);
+    }
+  };
+
+  const removeAvatar = document.getElementById("removeAvatarBtn");
+  if (removeAvatar) {
+    removeAvatar.onclick = () => guard(() => saveAvatar(null));
+  }
 
   document.getElementById("staffAccessBtn").onclick = () => goToView("users-roles");
 

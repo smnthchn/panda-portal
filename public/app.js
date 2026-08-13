@@ -204,7 +204,7 @@ function dashHeader(data) {
           <div class="meta">${esc(data.user.full_name.split(" ")[0])} · ${esc(roleDisplayName(data.user.role))}</div>
         </div>
       </div>
-      <div class="avatar">${esc(data.user.initials)}</div>
+      ${avatarHtml(data.user)}
     </div>
   `;
 }
@@ -457,7 +457,7 @@ function rosterCard(data) {
       <div class="card-body">
         ${data.roster.length ? data.roster.map(person => `
           <div class="roster-row${person.clocked_in ? "" : " later"}">
-            <div class="avatar small${person.clocked_in ? " present" : ""}">${esc(person.initials)}</div>
+            ${avatarHtml(person, `small${person.clocked_in ? " present" : ""}`)}
             <div style="flex:1;">
               <div style="font-size:13px;">
                 ${esc(person.name)}

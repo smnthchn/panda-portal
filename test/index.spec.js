@@ -6,6 +6,7 @@ import { roleOutranks, isValidRole } from "../src/lib/permissions.js";
 import { optionalUrl } from "../src/routes/conventions.js";
 import { pairClockEvents } from "../src/routes/clock.js";
 import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/dashboard.js";
+import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
 
 function request(path, method = "GET", headers = {}) {
   return new Request(`http://example.com${path}`, { method, headers });
@@ -335,6 +336,46 @@ describe("today's roster", () => {
     );
 
     expect(roster.map(p => p.name)).toEqual(["Early Start", "Late Start", "No Shift"]);
+  });
+});
+
+describe("avatar uploads", () => {
+  // "AAAA" is 3 valid base64 bytes — enough to stand in for image data.
+  const tiny = (mime) => `data:${mime};base64,AAAA`;
+
+  it("accepts the image types the browser can produce", () => {
+    for (const mime of ["image/webp", "image/png", "image/jpeg"]) {
+      expect(parseAvatarDataUri(tiny(mime)).mimeType).toBe(mime);
+    }
+  });
+
+  // The stored string ends up in an <img src>, so an SVG would be a script
+  // execution route dressed up as a picture.
+  it("refuses svg and other non-image types", () => {
+    expect(() => parseAvatarDataUri(tiny("image/svg+xml"))).toThrow(BadRequest);
+    expect(() => parseAvatarDataUri(tiny("text/html"))).toThrow(BadRequest);
+  });
+
+  it("refuses anything that isn't a base64 data uri", () => {
+    expect(() => parseAvatarDataUri("https://example.com/face.png")).toThrow(BadRequest);
+    expect(() => parseAvatarDataUri("data:image/png,notbase64")).toThrow(BadRequest);
+    expect(() => parseAvatarDataUri("")).toThrow(BadRequest);
+    expect(() => parseAvatarDataUri(null)).toThrow(BadRequest);
+  });
+
+  it("refuses an image past the size cap", () => {
+    const huge = `data:image/png;base64,${"A".repeat(600 * 1024)}`;
+    expect(() => parseAvatarDataUri(huge)).toThrow(BadRequest);
+  });
+
+  it("measures decoded size rather than string length", () => {
+    // 8 base64 chars with two pad chars carry 4 bytes.
+    expect(parseAvatarDataUri("data:image/png;base64,AAAAAA==").bytes).toBe(4);
+  });
+
+  it("cache-busts the url on the person's last edit", () => {
+    expect(avatarUrlFor(4, "2026-08-13 17:20:05")).toBe("/api/avatar/4?v=20260813172005");
+    expect(avatarUrlFor(4, null)).toBe("/api/avatar/4?v=");
   });
 });
 

@@ -5,7 +5,9 @@ import {
   handleStaffList,
   handleStaffDetail,
   handleUpdateStaff,
-  handleAssignShift
+  handleAssignShift,
+  handleGetAvatar,
+  handleSetAvatar
 } from "./routes/staff.js";
 import { handleKnowledgeBase, handleMyFolder, handleDocContent } from "./routes/knowledge.js";
 import {
@@ -67,6 +69,9 @@ const ROUTES = [
   ["POST", "/api/clock-out", (req, env) => handleClockEvent(req, env, "clock_out")],
   ["POST", "/api/break-start", (req, env) => handleClockEvent(req, env, "break_start")],
   ["POST", "/api/break-end", (req, env) => handleClockEvent(req, env, "break_end")],
+
+  ["GET", "/api/avatar/:id", handleGetAvatar, { raw: true }],
+  ["PUT", "/api/admin/staff/:id/avatar", handleSetAvatar],
 
   ["GET", "/api/admin/staff", handleStaffList],
   ["GET", "/api/admin/staff/:id", handleStaffDetail],
