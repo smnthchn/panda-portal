@@ -255,6 +255,17 @@ and there was nowhere to put a picture that isn't a board. Assignment is now
 explicit — `shelf_board_art` is one row per (position, face) pointing at a
 resource.
 
+**Artwork is chosen in the grid's Boards column, not on the map.** Clicking the
+cell opens a strip under the row — the same shape as the signage editor — with
+a slot per face and the library behind each one. That way a run down the column
+sets the whole booth's signage in one pass, where the map would mean selecting
+31 units one at a time. Only one strip is open at a time, or two of them under
+one row would shove the grid around while you were reading it. The map panel
+shows what's assigned and nothing more.
+
+The strip keeps a text field for the Board name cell, so a board can be named
+before anyone has photographed it.
+
 `boardFaces()` shows a face because the plan **named** a board on it, because a
 picture has been **assigned** to it, or both — assigning artwork shouldn't need
 someone to type a name into the grid first, and naming a board shouldn't wait

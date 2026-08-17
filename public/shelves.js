@@ -12,6 +12,7 @@ let shelfSelected = null;      // position id
 let signsMode = false;
 let arrangeMode = false;
 let openSignageFor = null;
+let openBoardsFor = null;       // which row's Boards strip is open
 let viewingPhoto = null;        // photo id, shown full size
 let pickingArtFor = null;       // { positionId, face } while the picker is open
 
@@ -230,7 +231,7 @@ function shelfGrid() {
         <span class="col-product">PRODUCT</span>
         <span class="col-type">TYPE</span>
         <span class="col-signage">SIGNAGE NEEDED</span>
-        <span class="col-board">BOARD NAME</span>
+        <span class="col-board">BOARDS</span>
         ${shelfData.totals.map(t => `
           <span class="col-stage">${esc(t.label)}<em>${t.done} / ${t.total}</em></span>
         `).join("")}
@@ -303,9 +304,16 @@ function shelfRow(position) {
 
       <span class="col-board">
         ${canEdit
-          ? `<input class="cell-input" type="text" value="${esc(position.board_name)}"
-                    data-field="board_name" data-position="${position.id}" placeholder="—">`
-          : `<span class="cell-static">${esc(position.board_name || "—")}</span>`}
+          ? `<button class="boards-cell" data-boards="${position.id}">
+              ${position.boards.length
+                ? position.boards.map(boardChip).join("")
+                : `<span class="signage-empty">+ BOARDS</span>`}
+            </button>`
+          : `<span class="boards-cell static">
+              ${position.boards.length
+                ? position.boards.map(boardChip).join("")
+                : `<span class="meta">—</span>`}
+            </span>`}
       </span>
 
       ${position.stages.map((done, stage) => `
@@ -314,6 +322,66 @@ function shelfRow(position) {
     </div>
 
     ${openSignageFor === position.id ? signageStrip(position) : ""}
+    ${openBoardsFor === position.id ? boardsStrip(position) : ""}
+  `;
+}
+
+/** One board in the grid's cell: its artwork, small, and what it's called. */
+function boardChip(board) {
+  return `
+    <span class="board-chip" title="${esc(board.face.toUpperCase())} · ${esc(board.name)}">
+      ${board.image_url
+        ? `<img src="${esc(board.image_url)}" alt="" loading="lazy" decoding="async">`
+        : `<span class="board-chip-blank">?</span>`}
+      ${esc(board.name)}
+    </span>
+  `;
+}
+
+/**
+ * Choosing this unit's boards, in a strip under its row — the same shape as
+ * the signage editor, because it's the same job: open the cell, set it, done.
+ *
+ * A face gets its picture from the Resources library rather than an upload
+ * here: the same board hangs again at the next show, so it's the store's, not
+ * this event's. The name field stays for a board that hasn't been
+ * photographed yet, so naming one doesn't wait on artwork existing.
+ */
+function boardsStrip(position) {
+  const byFace = new Map(position.boards.map(board => [board.face, board]));
+
+  return `
+    <div class="signage-strip boards-strip">
+      ${BOARD_FACES.map(face => {
+        const board = byFace.get(face);
+
+        return `
+          <span class="board-slot">
+            <span class="board-slot-face">${face.toUpperCase()}</span>
+            ${board?.image_url
+              ? `<button class="board-slot-art" data-board-pick="${position.id}" data-face="${face}"
+                         title="Choose a different one">
+                  <img src="${esc(board.image_url)}" alt="" loading="lazy" decoding="async">
+                  <span>${esc(board.name)}</span>
+                </button>
+                <button class="board-slot-clear" data-board-clear="${position.id}" data-face="${face}"
+                        title="Take it off this face">×</button>`
+              : `<button class="btn-dashed board-slot-pick" data-board-pick="${position.id}" data-face="${face}">
+                  ${board ? `Artwork for ${esc(board.name)}` : "+ Choose"}
+                </button>`}
+          </span>
+        `;
+      }).join("")}
+
+      <span class="board-names">
+        <span class="meta">Names, for a board with no artwork yet</span>
+        <input class="cell-input" type="text" value="${esc(position.board_name)}"
+               data-field="board_name" data-position="${position.id}" placeholder="Back &amp; side">
+      </span>
+
+      <button class="btn-quiet" id="closeBoardsBtn"
+              style="border:none; background:none; padding:6px 8px;">Done</button>
+    </div>
   `;
 }
 
@@ -590,54 +658,31 @@ const BOARD_FACES = ["back", "side", "front"];
 /**
  * The boards on this unit, and the artwork that goes on each face.
  *
- * A face shows because the plan named a board on it or because a picture has
- * been assigned to it. A boss also gets the three faces that are still empty,
- * so artwork can go on a shelf without typing a name into the grid first.
+ * Read-only: the map is for reading the booth, and choosing artwork happens
+ * in the grid's Boards column, where you can run down all 31 units in one
+ * pass rather than selecting them one at a time.
  */
 function boardsBlock(position) {
-  const canEdit = shelfData.canManage;
-  const shown = new Set(position.boards.map(board => board.face));
-
-  const spare = canEdit
-    ? BOARD_FACES.filter(face => !shown.has(face)).map(face => ({
-        face, name: "", resource_id: null, image_url: null
-      }))
-    : [];
-
-  if (!position.boards.length && !spare.length) {
+  if (!position.boards.length) {
     return `<p class="meta" style="margin:8px 0 0;">No boards on this one.</p>`;
   }
 
   return `
     <div style="margin:8px 0;">
-      ${[...position.boards, ...spare].map(board => `
+      ${position.boards.map(board => `
         <div class="board-row">
           <div class="board-row-head" style="margin-bottom:8px;">
             <span class="pill" style="font-size:10px;">${esc(board.face.toUpperCase())}</span>
-            <span style="flex:1; font-size:13px;">
-              ${board.name ? esc(board.name) : `<span class="meta">no board named</span>`}
-            </span>
-            ${canEdit && board.resource_id
-              ? `<button class="btn-quiet" style="font-size:11px; padding:4px 8px; border-bottom-width:2px;"
-                         data-board-clear="${position.id}" data-face="${esc(board.face)}">Clear</button>`
-              : ""}
+            <span style="flex:1; font-size:13px;">${esc(board.name)}</span>
           </div>
 
           ${board.image_url
-            ? `<div class="board-art${canEdit ? " droppable" : ""}" style="height:110px;"
-                    ${canEdit ? `data-board-pick="${position.id}" data-face="${esc(board.face)}"` : ""}>
+            ? `<div class="board-art" style="height:110px;">
                 <img src="${esc(board.image_url)}" alt="${esc(board.name)}" loading="lazy" decoding="async">
-                ${canEdit ? `<span class="board-art-hint">Tap to change</span>` : ""}
               </div>`
-            : canEdit
-              ? `<div class="board-art empty droppable" style="height:76px;"
-                      data-board-pick="${position.id}" data-face="${esc(board.face)}">
-                  <span>+ Choose artwork</span>
-                  <span class="meta">from Resources</span>
-                </div>`
-              : `<div class="board-art empty" style="height:76px;">
-                  <span class="meta">No artwork yet</span>
-                </div>`}
+            : `<div class="board-art empty" style="height:76px;">
+                <span class="meta">No artwork yet</span>
+              </div>`}
         </div>
       `).join("")}
     </div>
@@ -846,16 +891,33 @@ function wireShelfPlan() {
     };
   });
 
+  // One strip open at a time: two of them under one row would push the grid
+  // around while you were reading it.
   document.querySelectorAll("[data-signage]").forEach(cell => {
     cell.onclick = () => {
       const id = Number(cell.dataset.signage);
       openSignageFor = openSignageFor === id ? null : id;
+      openBoardsFor = null;
       drawShelfPlan();
     };
   });
 
   document.getElementById("closeSignageBtn")?.addEventListener("click", () => {
     openSignageFor = null;
+    drawShelfPlan();
+  });
+
+  document.querySelectorAll("[data-boards]").forEach(cell => {
+    cell.onclick = () => {
+      const id = Number(cell.dataset.boards);
+      openBoardsFor = openBoardsFor === id ? null : id;
+      openSignageFor = null;
+      drawShelfPlan();
+    };
+  });
+
+  document.getElementById("closeBoardsBtn")?.addEventListener("click", () => {
+    openBoardsFor = null;
     drawShelfPlan();
   });
 
