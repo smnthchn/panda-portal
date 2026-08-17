@@ -1983,6 +1983,22 @@ textarea::placeholder {
   min-width: 900px;
 }
 
+/* Form controls are full-width by default, which in this flex row let the
+   section list swell to the whole footer and squeeze the button until its
+   label wrapped onto a second line — that, not the border, is what made it
+   fat. The list takes only what it needs and the button never wraps. */
+.shelf-grid-foot select {
+  width: auto;
+  min-width: 200px;
+}
+
+.add-shelf {
+  flex: none;
+  white-space: nowrap;
+  font-size: 13px;
+  padding: 8px 13px;
+}
+
 /* Edits in place: no edit mode, no modal. */
 .cell-input {
   width: 100%;

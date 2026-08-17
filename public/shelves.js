@@ -257,7 +257,7 @@ function shelfGrid() {
             <select id="newPositionWall">
               ${shelfData.walls.map(wall => `<option value="${esc(wall)}">${esc(wall)}</option>`).join("")}
             </select>
-            <button class="btn-dashed" id="addPositionBtn">+ Add a shelf</button>
+            <button class="btn-quiet add-shelf" id="addPositionBtn">+ Add a shelf</button>
           </div>
         </div>
       ` : ""}

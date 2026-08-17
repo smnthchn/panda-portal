@@ -31,13 +31,13 @@ export const UNIT_TYPES = [
 ];
 
 export const WALLS = [
-  "ENTRANCE", "EAST WALL", "NORTH WALL", "WEST WALL", "CENTRE", "OVERSTOCK & OTHER"
+  "SOUTH", "EAST WALL", "NORTH WALL", "WEST WALL", "CENTER", "OVERSTOCK & OTHER"
 ];
 
 /* code, wall, wallNote, product, type, signage, board, kind, x, y, w, h */
 export const BOOTH_TEMPLATE = [
-  ["S1", "ENTRANCE", "front of booth", "PG", "4 Tier", ["fb"], "Entrance [R]", "shelf", 1.6667, 0, LONG, SHORT],
-  ["O1", "ENTRANCE", null, "Overstock", "4 Tier", ["fb"], "Entrance [L]", "other", 10.1667, 0, LONG, SHORT],
+  ["S1", "SOUTH", "front of booth", "PG", "4 Tier", ["fb"], "Entrance [R]", "shelf", 1.6667, 0, LONG, SHORT],
+  ["O1", "SOUTH", null, "Overstock", "4 Tier", ["fb"], "Entrance [L]", "other", 10.1667, 0, LONG, SHORT],
 
   ["E1", "EAST WALL", null, "PG", "4 Tier", ["bc"], "Hoops", "shelf", 0, 0, SHORT, LONG],
   ["E2", "EAST WALL", null, "P Bandai", "4 Tier", ["bc"], "Space", "shelf", 0, 4.1667, SHORT, LONG],
@@ -58,13 +58,13 @@ export const BOOTH_TEMPLATE = [
   ["W4", "WEST WALL", null, "HG", "4 Tier", ["bc"], "Hot", "shelf", 14.3333, 19.8333, SHORT, LONG],
   ["W5", "WEST WALL", null, "RG", "4 Tier", ["bc"], "Pokemon", "shelf", 14.3333, 24, SHORT, LONG],
 
-  ["C1", "CENTRE", "islands", "Nendo, Funko & figs", "Nendo", [], "", "shelf", 5, 5.5, SHORT, LONG],
-  ["C2", "CENTRE", null, "3ft figs", "3 ft", [], "", "shelf", 5, 9.6667, SHORT, LONG],
-  ["C3", "CENTRE", null, "Pop Up", "Pop Up", [], "", "shelf", 4.9167, 15.1667, SHORT, LONG],
-  ["C4", "CENTRE", null, "Pokemon", "SD", [], "", "shelf", 4.9167, 19.3333, SHORT, LONG],
-  ["C7", "CENTRE", null, "Blind boxes", "Blindbox", [], "", "shelf", 8.25, 15.1667, SHORT, LONG],
-  ["C8", "CENTRE", null, "Plushie & figs", "Plushie", [], "", "shelf", 8.25, 19.3333, SHORT, LONG],
-  ["C9", "CENTRE", null, "Anime", "3 ft", [], "", "shelf", 5, 23.5, LONG, SHORT],
+  ["C1", "CENTER", "islands", "Nendo, Funko & figs", "Nendo", [], "", "shelf", 5, 5.5, SHORT, LONG],
+  ["C2", "CENTER", null, "3ft figs", "3 ft", [], "", "shelf", 5, 9.6667, SHORT, LONG],
+  ["C3", "CENTER", null, "Pop Up", "Pop Up", [], "", "shelf", 4.9167, 15.1667, SHORT, LONG],
+  ["C4", "CENTER", null, "Pokemon", "SD", [], "", "shelf", 4.9167, 19.3333, SHORT, LONG],
+  ["C7", "CENTER", null, "Blind boxes", "Blindbox", [], "", "shelf", 8.25, 15.1667, SHORT, LONG],
+  ["C8", "CENTER", null, "Plushie & figs", "Plushie", [], "", "shelf", 8.25, 19.3333, SHORT, LONG],
+  ["C9", "CENTER", null, "Anime", "3 ft", [], "", "shelf", 5, 23.5, LONG, SHORT],
 
   ["O2", "OVERSTOCK & OTHER", null, "", "4 Tier", ["sb", "fb"], "QR Code & 3ft Board", "other", 14.3333, 0, SHORT, MID],
   ["O3", "OVERSTOCK & OTHER", null, "", "4 Tier", ["fb"], "Chef", "other", 14.3333, 7.3333, SHORT, LONG],
