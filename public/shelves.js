@@ -978,20 +978,28 @@ function wireShelfPhotos(reload) {
 
     showFormError("shelfError", "");
 
+    const code = shelfData.positions.find(p => p.id === Number(positionId))?.code || "";
+
     await guard(async () => {
       // Bigger than a board: you have to be able to read a spine off it in a
-      // hall, not just recognise the shelf.
-      const result = await apiSend(`/api/shelf-positions/${positionId}/photos`, "POST", {
-        image: await readImageScaled(file, 1600)
-      });
+      // hall, not just recognise the shelf. Which is also why it's worth a
+      // bar — this is a megabyte going out over the venue's wifi.
+      showUploadBar(`Getting the ${code} photo ready…`);
+      const image = await readImageScaled(file, 1600);
+
+      const result = await apiUpload(`/api/shelf-positions/${positionId}/photos`, "POST", { image },
+        sent => showUploadBar(`Uploading the ${code} photo`, sent));
 
       if (!result.ok) {
         showFormError("shelfError", result.error || "Could not save that photo.");
         return;
       }
 
+      showUploadBar("Saving…");
       await reload();
     }, err => showFormError("shelfError", err.message));
+
+    hideUploadBar();
   };
 
   document.querySelectorAll("[data-photo-view]").forEach(btn => {

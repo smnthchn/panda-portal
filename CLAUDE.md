@@ -269,6 +269,13 @@ column** — pictures come from `/api/resource-image/:id` and
 `/api/shelf-photo/:id` behind a login with a `?v=` stamped from `updated_at`,
 so a plan naming twenty boards doesn't carry twenty pictures.
 
+Pictures upload through `apiUpload()` rather than `apiSend()` — XHR, because
+fetch can't report how much of the body has gone out. `showUploadBar()` pins
+one bar above the bottom nav, visible from anywhere in a 31-unit plan. It runs
+indeterminate while the browser shrinks the picture and again while the row is
+written, and shows real bytes-sent percentage in between; a fill frozen at 100%
+would say the wrong thing about both ends.
+
 **Anyone who can see the plan can add a shelf photo.** Merchandising and packing
 is the floor's job, and a photo that had to wait for the boss wouldn't get
 taken. Deleting stays with `manage_conventions`, as does everything else on the

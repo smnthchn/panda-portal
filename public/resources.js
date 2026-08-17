@@ -130,21 +130,32 @@ function wireResources() {
 
     await guard(async () => {
       if (replacing) {
-        const result = await apiSend(`/api/resources/${replacing}`, "PATCH", {
-          image: await readImageScaled(files[0], 1400)
-        });
+        const name = resourceData.resources.find(r => r.id === Number(replacing))?.name || "picture";
+
+        showUploadBar(`Getting ${name} ready…`);
+        const image = await readImageScaled(files[0], 1400);
+
+        const result = await apiUpload(`/api/resources/${replacing}`, "PATCH", { image },
+          sent => showUploadBar(`Replacing ${name}`, sent));
 
         if (!result.ok) {
           showFormError("resourceError", result.error || "Could not replace that.");
           return;
         }
       } else {
-        // Several at once: the boards for a show tend to arrive in one batch.
-        for (const file of files) {
-          const result = await apiSend("/api/resources", "POST", {
-            name: fileBaseName(file.name),
-            image: await readImageScaled(file, 1400)
-          });
+        // Several at once: the boards for a show tend to arrive in one batch,
+        // so the bar counts the whole batch rather than restarting per file.
+        for (const [index, file] of files.entries()) {
+          const name = fileBaseName(file.name);
+          const of = files.length > 1 ? ` · ${index + 1} of ${files.length}` : "";
+          const done = index / files.length;
+          const share = 1 / files.length;
+
+          showUploadBar(`Getting ${name} ready…${of}`);
+          const image = await readImageScaled(file, 1400);
+
+          const result = await apiUpload("/api/resources", "POST", { name, image },
+            sent => showUploadBar(`Uploading ${name}${of}`, done + sent * share));
 
           if (!result.ok) {
             showFormError("resourceError", result.error || "Could not upload that.");
@@ -153,8 +164,13 @@ function wireResources() {
         }
       }
 
+      // The bytes are all out, but the row still has to be written and the
+      // screen reloaded — so the bar keeps moving rather than freezing full.
+      showUploadBar("Saving…");
       await renderResources(false);
     }, err => showFormError("resourceError", err.message));
+
+    hideUploadBar();
   };
 
   document.querySelectorAll("[data-resource-replace]").forEach(btn => {

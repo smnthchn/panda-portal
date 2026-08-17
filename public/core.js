@@ -27,6 +27,75 @@ function apiSend(path, method, body) {
   return api(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
 }
 
+/**
+ * Same as apiSend, but says how far the body has got.
+ *
+ * XMLHttpRequest rather than fetch, which can't report upload progress. A
+ * shelf photo is around a megabyte over a hall's wifi, and a button that just
+ * sits there for ten seconds reads as broken.
+ */
+function apiUpload(path, method, body, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.open(method, path);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader("Content-Type", "application/json");
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress?.(event.loaded / event.total);
+    };
+
+    xhr.onerror = () =>
+      reject(new Error("The upload didn't get through. Check the signal and try again."));
+
+    xhr.onload = () => {
+      try {
+        resolve(JSON.parse(xhr.responseText));
+      } catch {
+        reject(new Error(`Expected JSON but got: ${String(xhr.responseText).slice(0, 200)}`));
+      }
+    };
+
+    xhr.send(JSON.stringify(body));
+  });
+}
+
+/* One bar for every upload, pinned above the bottom nav so it stays visible
+   whatever you'd scrolled to and whichever screen started the upload. */
+let uploadBar = null;
+
+/**
+ * A null fraction means "working, but there's nothing to measure" — shrinking
+ * the picture before it goes, or waiting on the write once all the bytes have
+ * gone out. The bar animates instead of sitting at a number that isn't moving.
+ */
+function showUploadBar(label, fraction = null) {
+  if (!uploadBar) {
+    uploadBar = document.createElement("div");
+    uploadBar.className = "upload-bar";
+    document.body.appendChild(uploadBar);
+  }
+
+  const pending = fraction === null || fraction === undefined;
+  const percent = pending ? 100 : Math.max(0, Math.min(100, Math.round(fraction * 100)));
+
+  uploadBar.innerHTML = `
+    <div class="upload-bar-head">
+      <span>${esc(label)}</span>
+      <span>${pending ? "" : `${percent}%`}</span>
+    </div>
+    <div class="upload-track${pending ? " pending" : ""}">
+      <span style="width:${percent}%;"></span>
+    </div>
+  `;
+}
+
+function hideUploadBar() {
+  uploadBar?.remove();
+  uploadBar = null;
+}
+
 /** Every piece of interpolated data goes through this before hitting innerHTML. */
 function esc(value) {
   if (value === null || value === undefined) return "";
