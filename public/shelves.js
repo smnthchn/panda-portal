@@ -60,6 +60,10 @@ function onPhone() {
 function drawShelfPlan() {
   const { positions } = shelfData;
 
+  // The preview is parked on <body>, so a redraw would otherwise leave it
+  // floating over a row that no longer exists.
+  hideBoardPreview();
+
   if (!positions.length) {
     drawEmptyShelfPlan();
     return;
@@ -293,7 +297,7 @@ function shelfRow(position) {
           ? `<button class="signage-cell" data-signage="${position.id}">
               ${position.signage.length
                 ? position.signage.map(code => signageTag(code)).join("")
-                : `<span class="signage-empty">+ SIGNAGE</span>`}
+                : `<span class="cell-add">+</span>`}
             </button>`
           : `<span class="signage-cell static">
               ${position.signage.length
@@ -306,12 +310,12 @@ function shelfRow(position) {
         ${canEdit
           ? `<button class="boards-cell" data-boards="${position.id}">
               ${position.boards.length
-                ? position.boards.map(boardChip).join("")
-                : `<span class="signage-empty">+ BOARDS</span>`}
+                ? position.boards.map(boardName).join("")
+                : `<span class="cell-add">+</span>`}
             </button>`
           : `<span class="boards-cell static">
               ${position.boards.length
-                ? position.boards.map(boardChip).join("")
+                ? position.boards.map(boardName).join("")
                 : `<span class="meta">—</span>`}
             </span>`}
       </span>
@@ -326,16 +330,54 @@ function shelfRow(position) {
   `;
 }
 
-/** One board in the grid's cell: its artwork, small, and what it's called. */
-function boardChip(board) {
+/**
+ * A board in the grid: its name, with the artwork on hover. The name is what
+ * you read down the column; the picture is what you check when the name isn't
+ * enough, and a row of thumbnails at cell size would be neither.
+ */
+function boardName(board) {
   return `
-    <span class="board-chip" title="${esc(board.face.toUpperCase())} · ${esc(board.name)}">
-      ${board.image_url
-        ? `<img src="${esc(board.image_url)}" alt="" loading="lazy" decoding="async">`
-        : `<span class="board-chip-blank">?</span>`}
-      ${esc(board.name)}
-    </span>
+    <span class="board-name-cell" data-preview="${esc(board.image_url || "")}"
+          title="${esc(board.face.toUpperCase())}">${esc(board.name)}</span>
   `;
+}
+
+/** A unit's boards as one line of names, for the places that aren't a cell. */
+function boardNameList(position) {
+  return position.boards.map(board => board.name).join(" & ");
+}
+
+/*
+ * The preview floats in fixed coordinates rather than sitting inside the row:
+ * the grid scrolls sideways in a clipping box, so a popover in the row would
+ * be cut off at the card's edge.
+ */
+let boardPreview = null;
+
+function showBoardPreview(anchor, url) {
+  if (!url) return;
+
+  if (!boardPreview) {
+    boardPreview = document.createElement("div");
+    boardPreview.className = "board-preview";
+    document.body.appendChild(boardPreview);
+  }
+
+  boardPreview.innerHTML = `<img src="${esc(url)}" alt="">`;
+
+  const box = anchor.getBoundingClientRect();
+  const width = 210;
+  const height = 150;
+
+  boardPreview.style.left = `${Math.min(Math.max(8, box.left), window.innerWidth - width - 8)}px`;
+  boardPreview.style.top = box.top > height + 16
+    ? `${box.top - height - 10}px`
+    : `${box.bottom + 10}px`;
+  boardPreview.style.display = "block";
+}
+
+function hideBoardPreview() {
+  if (boardPreview) boardPreview.style.display = "none";
 }
 
 /**
@@ -344,8 +386,8 @@ function boardChip(board) {
  *
  * A face gets its picture from the Resources library rather than an upload
  * here: the same board hangs again at the next show, so it's the store's, not
- * this event's. The name field stays for a board that hasn't been
- * photographed yet, so naming one doesn't wait on artwork existing.
+ * this event's. Its name comes from the library entry too — rename it once in
+ * Resources and it's renamed on every shelf at every show.
  */
 function boardsStrip(position) {
   const byFace = new Map(position.boards.map(board => [board.face, board]));
@@ -358,26 +400,17 @@ function boardsStrip(position) {
         return `
           <span class="board-slot">
             <span class="board-slot-face">${face.toUpperCase()}</span>
-            ${board?.image_url
-              ? `<button class="board-slot-art" data-board-pick="${position.id}" data-face="${face}"
-                         title="Choose a different one">
-                  <img src="${esc(board.image_url)}" alt="" loading="lazy" decoding="async">
-                  <span>${esc(board.name)}</span>
-                </button>
+            ${board
+              ? `<button class="board-slot-name" data-board-pick="${position.id}" data-face="${face}"
+                         data-preview="${esc(board.image_url || "")}"
+                         title="Choose a different one">${esc(board.name)}</button>
                 <button class="board-slot-clear" data-board-clear="${position.id}" data-face="${face}"
                         title="Take it off this face">×</button>`
-              : `<button class="btn-dashed board-slot-pick" data-board-pick="${position.id}" data-face="${face}">
-                  ${board ? `Artwork for ${esc(board.name)}` : "+ Choose"}
-                </button>`}
+              : `<button class="cell-add" data-board-pick="${position.id}" data-face="${face}"
+                         title="Choose the ${face} board">+</button>`}
           </span>
         `;
       }).join("")}
-
-      <span class="board-names">
-        <span class="meta">Names, for a board with no artwork yet</span>
-        <input class="cell-input" type="text" value="${esc(position.board_name)}"
-               data-field="board_name" data-position="${position.id}" placeholder="Back &amp; side">
-      </span>
 
       <button class="btn-quiet" id="closeBoardsBtn"
               style="border:none; background:none; padding:6px 8px;">Done</button>
@@ -455,7 +488,7 @@ function shelfList() {
             <div style="flex:1; min-width:0;">
               <div style="font-size:13px;">${esc(position.product || "—")}</div>
               <div class="meta">${esc(position.unit_type || "")}${
-                position.board_name ? ` · ${esc(position.board_name)}` : ""
+                position.boards.length ? ` · ${esc(boardNameList(position))}` : ""
               }</div>
             </div>
           </div>
@@ -553,7 +586,7 @@ function boothBlock(position) {
       </div>
       <div class="block-label">
         ${signsMode
-          ? (position.board_name ? esc(position.board_name) : `<span style="color:#B0A88F;">—</span>`)
+          ? (position.boards.length ? esc(boardNameList(position)) : `<span style="color:#B0A88F;">—</span>`)
           : esc(position.product || "")}
       </div>
     </div>
@@ -823,7 +856,7 @@ function signsList() {
               ? `<span class="sign-thumb"><img src="${esc(position.boards[0].image_url)}" alt="" loading="lazy" decoding="async"></span>`
               : ""}
             <span style="flex:1; font-size:13px;">
-              ${esc(position.board_name)}
+              ${esc(boardNameList(position))}
               <div class="meta">${position.boards.map(b => b.face.toUpperCase()).join(" + ")}</div>
             </span>
             ${position.stages[4]
@@ -995,6 +1028,11 @@ function wireBoardArt(reload) {
       pickingArtFor = null;
       await reload();
     };
+  });
+
+  document.querySelectorAll("[data-preview]").forEach(el => {
+    el.onmouseenter = () => showBoardPreview(el, el.dataset.preview);
+    el.onmouseleave = hideBoardPreview;
   });
 
   document.querySelectorAll("[data-board-clear]").forEach(btn => {

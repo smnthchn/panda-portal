@@ -15,7 +15,6 @@ import {
   stageTotals,
   stageApplies,
   boardFaces,
-  splitBoardNames,
   signageList
 } from "../src/routes/shelves.js";
 import { templatePositions, BOOTH_FEET } from "../src/lib/booth-template.js";
@@ -558,52 +557,33 @@ describe("booth layout", () => {
     expect(conflicts[0].message).toBe("W9 runs 12″ off the booth");
   });
 
-  it("splits board names on the ampersand, back then side then front", () => {
-    expect(boardFaces({ board_name: "Space & Gunpla Corner" })).toEqual([
-      { face: "back", name: "Space", resource_id: null, image_url: null },
-      { face: "side", name: "Gunpla Corner", resource_id: null, image_url: null }
-    ]);
-    expect(boardFaces({ board_name: "" })).toEqual([]);
-  });
-
-  // The artwork is a library entry the plan points at, so a face only knows
-  // what its sign looks like once the assignments are handed to it.
-  it("hangs the assigned artwork on the face it was assigned to", () => {
+  // A board is whatever has been assigned to the face, called whatever the
+  // library calls it — there's no second name on the plan to drift out of
+  // step with the picture.
+  it("names a board from the library entry assigned to it", () => {
     const art = new Map([
-      ["back", { id: 3, name: "Space board", image_url: "/api/resource-image/3?v=20260817" }]
-    ]);
-
-    expect(boardFaces({ board_name: "Space & Gunpla Corner" }, art)).toEqual([
-      { face: "back", name: "Space", resource_id: 3, image_url: "/api/resource-image/3?v=20260817" },
-      { face: "side", name: "Gunpla Corner", resource_id: null, image_url: null }
-    ]);
-  });
-
-  // Assigning a picture shouldn't need someone to type a name into the grid
-  // first, so an assigned face with no name of its own borrows the library
-  // entry's name rather than rendering blank.
-  it("gives an assigned face with no board name the library entry's name", () => {
-    const art = new Map([
+      ["back", { id: 3, name: "Space board", image_url: "/api/resource-image/3?v=20260817" }],
       ["side", { id: 8, name: "Plush corner", image_url: "/api/resource-image/8?v=1" }]
     ]);
 
-    expect(boardFaces({ board_name: "" }, art)).toEqual([
+    expect(boardFaces(art)).toEqual([
+      { face: "back", name: "Space board", resource_id: 3, image_url: "/api/resource-image/3?v=20260817" },
       { face: "side", name: "Plush corner", resource_id: 8, image_url: "/api/resource-image/8?v=1" }
     ]);
   });
 
-  // The names are free text, so a fourth one shouldn't fall off the end.
-  it("keeps a name written past the three faces", () => {
-    const faces = boardFaces({ board_name: "A & B & C & D" });
-    expect(faces.map(f => f.face)).toEqual(["back", "side", "front", "extra"]);
+  it("reports the faces in board order, whatever order they were assigned", () => {
+    const art = new Map([
+      ["front", { id: 2, name: "Front", image_url: "/f" }],
+      ["back", { id: 1, name: "Back", image_url: "/b" }]
+    ]);
+
+    expect(boardFaces(art).map(f => f.face)).toEqual(["back", "front"]);
   });
 
-  it("splits a board name cell the way the plan writes it", () => {
-    expect(splitBoardNames("Space & Gunpla Corner & Nendo")).toEqual([
-      "Space", "Gunpla Corner", "Nendo"
-    ]);
-    expect(splitBoardNames(" & Space & ")).toEqual(["Space"]);
-    expect(splitBoardNames(null)).toEqual([]);
+  it("has no boards on a shelf nothing is assigned to", () => {
+    expect(boardFaces(new Map())).toEqual([]);
+    expect(boardFaces()).toEqual([]);
   });
 
   it("keeps only real signage codes", () => {

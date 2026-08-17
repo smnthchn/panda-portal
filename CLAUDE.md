@@ -10,7 +10,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 94 tests
+npm test               # vitest, 92 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -263,14 +263,18 @@ sets the whole booth's signage in one pass, where the map would mean selecting
 one row would shove the grid around while you were reading it. The map panel
 shows what's assigned and nothing more.
 
-The strip keeps a text field for the Board name cell, so a board can be named
-before anyone has photographed it.
+**A board is whatever is assigned to the face, called whatever the library
+calls it.** `boardFaces()` reads assignments only. There's no second name kept
+on the plan, so a board can't be called one thing on the grid and another on
+the picture of it, and renaming it once in Resources renames it everywhere it
+hangs. `shelf_positions.board_name` is left over from before this and is no
+longer read — like the `can_*` columns, it's dead.
 
-`boardFaces()` shows a face because the plan **named** a board on it, because a
-picture has been **assigned** to it, or both — assigning artwork shouldn't need
-someone to type a name into the grid first, and naming a board shouldn't wait
-for artwork to exist. An assigned face with no name borrows the library entry's
-name. Names past the third face don't fall off the end.
+The cell shows names as plain text, dotted-underlined; the artwork is a hover
+away in a preview positioned in fixed coordinates, because the grid scrolls
+inside a clipping box that would cut a popover off at the card's edge. Empty
+cells — signage and boards alike — offer a plain `+` rather than a dashed
+outline shouting about a cell that is usually correctly empty.
 
 Deleting a resource takes it off every shelf across every event, so the
 confirmation says how many.
@@ -451,6 +455,10 @@ Set with `wrangler secret put NAME` for production, and in `.dev.vars` for local
   is true, so saving something doesn't collapse the editor you're working in.
 - **Every management form has a jump button** on the card that displays its data.
   The forms sit at the bottom of the page; without the buttons they're unfindable.
+- **`shelf_positions.board_name` is dead.** A board's name comes from the
+  Resources entry assigned to its face. The column is still written by the
+  booth template and copied when a plan is carried forward, but nothing reads
+  it.
 - **The `can_*` columns on `employees` are dead.** Superseded by the permission
   tables in migration 0002; nothing reads them.
 - **Local dev uses a separate D1 database.** Data differs from production, and Google

@@ -93,50 +93,26 @@ export function signageList(value) {
 /** The faces a unit's boards stand on, in the order the names are written. */
 export const BOARD_FACES = ["back", "side", "front"];
 
-/** The Board name cell is the names of that unit's boards, ' & '-separated. */
-export function splitBoardNames(value) {
-  return String(value || "")
-    .split("&")
-    .map(name => name.trim())
-    .filter(Boolean);
-}
-
 /**
- * A unit's boards, one per face.
+ * A unit's boards, one per face, in face order.
  *
- * A face is here because the plan named a board on it, because a picture has
- * been assigned to it, or both — assigning artwork to a bare shelf shouldn't
- * need someone to type a name into the grid first, and naming a board
- * shouldn't wait for artwork to exist. An assigned face with no name of its
- * own borrows the library entry's name.
+ * **A board is whatever has been assigned to the face, and it's called
+ * whatever the library calls it.** There is no separate name to keep in step:
+ * rename it once in Resources and it's renamed on every shelf at every show,
+ * and a board can't be named one thing on the plan and another on the picture
+ * of it.
  *
- * `assigned` is a face -> resource map for this position; without it the
- * faces are just names.
+ * `assigned` is a face -> resource map for this position.
  */
-export function boardFaces(position, assigned = null) {
-  const names = splitBoardNames(position.board_name);
-  const faces = [];
+export function boardFaces(assigned = null) {
+  if (!assigned) return [];
 
-  BOARD_FACES.forEach((face, i) => {
-    const name = names[i] || null;
-    const art = assigned?.get(face) || null;
-    if (!name && !art) return;
-
-    faces.push({
-      face,
-      name: name || art.name,
-      resource_id: art?.id || null,
-      image_url: art?.image_url || null
+  return BOARD_FACES
+    .filter(face => assigned.has(face))
+    .map(face => {
+      const art = assigned.get(face);
+      return { face, name: art.name, resource_id: art.id, image_url: art.image_url };
     });
-  });
-
-  // A unit carrying more names than there are faces. Rare, but the names are
-  // free text, so they shouldn't silently vanish off the end.
-  names.slice(BOARD_FACES.length).forEach(name => {
-    faces.push({ face: "extra", name, resource_id: null, image_url: null });
-  });
-
-  return faces;
 }
 
 /**
@@ -234,8 +210,7 @@ async function loadPlan(db, conventionId) {
       product: row.product || "",
       unit_type: row.unit_type || "",
       signage: signageList(row.signage),
-      board_name: row.board_name || "",
-      boards: boardFaces(row, artByPosition.get(row.id)),
+      boards: boardFaces(artByPosition.get(row.id)),
       photos: photosByPosition.get(row.id) || [],
       kind: row.kind,
       geometry: effectiveGeometry(row),
@@ -429,11 +404,6 @@ export async function handleUpdatePosition(request, env, positionId) {
   if (body.product !== undefined) {
     updates.push("product = ?");
     values.push(optionalText(body.product) || "");
-  }
-
-  if (body.board_name !== undefined) {
-    updates.push("board_name = ?");
-    values.push(optionalText(body.board_name) || "");
   }
 
   if (body.unit_type !== undefined) {
