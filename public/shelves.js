@@ -796,9 +796,9 @@ function boardLightbox() {
 
   return `
     <div class="lightbox" id="boardLightbox">
-      <div class="lightbox-bar">
-        <span>${esc(position.code)} · ${esc(board.face.toUpperCase())} · ${esc(board.name)}</span>
-        <button class="btn-quiet" id="closeBoardLightboxBtn">Close</button>
+      <div class="lightbox-controls">
+        <button class="lightbox-close" id="closeBoardLightboxBtn" aria-label="Close"
+                title="${esc(position.code)} · ${esc(board.face.toUpperCase())} · ${esc(board.name)}">×</button>
       </div>
       <img src="${esc(board.image_url)}" alt="${esc(board.name)}">
     </div>
@@ -891,14 +891,12 @@ function photoLightbox() {
 
   return `
     <div class="lightbox" id="photoLightbox">
-      <div class="lightbox-bar">
-        <span>${esc(photo.position.code)}${photo.taken_by_name ? ` · ${esc(photo.taken_by_name)}` : ""}</span>
-        <div class="button-row" style="margin:0;">
-          ${shelfData.canManage
-            ? `<button class="btn-danger" data-photo-delete="${photo.id}">Delete</button>`
-            : ""}
-          <button class="btn-quiet" id="closeLightboxBtn">Close</button>
-        </div>
+      <div class="lightbox-controls">
+        ${shelfData.canManage
+          ? `<button class="btn-danger" data-photo-delete="${photo.id}">Delete</button>`
+          : ""}
+        <button class="lightbox-close" id="closeLightboxBtn" aria-label="Close"
+                title="${esc(photo.position.code)}${photo.taken_by_name ? ` · ${esc(photo.taken_by_name)}` : ""}">×</button>
       </div>
       <img src="${esc(photo.image_url)}" alt="">
     </div>

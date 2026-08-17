@@ -1622,9 +1622,33 @@ html.overlay-open {
   flex: 1;
   min-height: 0;
   width: 100%;
-  padding: 13px;
+  padding: 10px;
   box-sizing: border-box;
   object-fit: contain;
+}
+
+/* Looking at a board, the picture is the whole point, so the controls float
+   over a corner of it rather than taking a bar's worth of height off the top.
+   What the bar used to say is on the close button as its tooltip. */
+.lightbox-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lightbox-close {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 19px;
+  line-height: 1;
 }
 
 /* The picker is the one thing in here that does scroll: the library can be
