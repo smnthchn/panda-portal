@@ -529,6 +529,34 @@ describe("booth layout", () => {
     expect(layoutConflicts(positions, BOOTH_FEET)).toEqual([]);
   });
 
+  // The template shipped with an older set of labels: no S2, and an O5
+  // standing in the middle of the centre island.
+  it("labels the booth the way the floor plan does", () => {
+    const codes = templatePositions().map(p => p.code);
+
+    expect(codes).toContain("S2");
+    expect(codes).toContain("C5");
+    expect(codes).toContain("C6");
+    expect(codes).not.toContain("O3");
+    expect(codes).not.toContain("O4");
+    expect(codes).not.toContain("O5");
+    expect(new Set(codes).size).toBe(codes.length);
+  });
+
+  // The grid groups by runs of the same section, so the template has to list
+  // each section together or it opens a second heading further down.
+  it("keeps each section in one run", () => {
+    const seen = [];
+    for (const { wall } of templatePositions()) {
+      if (seen[seen.length - 1] !== wall) seen.push(wall);
+    }
+
+    expect(seen).toEqual([...new Set(seen)]);
+    expect(seen).toEqual([
+      "SOUTH WALL", "EAST WALL", "NORTH WALL", "WEST WALL", "CENTER", "OVERSTOCK & OTHER"
+    ]);
+  });
+
   // The API hands this function positions that have already been mapped to a
   // `geometry` object. Reading the raw columns instead found no conflicts at
   // all — an invalid plan looked perfectly valid.

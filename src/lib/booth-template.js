@@ -4,7 +4,12 @@
  *
  * Lifted from the design handoff's own POS and SHELVES tables rather than
  * re-measured. Geometry is in feet from the booth's top-left; every unit is
- * 50″ × 20″ except N1, E7 and O2, which are 38″ long.
+ * 50″ × 20″ except N1, E7 and O1, which are 38″ long.
+ *
+ * The handoff's tables carried an older set of labels — the two entrance
+ * units were S1 and O1, the overstock column ran O2/O3, and the centre's
+ * middle pair was O4/O5. Same units in the same places, renamed against
+ * Samantha's floor plan (Aug 2026) to S1/S2, O1/O2 and C5/C6.
  */
 
 const LONG = 50 / 12;
@@ -37,7 +42,7 @@ export const WALLS = [
 /* code, wall, wallNote, product, type, signage, board, kind, x, y, w, h */
 export const BOOTH_TEMPLATE = [
   ["S1", "SOUTH WALL", "front of booth", "PG", "4 Tier", ["fb"], "Entrance [R]", "shelf", 1.6667, 0, LONG, SHORT],
-  ["O1", "SOUTH WALL", null, "Overstock", "4 Tier", ["fb"], "Entrance [L]", "other", 10.1667, 0, LONG, SHORT],
+  ["S2", "SOUTH WALL", null, "Overstock", "4 Tier", ["fb"], "Entrance [L]", "shelf", 10.1667, 0, LONG, SHORT],
 
   ["E1", "EAST WALL", null, "PG", "4 Tier", ["bc"], "Hoops", "shelf", 0, 0, SHORT, LONG],
   ["E2", "EAST WALL", null, "P Bandai", "4 Tier", ["bc"], "Space", "shelf", 0, 4.1667, SHORT, LONG],
@@ -62,14 +67,14 @@ export const BOOTH_TEMPLATE = [
   ["C2", "CENTER", null, "3ft figs", "3 ft", [], "", "shelf", 5, 9.6667, SHORT, LONG],
   ["C3", "CENTER", null, "Pop Up", "Pop Up", [], "", "shelf", 4.9167, 15.1667, SHORT, LONG],
   ["C4", "CENTER", null, "Pokemon", "SD", [], "", "shelf", 4.9167, 19.3333, SHORT, LONG],
+  ["C5", "CENTER", null, "Overstock", "4 Tier", [], "", "shelf", 6.5833, 15.1667, SHORT, LONG],
+  ["C6", "CENTER", null, "Overstock", "4 Tier", [], "", "shelf", 6.5833, 19.3333, SHORT, LONG],
   ["C7", "CENTER", null, "Blind boxes", "Blindbox", [], "", "shelf", 8.25, 15.1667, SHORT, LONG],
   ["C8", "CENTER", null, "Plushie & figs", "Plushie", [], "", "shelf", 8.25, 19.3333, SHORT, LONG],
   ["C9", "CENTER", null, "Anime", "3 ft", [], "", "shelf", 5, 23.5, LONG, SHORT],
 
-  ["O2", "OVERSTOCK & OTHER", null, "", "4 Tier", ["sb", "fb"], "QR Code & 3ft Board", "other", 14.3333, 0, SHORT, MID],
-  ["O3", "OVERSTOCK & OTHER", null, "", "4 Tier", ["fb"], "Chef", "other", 14.3333, 7.3333, SHORT, LONG],
-  ["O4", "OVERSTOCK & OTHER", null, "Overstock", "4 Tier", [], "", "other", 6.5833, 15.1667, SHORT, LONG],
-  ["O5", "OVERSTOCK & OTHER", null, "Overstock", "4 Tier", [], "", "other", 6.5833, 19.3333, SHORT, LONG],
+  ["O1", "OVERSTOCK & OTHER", null, "", "4 Tier", ["sb", "fb"], "QR Code & 3ft Board", "other", 14.3333, 0, SHORT, MID],
+  ["O2", "OVERSTOCK & OTHER", null, "", "4 Tier", ["fb"], "Chef", "other", 14.3333, 7.3333, SHORT, LONG],
   ["Cash", "OVERSTOCK & OTHER", null, "", "Cash", ["bc"], "Cash", "other", 14.3333, 3.1667, SHORT, LONG],
   ["A", "OVERSTOCK & OTHER", null, "", "A", [], "", "other", 10.25, 1.6667, SHORT, LONG]
 ];
