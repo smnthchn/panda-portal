@@ -207,9 +207,11 @@ function pillRow() {
   const { convention } = detailData;
   const mapHref = addressHref(convention);
 
-  // Booth Plan leads: during setup it's the thing everyone opens.
+  // Booth Plan leads: during setup it's the thing everyone opens. The map is
+  // its own page rather than a tab inside the plan, so it gets its own way in.
   const buttons = [
-    `<button class="btn-pill off" id="boothPlanPill">Booth Plan</button>`
+    `<button class="btn-pill off" id="boothPlanPill">Booth Plan</button>`,
+    `<button class="btn-pill off" id="boothMapPill">Booth map</button>`
   ];
 
   if (convention.venue_map_file_id) {
@@ -858,7 +860,10 @@ function wireConventionDetail() {
   if (buildBtn) buildBtn.onclick = () => renderSchedule(detailData.convention.slug);
 
   const boothPlan = document.getElementById("boothPlanPill");
-  if (boothPlan) boothPlan.onclick = () => renderShelfPlan(detailData.convention.slug);
+  if (boothPlan) boothPlan.onclick = () => renderShelfPlan(detailData.convention.slug, true, "grid");
+
+  const boothMap = document.getElementById("boothMapPill");
+  if (boothMap) boothMap.onclick = () => renderShelfPlan(detailData.convention.slug, true, "map");
 
   // Floorplan / Booth switch the one plan card; Maps opens the address.
   document.querySelectorAll("[data-plan]").forEach(btn => {

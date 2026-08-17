@@ -1161,6 +1161,9 @@ function viewForPath(pathname) {
   const shelfPlan = path.match(/^\/conventions\/([^/]+)\/shelf-plan$/);
   if (shelfPlan) return { view: "shelf-plan", slug: decodeURIComponent(shelfPlan[1]) };
 
+  const boothMap = path.match(/^\/conventions\/([^/]+)\/booth-map$/);
+  if (boothMap) return { view: "booth-map", slug: decodeURIComponent(boothMap[1]) };
+
   const conventionSchedule = path.match(/^\/conventions\/([^/]+)\/schedule$/);
   if (conventionSchedule) {
     return { view: "convention-schedule", slug: decodeURIComponent(conventionSchedule[1]) };
@@ -1199,7 +1202,8 @@ const POPSTATE_VIEWS = {
   convention: (s) => openConvention(s.slug, false),
   schedule: () => renderStoreSchedule(null, false),
   "convention-schedule": (s) => renderSchedule(s.slug, false),
-  "shelf-plan": (s) => renderShelfPlan(s.slug, false),
+  "shelf-plan": (s) => renderShelfPlan(s.slug, false, "grid"),
+  "booth-map": (s) => renderShelfPlan(s.slug, false, "map"),
   "knowledge-base": () => renderKnowledgeBase(false),
   "my-folder": () => renderMyFolder(false),
   clock: () => renderClock(false),

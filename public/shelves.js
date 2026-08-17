@@ -15,6 +15,7 @@ let openSignageFor = null;
 let openBoardsFor = null;       // which row's Boards strip is open
 let openShelfFor = null;        // which row's section/remove strip is open
 let viewingPhoto = null;        // photo id, shown full size
+let viewingBoard = null;        // { positionId, face }, shown full size
 let pickingArtFor = null;       // { positionId, face } while the picker is open
 
 /* The design draws the booth at 31px per foot. That's 502px wide, which a
@@ -34,8 +35,15 @@ function measureScale() {
   return pxPerFoot;
 }
 
-async function renderShelfPlan(slug, pushState = true) {
-  if (pushState) pushPageState("shelf-plan", { slug });
+/**
+ * The plan and the booth map are two pages, not two tabs: the map is what
+ * you send someone ("look at where C5 is"), and a refresh on it should come
+ * back to it rather than to the grid. `view` is null on a reload, which
+ * leaves whichever of the two you were on alone.
+ */
+async function renderShelfPlan(slug, pushState = true, view = null) {
+  if (view) shelfView = view;
+  if (pushState) pushPageState(shelfPlanPage(), { slug });
 
   const data = await api(`/api/conventions/${encodeURIComponent(slug)}/shelf-plan`);
 
@@ -51,6 +59,11 @@ async function renderShelfPlan(slug, pushState = true) {
   }
 
   drawShelfPlan();
+}
+
+/** Which of the two pages the current view belongs to. */
+function shelfPlanPage() {
+  return shelfView === "map" ? "booth-map" : "shelf-plan";
 }
 
 /** The grid is a spreadsheet; a phone gets a list of units instead. */
@@ -81,6 +94,7 @@ function drawShelfPlan() {
 
     ${pickingArtFor ? artworkPicker() : ""}
     ${viewingPhoto ? photoLightbox() : ""}
+    ${viewingBoard ? boardLightbox() : ""}
   `;
 
   markActiveNav("conventions", { wide: !list });
@@ -742,23 +756,42 @@ function boardsBlock(position) {
   }
 
   return `
-    <div style="margin:8px 0;">
+    <div class="board-strip">
       ${position.boards.map(board => `
-        <div class="board-row">
-          <div class="board-row-head" style="margin-bottom:8px;">
+        <div class="board-item">
+          <div class="board-item-head">
             <span class="pill" style="font-size:10px;">${esc(board.face.toUpperCase())}</span>
-            <span style="flex:1; font-size:13px;">${esc(board.name)}</span>
+            <span style="font-size:13px;">${esc(board.name)}</span>
           </div>
 
           ${board.image_url
-            ? `<div class="board-art" style="height:110px;">
+            ? `<button class="board-art" data-board-view="${position.id}:${esc(board.face)}"
+                       title="See ${esc(board.name)} full size">
                 <img src="${esc(board.image_url)}" alt="${esc(board.name)}" loading="lazy" decoding="async">
-              </div>`
-            : `<div class="board-art empty" style="height:76px;">
+              </button>`
+            : `<div class="board-art empty">
                 <span class="meta">No artwork yet</span>
               </div>`}
         </div>
       `).join("")}
+    </div>
+  `;
+}
+
+/** A board at a size you can actually read the print on. */
+function boardLightbox() {
+  const position = shelfData.positions.find(p => p.id === viewingBoard.positionId);
+  const board = position?.boards.find(b => b.face === viewingBoard.face);
+
+  if (!board?.image_url) return "";
+
+  return `
+    <div class="lightbox" id="boardLightbox">
+      <div class="lightbox-bar">
+        <span>${esc(position.code)} · ${esc(board.face.toUpperCase())} · ${esc(board.name)}</span>
+        <button class="btn-quiet" id="closeBoardLightboxBtn">Close</button>
+      </div>
+      <img src="${esc(board.image_url)}" alt="${esc(board.name)}">
     </div>
   `;
 }
@@ -913,6 +946,10 @@ function wireShelfPlan() {
       shelfView = value === "map" ? "map" : "grid";
       if (value === "grid-all") shelfFilter = "all";
       if (value === "grid-left") shelfFilter = "left";
+
+      // Crossing between the plan and the map changes the page, so the URL
+      // follows and Back takes you where you came from.
+      pushPageState(shelfPlanPage(), { slug });
       drawShelfPlan();
     };
   });
@@ -1116,6 +1153,20 @@ function wireBoardArt(reload) {
       pickingArtFor = null;
       await reload();
     };
+  });
+
+  document.querySelectorAll("[data-board-view]").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const [positionId, face] = btn.dataset.boardView.split(":");
+      viewingBoard = { positionId: Number(positionId), face };
+      drawShelfPlan();
+    };
+  });
+
+  document.getElementById("closeBoardLightboxBtn")?.addEventListener("click", () => {
+    viewingBoard = null;
+    drawShelfPlan();
   });
 
   document.querySelectorAll("[data-preview]").forEach(el => {

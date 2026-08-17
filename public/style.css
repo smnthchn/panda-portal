@@ -1438,6 +1438,28 @@ textarea::placeholder {
 
 /* Boards — the printed signs and what each one looks like. */
 
+/* Boards stand beside each other, the way they do on the unit — a shelf's
+   back and side board are two faces of one thing, not two entries in a list.
+   They wrap when the panel is too narrow to hold them all. */
+.board-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 10px 0;
+}
+
+.board-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.board-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .board-row {
   padding: 10px 0;
   border-bottom: 2px solid var(--track);
@@ -1468,10 +1490,24 @@ textarea::placeholder {
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  height: 150px;
+  height: 110px;
   max-width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
   border-radius: 12px;
   overflow: hidden;
+}
+
+/* It's a button so the artwork can be opened full size; nothing about it
+   should look like one until you're over it. */
+button.board-art {
+  cursor: zoom-in;
+}
+
+button.board-art:hover {
+  margin-top: 0;
+  opacity: 0.85;
 }
 
 .board-art img {

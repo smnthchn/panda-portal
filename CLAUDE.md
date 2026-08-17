@@ -197,7 +197,11 @@ Three surfaces, chosen by who's looking and on what:
 - **List** (phone) — a card per unit with its five boxes spelled out. The grid
   is 900px of columns; dragging that sideways on a phone is not a tool. The two
   swap on a `matchMedia` breakpoint listener, so rotating a phone redraws.
-- **Booth map** — drawn to scale at whatever fits its column. The design's
+- **Booth map** — its own page (`/conventions/:slug/booth-map`), not a tab
+  inside the plan: it's the thing you send someone ("look at where C5 is"),
+  and a refresh should come back to it. Reached from its own pill on the event
+  page, and the header buttons move between the two pages so Back works.
+  Drawn to scale at whatever fits its column. The design's
   31px per foot is 502px wide, which no phone can show and which can't be
   pinch-zoomed inside the app, so `measureScale()` divides the available width
   by the booth's 16 ft and caps at the design scale — never scaling up. A
