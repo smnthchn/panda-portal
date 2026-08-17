@@ -2087,6 +2087,14 @@ button.cell-add:hover {
   background: none;
   border-radius: 7px;
   cursor: pointer;
+
+  /* Buttons default to cream on the brand fill. This one has no fill, so it
+     has to say what colour its text is or the names come out near-white. */
+  font-family: inherit;
+  font-weight: 400;
+  font-size: 12.5px;
+  color: var(--text);
+  text-align: left;
 }
 
 .boards-cell:hover:not(.static) {
