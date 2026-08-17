@@ -341,9 +341,12 @@ function shelfRow(position) {
 }
 
 /**
- * Which section a shelf is in, and the way to remove it. Moving it here also
- * moves it in the grid: the sections are runs down the order, so a shelf that
- * changed wall without changing place would sit under a heading of its own.
+ * Which section a shelf is in, and the way to remove it.
+ *
+ * Unlike the signage and boards strips, this one waits for Save. Moving a
+ * shelf takes its row out from under you and re-sorts the grid around it, so
+ * doing that the instant the list changes is startling — and there's no
+ * undo. Pick the section, look at it, then commit.
  */
 function shelfStrip(position) {
   return `
@@ -998,24 +1001,29 @@ function wireShelfPlan() {
     };
   });
 
-  document.getElementById("closeShelfBtn")?.addEventListener("click", () => {
+  // Save is what moves the shelf. Choosing a section only fills the box in;
+  // walking away from the strip leaves the shelf exactly where it was.
+  document.getElementById("closeShelfBtn")?.addEventListener("click", async () => {
+    const select = document.querySelector("[data-wall]");
+    const position = shelfData.positions.find(p => p.id === openShelfFor);
+
+    if (!select || !position || select.value === position.wall) {
+      openShelfFor = null;
+      drawShelfPlan();
+      return;
+    }
+
+    const result = await apiSend(`/api/shelf-positions/${position.id}`, "PATCH", {
+      wall: select.value
+    });
+
+    if (!result.ok) {
+      showFormError("shelfError", result.error || "Could not move that shelf.");
+      return;
+    }
+
     openShelfFor = null;
-    drawShelfPlan();
-  });
-
-  document.querySelectorAll("[data-wall]").forEach(select => {
-    select.onchange = async () => {
-      const result = await apiSend(`/api/shelf-positions/${select.dataset.wall}`, "PATCH", {
-        wall: select.value
-      });
-
-      if (!result.ok) {
-        showFormError("shelfError", result.error || "Could not move that shelf.");
-        return;
-      }
-
-      await reload();
-    };
+    await reload();
   });
 
   document.querySelectorAll("[data-delete-shelf]").forEach(btn => {

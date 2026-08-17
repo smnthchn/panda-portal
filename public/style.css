@@ -1958,9 +1958,6 @@ textarea::placeholder {
   background: var(--paper);
 }
 
-.shelf-strip {
-  padding-left: 13px;
-}
 
 .shelf-row .col-stage {
   text-align: center;
@@ -2252,6 +2249,22 @@ button.cell-add:hover {
   background: var(--paper);
   border-bottom: 2px solid var(--track);
   min-width: 900px;
+}
+
+/* The signage strip is indented to sit under its own column. The shelf strip
+   belongs to the leftmost column, so that indent left a wide empty gap — and
+   it has to come after .signage-strip, whose padding shorthand would
+   otherwise win on source order alone. */
+.signage-strip.shelf-strip {
+  padding-left: 13px;
+  gap: 10px;
+}
+
+/* Form controls are full-width by default; unchecked, the section list took
+   the whole strip and pushed everything else onto its own line. */
+.shelf-strip select {
+  width: auto;
+  min-width: 200px;
 }
 
 .sig-toggle {
