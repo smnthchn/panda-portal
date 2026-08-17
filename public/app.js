@@ -178,6 +178,11 @@ function markActiveNav(view, { wide = false } = {}) {
   }
 
   pageArea().classList.toggle("wide", wide);
+
+  // Every screen draws through here, so a page left locked by an overlay that
+  // was open when you navigated away unlocks on arrival. The screen that owns
+  // the overlay re-applies it straight after.
+  document.documentElement.classList.remove("overlay-open");
 }
 
 /* ---------- Dashboard ---------- */

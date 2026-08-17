@@ -1580,6 +1580,16 @@ button.board-art:hover {
 }
 
 /* Full-screen overlays: the artwork picker and a photo at a readable size. */
+/* While an overlay is up, the page under it holds still — and loses its
+   scrollbar, which otherwise runs down the side of a picture that's supposed
+   to be the whole screen. It goes on <html> rather than <body> because <html>
+   is what actually scrolls here; body's overflow doesn't reach the viewport. */
+html.overlay-open {
+  overflow: hidden;
+}
+
+/* Full screen and never scrolls: the bar takes what it needs and whatever is
+   below it gets the rest. */
 .lightbox {
   position: fixed;
   inset: 0;
@@ -1587,12 +1597,11 @@ button.board-art:hover {
   background: var(--paper);
   display: flex;
   flex-direction: column;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .lightbox-bar {
-  position: sticky;
-  top: 0;
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1606,14 +1615,24 @@ button.board-art:hover {
   letter-spacing: 0.05em;
 }
 
+/* min-height: 0 is what lets it shrink — a flex item won't go below its own
+   content's height without it, which is how a tall board pushed the box past
+   the screen and put a scrollbar on it. */
 .lightbox > img {
-  max-width: 100%;
-  margin: auto;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   padding: 13px;
+  box-sizing: border-box;
   object-fit: contain;
 }
 
+/* The picker is the one thing in here that does scroll: the library can be
+   longer than the screen. */
 .picker-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: 13px;
 }
 

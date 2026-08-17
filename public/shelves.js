@@ -98,6 +98,15 @@ function drawShelfPlan() {
   `;
 
   markActiveNav("conventions", { wide: !list });
+
+  // A full-screen overlay covers the page but doesn't stop it scrolling
+  // underneath, which leaves a scrollbar down the side of a picture that is
+  // supposed to be the whole screen.
+  document.documentElement.classList.toggle(
+    "overlay-open",
+    Boolean(viewingPhoto || viewingBoard || pickingArtFor)
+  );
+
   watchShelfWidth();
   wireShelfPlan();
 }
