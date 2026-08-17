@@ -15,6 +15,75 @@
 -- Order matters: (convention_id, code) is unique, so each rename has to run
 -- only once the code it wants has been vacated. O1 -> S2 frees O1 for O2, and
 -- so on down the chain. Renaming in any other order trips the constraint.
+--
+-- A plan may also carry an S2 someone added by hand, because a booth with an
+-- S1 and no S2 looks like it's missing a shelf. That's the same physical unit
+-- as O1 entered a second time, and the unique code means it has to be folded
+-- into O1 before O1 can take the name. Everything on the stand-in moves
+-- across first, so nothing anyone did to it is lost.
+
+-- Its artwork, except on a face O1 already has boarded.
+UPDATE shelf_board_art
+SET position_id = (
+      SELECT o.id
+      FROM shelf_positions s
+      JOIN shelf_positions o
+        ON o.convention_id = s.convention_id AND o.code = 'O1'
+      WHERE s.id = shelf_board_art.position_id
+    )
+WHERE position_id IN (
+      SELECT s.id
+      FROM shelf_positions s
+      JOIN shelf_positions o
+        ON o.convention_id = s.convention_id AND o.code = 'O1'
+      WHERE s.code = 'S2'
+    )
+  AND NOT EXISTS (
+      SELECT 1
+      FROM shelf_board_art existing
+      JOIN shelf_positions s ON s.id = shelf_board_art.position_id
+      JOIN shelf_positions o
+        ON o.convention_id = s.convention_id AND o.code = 'O1'
+      WHERE existing.position_id = o.id
+        AND existing.face = shelf_board_art.face
+    );
+
+-- Its photos and its ticks.
+UPDATE shelf_photos
+SET position_id = (
+      SELECT o.id
+      FROM shelf_positions s
+      JOIN shelf_positions o
+        ON o.convention_id = s.convention_id AND o.code = 'O1'
+      WHERE s.id = shelf_photos.position_id
+    )
+WHERE position_id IN (
+      SELECT s.id
+      FROM shelf_positions s
+      JOIN shelf_positions o
+        ON o.convention_id = s.convention_id AND o.code = 'O1'
+      WHERE s.code = 'S2'
+    );
+
+-- Then the stand-in itself, and anything that wouldn't move because O1
+-- already had it.
+DELETE FROM shelf_board_art
+WHERE position_id IN (
+      SELECT s.id FROM shelf_positions s
+      JOIN shelf_positions o ON o.convention_id = s.convention_id AND o.code = 'O1'
+      WHERE s.code = 'S2');
+
+DELETE FROM shelf_stage_flags
+WHERE position_id IN (
+      SELECT s.id FROM shelf_positions s
+      JOIN shelf_positions o ON o.convention_id = s.convention_id AND o.code = 'O1'
+      WHERE s.code = 'S2');
+
+DELETE FROM shelf_positions
+WHERE id IN (
+      SELECT s.id FROM shelf_positions s
+      JOIN shelf_positions o ON o.convention_id = s.convention_id AND o.code = 'O1'
+      WHERE s.code = 'S2');
 
 UPDATE shelf_positions SET code = 'S2', kind = 'shelf' WHERE code = 'O1';
 UPDATE shelf_positions SET code = 'O1' WHERE code = 'O2';
