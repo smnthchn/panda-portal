@@ -589,7 +589,7 @@ function boothMap() {
       <div class="booth-panel">
         ${selected ? selectedPositionCard(selected) : ""}
         ${conflicts.length ? conflictsCard(conflicts) : ""}
-        ${signsMode ? signsList() : glanceCard()}
+        ${signsMode ? signsList() : ""}
       </div>
     </div>
   `;
@@ -672,15 +672,17 @@ function selectedPositionCard(position) {
         <span class="strip-side">${inches(geometry.w)}″ × ${inches(geometry.h)}″ · ${esc(position.unit_type)}</span>
       </div>
       <div class="card-body">
-        <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:24px;">${esc(position.code)}</div>
-        <div class="meta" style="margin-bottom:10px;">${esc(position.product || "Nothing set")}</div>
-
-        ${position.signage.length
-          ? `<div class="badge-row">${position.signage.map(signageTag).join("")}</div>`
-          : `<p class="meta">No signage needed.</p>`}
-
-        ${boardsBlock(position)}
-        ${photosBlock(position)}
+        <div class="panel-head">
+          <div style="min-width:0;">
+            <div class="panel-code">${esc(position.code)}</div>
+            <div class="meta">${esc(position.product || "Nothing set")}</div>
+          </div>
+          ${position.signage.length
+            ? `<div class="badge-row" style="margin:0; justify-content:flex-end;">
+                ${position.signage.map(signageTag).join("")}
+              </div>`
+            : `<span class="meta">No signage</span>`}
+        </div>
 
         <div class="panel-stages">
           ${position.stages.map((done, stage) => `
@@ -690,6 +692,9 @@ function selectedPositionCard(position) {
             </div>
           `).join("")}
         </div>
+
+        ${boardsBlock(position)}
+        ${photosBlock(position)}
 
         ${arrangeMode ? `
           <div class="nudge-grid">
@@ -863,17 +868,6 @@ function conflictsCard(conflicts) {
     <div class="card" style="border-color:var(--alert);">
       <h3 style="color:var(--alert);">${conflicts.length} problem${conflicts.length === 1 ? "" : "s"} with the layout</h3>
       ${conflicts.map(c => `<div style="font-size:13px; padding:3px 0;">${esc(c.message)}</div>`).join("")}
-    </div>
-  `;
-}
-
-function glanceCard() {
-  return `
-    <div class="card">
-      <h3>At a glance</h3>
-      <div class="stage-batteries compact">
-        ${shelfData.totals.map(stageBattery).join("")}
-      </div>
     </div>
   `;
 }

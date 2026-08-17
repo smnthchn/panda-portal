@@ -1461,12 +1461,13 @@ textarea::placeholder {
 }
 
 /* The artwork sits in a fixed frame whatever its shape, so a column of boards
-   scans as a column rather than stepping in and out with each picture. */
+   scans as a column rather than stepping in and out with each picture. No
+   outline: the picture is the thing, and a 2px ink box around every board
+   made the panel read as a stack of boxes rather than a stack of signs. */
 .board-art {
   position: relative;
   height: 150px;
-  border: 2px solid var(--ink);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--chip);
   overflow: hidden;
   display: flex;
@@ -1481,7 +1482,6 @@ textarea::placeholder {
 }
 
 .board-art.empty {
-  border-style: dashed;
   background: transparent;
   flex-direction: column;
   gap: 3px;
@@ -1849,11 +1849,6 @@ textarea::placeholder {
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 9px;
   margin-bottom: 13px;
-}
-
-.stage-batteries.compact {
-  margin-bottom: 0;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
 }
 
 .stage-battery-head {
@@ -2531,11 +2526,30 @@ button.cell-add:hover {
   min-width: 300px;
 }
 
+/* The unit's name, and what signage it needs, on one line. */
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.panel-code {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+/* The ticks lead: on the floor this card is a checklist first and a
+   reference second. */
 .panel-stages {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 10px;
+  padding-bottom: 11px;
+  border-bottom: 2px solid var(--track);
 }
 
 .panel-stage {
