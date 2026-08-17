@@ -1460,69 +1460,36 @@ textarea::placeholder {
   font-size: 14px;
 }
 
-/* The artwork sits in a fixed frame whatever its shape, so a column of boards
-   scans as a column rather than stepping in and out with each picture. No
-   outline: the picture is the thing, and a 2px ink box around every board
-   made the panel read as a stack of boxes rather than a stack of signs. */
+/* The board is only as wide as the board. Fixing a height keeps a column of
+   them level, but the box shrinks to the picture and sits against the left —
+   a full-width panel behind a tall narrow sign was mostly empty fill, and it
+   read as the artwork rather than as the space around it. */
 .board-art {
-  position: relative;
-  height: 150px;
-  border-radius: 12px;
-  background: var(--chip);
-  overflow: hidden;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  height: 150px;
+  max-width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .board-art img {
-  width: 100%;
+  width: auto;
   height: 100%;
+  max-width: 100%;
   object-fit: contain;
 }
 
 .board-art.empty {
-  background: transparent;
   flex-direction: column;
+  justify-content: center;
   gap: 3px;
-  text-align: center;
-  padding: 0 14px;
+  padding: 0 2px;
   font-family: "Fredoka", sans-serif;
   font-weight: 600;
   font-size: 13px;
   color: var(--muted);
-}
-
-.board-art.droppable {
-  cursor: pointer;
-}
-
-.board-art.droppable:hover,
-.board-art.dropping {
-  border-color: var(--brand);
-  background: var(--cool-bg);
-}
-
-/* Sits over the picture rather than beside it — the frame is already the
-   right size for the artwork, and a caption row would push it around. */
-.board-art-hint {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  background: var(--paper);
-  border: 2px solid var(--ink);
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-family: "Fredoka", sans-serif;
-  font-weight: 600;
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  color: var(--text);
-  opacity: 0;
-}
-
-.board-art.droppable:hover .board-art-hint {
-  opacity: 1;
 }
 
 /* Resources — the store's library of images. */
