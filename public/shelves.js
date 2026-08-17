@@ -358,7 +358,7 @@ function shelfStrip(position) {
       <button class="btn-danger" data-delete-shelf="${position.id}">Remove ${esc(position.code)}</button>
 
       <button class="btn-quiet" id="closeShelfBtn"
-              style="border:none; background:none; padding:6px 8px;">Done</button>
+              style="border:none; background:none; padding:6px 8px;">Save</button>
     </div>
   `;
 }
@@ -446,7 +446,7 @@ function boardsStrip(position) {
       }).join("")}
 
       <button class="btn-quiet" id="closeBoardsBtn"
-              style="border:none; background:none; padding:6px 8px;">Done</button>
+              style="border:none; background:none; padding:6px 8px;">Save</button>
     </div>
   `;
 }
@@ -480,7 +480,7 @@ function signageStrip(position) {
           </button>
         `;
       }).join("")}
-      <button class="btn-quiet" id="closeSignageBtn" style="border:none; background:none; padding:6px 8px;">Done</button>
+      <button class="btn-quiet" id="closeSignageBtn" style="border:none; background:none; padding:6px 8px;">Save</button>
     </div>
   `;
 }
