@@ -13,6 +13,7 @@ let signsMode = false;
 let arrangeMode = false;
 let openSignageFor = null;
 let openBoardsFor = null;       // which row's Boards strip is open
+let openShelfFor = null;        // which row's section/remove strip is open
 let viewingPhoto = null;        // photo id, shown full size
 let pickingArtFor = null;       // { positionId, face } while the picker is open
 
@@ -252,8 +253,11 @@ function shelfGrid() {
       ${canManage ? `
         <div class="shelf-grid-foot">
           <div class="inline-form" style="margin:0;">
-            <input type="text" id="newPositionCode" placeholder="E8" style="width:90px;">
-            <button class="btn-dashed" id="addPositionBtn">+ Add a position</button>
+            <input type="text" id="newPositionCode" placeholder="S2" style="width:90px;">
+            <select id="newPositionWall">
+              ${shelfData.walls.map(wall => `<option value="${esc(wall)}">${esc(wall)}</option>`).join("")}
+            </select>
+            <button class="btn-dashed" id="addPositionBtn">+ Add a shelf</button>
           </div>
         </div>
       ` : ""}
@@ -273,7 +277,12 @@ function shelfRow(position) {
 
   return `
     <div class="shelf-row${complete ? " done" : ""}" data-row="${position.id}">
-      <span class="col-shelf">${esc(position.code)}</span>
+      <span class="col-shelf">
+        ${canEdit
+          ? `<button class="shelf-code" data-shelf="${position.id}"
+                     title="Move it to another section, or remove it">${esc(position.code)}</button>`
+          : esc(position.code)}
+      </span>
 
       <span class="col-product">
         ${canEdit
@@ -327,6 +336,30 @@ function shelfRow(position) {
 
     ${openSignageFor === position.id ? signageStrip(position) : ""}
     ${openBoardsFor === position.id ? boardsStrip(position) : ""}
+    ${openShelfFor === position.id ? shelfStrip(position) : ""}
+  `;
+}
+
+/**
+ * Which section a shelf is in, and the way to remove it. Moving it here also
+ * moves it in the grid: the sections are runs down the order, so a shelf that
+ * changed wall without changing place would sit under a heading of its own.
+ */
+function shelfStrip(position) {
+  return `
+    <div class="signage-strip shelf-strip">
+      <span class="board-slot-face">SECTION</span>
+      <select data-wall="${position.id}">
+        ${shelfData.walls.map(wall => `
+          <option value="${esc(wall)}" ${wall === position.wall ? "selected" : ""}>${esc(wall)}</option>
+        `).join("")}
+      </select>
+
+      <button class="btn-danger" data-delete-shelf="${position.id}">Remove ${esc(position.code)}</button>
+
+      <button class="btn-quiet" id="closeShelfBtn"
+              style="border:none; background:none; padding:6px 8px;">Done</button>
+    </div>
   `;
 }
 
@@ -945,6 +978,7 @@ function wireShelfPlan() {
       const id = Number(cell.dataset.boards);
       openBoardsFor = openBoardsFor === id ? null : id;
       openSignageFor = null;
+      openShelfFor = null;
       drawShelfPlan();
     };
   });
@@ -952,6 +986,57 @@ function wireShelfPlan() {
   document.getElementById("closeBoardsBtn")?.addEventListener("click", () => {
     openBoardsFor = null;
     drawShelfPlan();
+  });
+
+  document.querySelectorAll("[data-shelf]").forEach(cell => {
+    cell.onclick = () => {
+      const id = Number(cell.dataset.shelf);
+      openShelfFor = openShelfFor === id ? null : id;
+      openSignageFor = null;
+      openBoardsFor = null;
+      drawShelfPlan();
+    };
+  });
+
+  document.getElementById("closeShelfBtn")?.addEventListener("click", () => {
+    openShelfFor = null;
+    drawShelfPlan();
+  });
+
+  document.querySelectorAll("[data-wall]").forEach(select => {
+    select.onchange = async () => {
+      const result = await apiSend(`/api/shelf-positions/${select.dataset.wall}`, "PATCH", {
+        wall: select.value
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not move that shelf.");
+        return;
+      }
+
+      await reload();
+    };
+  });
+
+  document.querySelectorAll("[data-delete-shelf]").forEach(btn => {
+    btn.onclick = async () => {
+      const id = Number(btn.dataset.deleteShelf);
+      const position = shelfData.positions.find(p => p.id === id);
+
+      if (!confirm(`Remove ${position?.code} from the booth? Its ticks, boards and photos go with it.`)) {
+        return;
+      }
+
+      const result = await apiSend(`/api/shelf-positions/${id}`, "DELETE");
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not remove that shelf.");
+        return;
+      }
+
+      openShelfFor = null;
+      await reload();
+    };
   });
 
   document.querySelectorAll("[data-sig-toggle]").forEach(btn => {
@@ -977,7 +1062,8 @@ function wireShelfPlan() {
   if (addBtn) {
     addBtn.onclick = async () => {
       const code = document.getElementById("newPositionCode").value;
-      const result = await apiSend(`/api/conventions/${encodeURIComponent(slug)}/shelf-positions`, "POST", { code });
+      const wall = document.getElementById("newPositionWall").value;
+      const result = await apiSend(`/api/conventions/${encodeURIComponent(slug)}/shelf-positions`, "POST", { code, wall });
 
       if (!result.ok) {
         showFormError("shelfError", result.error || "Could not add that.");

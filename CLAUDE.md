@@ -10,7 +10,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 92 tests
+npm test               # vitest, 96 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -213,6 +213,15 @@ everything except reading the plan and toggling a stage needs
 `manage_conventions` — and the UI matches: for staff the editable cells render
 as plain text and Arrange doesn't appear at all, rather than offering controls
 the server would refuse.
+
+**Adding a shelf asks which section it's in, and the shelf code opens the way
+to change it.** Clicking a code in the grid opens a strip with its section and
+a Remove. Both go through `sectionOrder()`, because the grid groups by *runs*
+of the same wall rather than by wall: a shelf whose section changed but whose
+place in the order didn't would open a second EAST WALL heading at the bottom
+of the grid instead of joining the one already there. Changing the section
+therefore renumbers the plan, putting the shelf after the last one already in
+that section.
 
 In Arrange, a selected unit moves with the **arrow keys** — 1″ a press, 6″ with
 Shift — moving on screen at once with the save debounced, so holding a key

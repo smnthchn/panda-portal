@@ -15,6 +15,7 @@ import {
   stageTotals,
   stageApplies,
   boardFaces,
+  sectionOrder,
   signageList
 } from "../src/routes/shelves.js";
 import { templatePositions, BOOTH_FEET } from "../src/lib/booth-template.js";
@@ -584,6 +585,41 @@ describe("booth layout", () => {
   it("has no boards on a shelf nothing is assigned to", () => {
     expect(boardFaces(new Map())).toEqual([]);
     expect(boardFaces()).toEqual([]);
+  });
+});
+
+// The grid groups by runs of the same wall, not by wall, so a shelf that
+// changed section without changing place would open a second heading of its
+// own at the bottom instead of joining the section already there.
+describe("moving a shelf between sections", () => {
+  const plan = () => [
+    { id: 1, wall: "ENTRANCE" },
+    { id: 2, wall: "EAST WALL" },
+    { id: 3, wall: "EAST WALL" },
+    { id: 4, wall: "OVERSTOCK & OTHER" }
+  ];
+
+  it("puts the shelf after the last one already in its section", () => {
+    // S2 was added to Overstock and has just been set to ENTRANCE.
+    const rows = plan();
+    rows[3].wall = "ENTRANCE";
+
+    expect(sectionOrder(rows, 4).map(r => r.id)).toEqual([1, 4, 2, 3]);
+  });
+
+  it("leaves the order alone when the shelf is already in place", () => {
+    expect(sectionOrder(plan(), 3).map(r => r.id)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("puts the first shelf of a new section at the end", () => {
+    const rows = plan();
+    rows[0].wall = "NORTH WALL";
+
+    expect(sectionOrder(rows, 1).map(r => r.id)).toEqual([2, 3, 4, 1]);
+  });
+
+  it("does nothing for a shelf that isn't in the plan", () => {
+    expect(sectionOrder(plan(), 99).map(r => r.id)).toEqual([1, 2, 3, 4]);
   });
 
   it("keeps only real signage codes", () => {

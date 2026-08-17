@@ -1940,6 +1940,28 @@ textarea::placeholder {
   font-size: 13px;
 }
 
+/* The shelf's own name, and the way into its section and removal. */
+.shelf-code {
+  padding: 2px 5px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.shelf-code:hover {
+  margin-top: 0;
+  background: var(--paper);
+}
+
+.shelf-strip {
+  padding-left: 13px;
+}
+
 .shelf-row .col-stage {
   text-align: center;
 }

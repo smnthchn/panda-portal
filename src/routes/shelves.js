@@ -385,6 +385,47 @@ export async function handleToggleStage(request, env, positionId) {
   return { ok: true };
 }
 
+/**
+ * Puts a shelf at the end of its section and renumbers the plan.
+ *
+ * The grid groups by *runs* of the same wall rather than by wall, so a shelf
+ * whose section changed but whose place in the order didn't would open a
+ * second EAST WALL heading at the bottom of the grid instead of joining the
+ * one that's already there.
+ */
+export function sectionOrder(rows, movedId) {
+  const moved = rows.find(row => row.id === movedId);
+  if (!moved) return rows;
+
+  const rest = rows.filter(row => row.id !== movedId);
+
+  // After the last shelf already in that section; at the end if it's the
+  // first one there.
+  let at = rest.length;
+  for (let i = rest.length - 1; i >= 0; i--) {
+    if (rest[i].wall === moved.wall) {
+      at = i + 1;
+      break;
+    }
+  }
+
+  rest.splice(at, 0, moved);
+  return rest;
+}
+
+async function placeInSection(db, conventionId, positionId) {
+  const rows = await db.prepare(
+    `SELECT id, wall FROM shelf_positions WHERE convention_id = ?
+     ORDER BY sort_order ASC, id ASC`
+  ).bind(conventionId).all();
+
+  const ordered = sectionOrder(rows.results || [], positionId);
+
+  await db.batch(ordered.map((row, order) =>
+    db.prepare(`UPDATE shelf_positions SET sort_order = ? WHERE id = ?`).bind(order, row.id)
+  ));
+}
+
 export async function handleUpdatePosition(request, env, positionId) {
   const auth = await requireUser(request, env, "manage_conventions");
   if (!auth.ok) return auth;
@@ -393,13 +434,24 @@ export async function handleUpdatePosition(request, env, positionId) {
   const body = await readJsonBody(request);
 
   const position = await env.DB.prepare(
-    `SELECT id FROM shelf_positions WHERE id = ?`
+    `SELECT id, convention_id, wall FROM shelf_positions WHERE id = ?`
   ).bind(id).first();
 
   if (!position) return { ok: false, error: "That position no longer exists." };
 
   const updates = [];
   const values = [];
+  let movedSection = false;
+
+  if (body.wall !== undefined) {
+    if (!WALLS.includes(body.wall)) throw new BadRequest("That isn't one of the booth's sections.");
+
+    if (body.wall !== position.wall) {
+      updates.push("wall = ?");
+      values.push(body.wall);
+      movedSection = true;
+    }
+  }
 
   if (body.product !== undefined) {
     updates.push("product = ?");
@@ -434,6 +486,8 @@ export async function handleUpdatePosition(request, env, positionId) {
   await env.DB.prepare(
     `UPDATE shelf_positions SET ${updates.join(", ")} WHERE id = ?`
   ).bind(...values, id).run();
+
+  if (movedSection) await placeInSection(env.DB, position.convention_id, id);
 
   return { ok: true };
 }
@@ -532,7 +586,7 @@ export async function handleAddPosition(request, env, slug) {
     `SELECT MAX(sort_order) AS n FROM shelf_positions WHERE convention_id = ?`
   ).bind(convention.id).first();
 
-  await env.DB.prepare(
+  const added = await env.DB.prepare(
     `INSERT INTO shelf_positions
        (convention_id, code, wall, product, unit_type, signage, board_name, kind,
         sort_order, x, y, w, h)
@@ -547,6 +601,10 @@ export async function handleAddPosition(request, env, slug) {
     20 / 12,
     50 / 12
   ).run();
+
+  // A new shelf belongs with the rest of its section, not on the end of the
+  // grid under a second heading.
+  await placeInSection(env.DB, convention.id, added.meta?.last_row_id);
 
   return { ok: true };
 }
