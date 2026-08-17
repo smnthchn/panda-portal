@@ -31,13 +31,13 @@ export const UNIT_TYPES = [
 ];
 
 export const WALLS = [
-  "SOUTH", "EAST WALL", "NORTH WALL", "WEST WALL", "CENTER", "OVERSTOCK & OTHER"
+  "SOUTH WALL", "EAST WALL", "NORTH WALL", "WEST WALL", "CENTER", "OVERSTOCK & OTHER"
 ];
 
 /* code, wall, wallNote, product, type, signage, board, kind, x, y, w, h */
 export const BOOTH_TEMPLATE = [
-  ["S1", "SOUTH", "front of booth", "PG", "4 Tier", ["fb"], "Entrance [R]", "shelf", 1.6667, 0, LONG, SHORT],
-  ["O1", "SOUTH", null, "Overstock", "4 Tier", ["fb"], "Entrance [L]", "other", 10.1667, 0, LONG, SHORT],
+  ["S1", "SOUTH WALL", "front of booth", "PG", "4 Tier", ["fb"], "Entrance [R]", "shelf", 1.6667, 0, LONG, SHORT],
+  ["O1", "SOUTH WALL", null, "Overstock", "4 Tier", ["fb"], "Entrance [L]", "other", 10.1667, 0, LONG, SHORT],
 
   ["E1", "EAST WALL", null, "PG", "4 Tier", ["bc"], "Hoops", "shelf", 0, 0, SHORT, LONG],
   ["E2", "EAST WALL", null, "P Bandai", "4 Tier", ["bc"], "Space", "shelf", 0, 4.1667, SHORT, LONG],
