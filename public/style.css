@@ -544,6 +544,29 @@ button:disabled {
   min-width: 0;
 }
 
+/* On a phone the view buttons would otherwise eat the whole row and crush the
+   title to zero width, wrapping the kicker one character per line. The row
+   wraps instead, so the buttons take their own line underneath. */
+@media (max-width: 800px) {
+  .title-row {
+    flex-wrap: wrap;
+  }
+
+  .title-row .screen-title {
+    flex: 1 1 60%;
+    min-width: 150px;
+  }
+
+  .title-row .button-row {
+    flex: 1 1 100%;
+  }
+
+  .title-row .button-row button {
+    flex: 1;
+    white-space: nowrap;
+  }
+}
+
 .screen-title .kicker-line {
   font-family: "Fredoka", sans-serif;
   font-weight: 500;
