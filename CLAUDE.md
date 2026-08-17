@@ -10,7 +10,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 81 tests
+npm test               # vitest, 94 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -41,12 +41,13 @@ src/
     google.js           service-account JWT, Drive listing, Google Doc -> HTML
     http.js             json(), matchPath(), cookies, field validation
   routes/               session, dashboard, knowledge, clock, admin, staff,
-                        conventions, schedule
+                        conventions, schedule, shelves, resources
 public/
   core.js               shared helpers — MUST load first (esc, api, themes, battery)
   admin.js              Users & Roles
   staff.js              Staff — details, folders, shift assignment
   conventions.js        Conventions
+  resources.js          Resources — the store's image library
   schedule.js           Schedule builder
   app.js                shell, login, dashboard, KB, My Folder, Clock, Appearance
 migrations/             numbered SQL, applied via wrangler
@@ -233,6 +234,53 @@ ticks. The UI updates optimistically and only reloads if the write fails.
 the numerator and the denominator, so the count reads `7 / 20`, not `7 / 31`.
 Adding signage to a shelf brings its Boards box to life and moves the
 denominator; removing all of it clears any stale tick.
+
+### Resources, board artwork and shelf photos
+
+Two different pictures, deliberately kept apart:
+
+- **Board artwork** is a physical printed sign the store owns and hangs again
+  next show, so it belongs to the store, not to one event. It lives in
+  **Resources** (`resources`), reached from a button beside New convention on
+  Events. Upload once, assign to a shelf on any event's booth plan.
+- **Shelf photos** (`shelf_photos`) are how *this* shelf was merchandised for
+  *this* show — shot at the store before it was packed, opened at the venue to
+  rebuild from. They hang off the position, which is already per-event, and
+  are never reused.
+
+An earlier version (migration 0016, `board_artwork`) paired artwork to a board
+by matching its **name** against the plan's Board name cell. It shipped and was
+replaced the next day: pairing by name meant a typo silently lost the artwork,
+and there was nowhere to put a picture that isn't a board. Assignment is now
+explicit — `shelf_board_art` is one row per (position, face) pointing at a
+resource.
+
+`boardFaces()` shows a face because the plan **named** a board on it, because a
+picture has been **assigned** to it, or both — assigning artwork shouldn't need
+someone to type a name into the grid first, and naming a board shouldn't wait
+for artwork to exist. An assigned face with no name borrows the library entry's
+name. Names past the third face don't fall off the end.
+
+Deleting a resource takes it off every shelf across every event, so the
+confirmation says how many.
+
+`loadResources()` and the plan's artwork query **never select the image
+column** — pictures come from `/api/resource-image/:id` and
+`/api/shelf-photo/:id` behind a login with a `?v=` stamped from `updated_at`,
+so a plan naming twenty boards doesn't carry twenty pictures.
+
+**Anyone who can see the plan can add a shelf photo.** Merchandising and packing
+is the floor's job, and a photo that had to wait for the boss wouldn't get
+taken. Deleting stays with `manage_conventions`, as does everything else on the
+plan.
+
+`src/lib/images.js` holds the rules shared with avatars — `parseImageDataUri()`
+refuses anything that isn't base64 PNG/JPEG/WebP, **SVG especially**, since the
+string lands in an `<img src>`. Caps differ by job: 400KB avatar, 800KB
+resource, 900KB photo, all inside D1's 2MB row limit once base64 inflates them
+by a third. `readImageScaled()` in `core.js` fits a picture inside a box
+keeping its shape — 1400px for a resource, 1600px for a photo you have to read
+a spine off — rather than centre-cropping it the way an avatar is cropped.
 
 `layoutConflicts()` runs on every read and reports units hanging off the
 footprint or overlapping, **in inches** — the whole point is that an invalid

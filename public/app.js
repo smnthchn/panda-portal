@@ -1178,6 +1178,7 @@ function viewForPath(pathname) {
   const flat = {
     "/": "dashboard",
     "/conventions": "conventions",
+    "/resources": "resources",
     "/knowledge-base": "knowledge-base",
     "/my-folder": "my-folder",
     "/clock": "clock",
@@ -1194,6 +1195,7 @@ function viewForPath(pathname) {
 const POPSTATE_VIEWS = {
   dashboard: () => renderDashboard(state.user, false),
   conventions: () => renderConventions(false),
+  resources: () => renderResources(false),
   convention: (s) => openConvention(s.slug, false),
   schedule: () => renderStoreSchedule(null, false),
   "convention-schedule": (s) => renderSchedule(s.slug, false),

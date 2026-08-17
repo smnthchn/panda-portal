@@ -2,6 +2,13 @@ import { json, matchPath, BadRequest } from "./lib/http.js";
 import { handleMe, handleLogin, handleLogout, handleSetTheme } from "./routes/session.js";
 import { handleDashboard } from "./routes/dashboard.js";
 import {
+  handleResources,
+  handleGetResourceImage,
+  handleCreateResource,
+  handleUpdateResource,
+  handleDeleteResource
+} from "./routes/resources.js";
+import {
   handleShelfPlan,
   handleStartShelfPlan,
   handleToggleStage,
@@ -9,7 +16,11 @@ import {
   handleMovePosition,
   handleResetArrangement,
   handleAddPosition,
-  handleDeletePosition
+  handleDeletePosition,
+  handleAssignBoardArt,
+  handleGetShelfPhoto,
+  handleAddShelfPhoto,
+  handleDeleteShelfPhoto
 } from "./routes/shelves.js";
 import {
   handleMyAvailability,
@@ -141,6 +152,17 @@ const ROUTES = [
   ["PATCH", "/api/shelf-positions/:id", handleUpdatePosition],
   ["PUT", "/api/shelf-positions/:id/geometry", handleMovePosition],
   ["DELETE", "/api/shelf-positions/:id", handleDeletePosition],
+
+  ["PUT", "/api/shelf-positions/:id/board-art", handleAssignBoardArt],
+  ["POST", "/api/shelf-positions/:id/photos", handleAddShelfPhoto],
+  ["GET", "/api/shelf-photo/:id", handleGetShelfPhoto, { raw: true }],
+  ["DELETE", "/api/shelf-photos/:id", handleDeleteShelfPhoto],
+
+  ["GET", "/api/resources", handleResources],
+  ["POST", "/api/resources", handleCreateResource],
+  ["GET", "/api/resource-image/:id", handleGetResourceImage, { raw: true }],
+  ["PATCH", "/api/resources/:id", handleUpdateResource],
+  ["DELETE", "/api/resources/:id", handleDeleteResource],
 
   ["GET", "/api/conventions/:slug/schedule", handleScheduleView],
 

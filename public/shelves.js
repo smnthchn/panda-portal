@@ -12,6 +12,8 @@ let shelfSelected = null;      // position id
 let signsMode = false;
 let arrangeMode = false;
 let openSignageFor = null;
+let viewingPhoto = null;        // photo id, shown full size
+let pickingArtFor = null;       // { positionId, face } while the picker is open
 
 /* The design draws the booth at 31px per foot. That's 502px wide, which a
    phone can't show and can't be pinch-zoomed inside the app, so the scale
@@ -67,6 +69,12 @@ function drawShelfPlan() {
   pageArea().innerHTML = `
     ${shelfHeader()}
     ${shelfView === "map" ? boothMap() : list ? shelfList() : shelfGrid()}
+
+    <input type="file" id="shelfPhotoInput" style="display:none;"
+           accept="image/png,image/jpeg,image/webp" capture="environment">
+
+    ${pickingArtFor ? artworkPicker() : ""}
+    ${viewingPhoto ? photoLightbox() : ""}
   `;
 
   markActiveNav("conventions", { wide: !list });
@@ -396,6 +404,8 @@ function shelfList() {
               </div>
             `).join("")}
           </div>
+
+          ${photosBlock(position)}
         </div>
       `;
     }).join("")}
@@ -532,16 +542,8 @@ function selectedPositionCard(position) {
           ? `<div class="badge-row">${position.signage.map(signageTag).join("")}</div>`
           : `<p class="meta">No signage needed.</p>`}
 
-        ${position.boards.length ? `
-          <div style="margin:8px 0;">
-            ${position.boards.map(board => `
-              <div style="display:flex; gap:9px; align-items:center; padding:6px 0; border-bottom:2px solid var(--track);">
-                <span class="pill" style="font-size:10px;">${esc(board.face.toUpperCase())}</span>
-                <span style="flex:1; font-size:13px;">${esc(board.name)}</span>
-              </div>
-            `).join("")}
-          </div>
-        ` : ""}
+        ${boardsBlock(position)}
+        ${photosBlock(position)}
 
         <div class="panel-stages">
           ${position.stages.map((done, stage) => `
@@ -581,6 +583,167 @@ function selectedPositionCard(position) {
   `;
 }
 
+/* ---------- Boards and photos on a unit ---------- */
+
+const BOARD_FACES = ["back", "side", "front"];
+
+/**
+ * The boards on this unit, and the artwork that goes on each face.
+ *
+ * A face shows because the plan named a board on it or because a picture has
+ * been assigned to it. A boss also gets the three faces that are still empty,
+ * so artwork can go on a shelf without typing a name into the grid first.
+ */
+function boardsBlock(position) {
+  const canEdit = shelfData.canManage;
+  const shown = new Set(position.boards.map(board => board.face));
+
+  const spare = canEdit
+    ? BOARD_FACES.filter(face => !shown.has(face)).map(face => ({
+        face, name: "", resource_id: null, image_url: null
+      }))
+    : [];
+
+  if (!position.boards.length && !spare.length) {
+    return `<p class="meta" style="margin:8px 0 0;">No boards on this one.</p>`;
+  }
+
+  return `
+    <div style="margin:8px 0;">
+      ${[...position.boards, ...spare].map(board => `
+        <div class="board-row">
+          <div class="board-row-head" style="margin-bottom:8px;">
+            <span class="pill" style="font-size:10px;">${esc(board.face.toUpperCase())}</span>
+            <span style="flex:1; font-size:13px;">
+              ${board.name ? esc(board.name) : `<span class="meta">no board named</span>`}
+            </span>
+            ${canEdit && board.resource_id
+              ? `<button class="btn-quiet" style="font-size:11px; padding:4px 8px; border-bottom-width:2px;"
+                         data-board-clear="${position.id}" data-face="${esc(board.face)}">Clear</button>`
+              : ""}
+          </div>
+
+          ${board.image_url
+            ? `<div class="board-art${canEdit ? " droppable" : ""}" style="height:110px;"
+                    ${canEdit ? `data-board-pick="${position.id}" data-face="${esc(board.face)}"` : ""}>
+                <img src="${esc(board.image_url)}" alt="${esc(board.name)}" loading="lazy" decoding="async">
+                ${canEdit ? `<span class="board-art-hint">Tap to change</span>` : ""}
+              </div>`
+            : canEdit
+              ? `<div class="board-art empty droppable" style="height:76px;"
+                      data-board-pick="${position.id}" data-face="${esc(board.face)}">
+                  <span>+ Choose artwork</span>
+                  <span class="meta">from Resources</span>
+                </div>`
+              : `<div class="board-art empty" style="height:76px;">
+                  <span class="meta">No artwork yet</span>
+                </div>`}
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+/**
+ * How this shelf was merchandised, photographed at the store before it was
+ * packed — the thing you rebuild from once the boxes are at the venue.
+ *
+ * Anyone who can see the plan can add one: merchandising and packing is the
+ * floor's job, and a photo that had to wait for the boss wouldn't get taken.
+ */
+function photosBlock(position) {
+  return `
+    <div class="shelf-photos">
+      <div class="shelf-photos-head">
+        <span class="kicker">HOW IT WAS PACKED</span>
+        <label class="btn-quiet shelf-photo-add" for="shelfPhotoInput"
+               style="font-size:11.5px; padding:5px 9px; border-bottom-width:2px;"
+               data-photo-for="${position.id}">
+          ${position.photos.length ? "Add another" : "Add a photo"}
+        </label>
+      </div>
+
+      ${position.photos.length
+        ? `<div class="shelf-photo-strip">
+            ${position.photos.map(photo => `
+              <button class="shelf-photo" data-photo-view="${photo.id}"
+                      title="${esc(photo.taken_by_name || "")}">
+                <img src="${esc(photo.image_url)}" alt="" loading="lazy" decoding="async">
+              </button>
+            `).join("")}
+          </div>`
+        : `<p class="meta" style="margin:4px 0 0;">
+            No photo of this one yet. Shoot it while it's merchandised and it's
+            what you rebuild from at the venue.
+          </p>`}
+    </div>
+  `;
+}
+
+/**
+ * Picking which library image is the board on a face. The library is the
+ * store's, uploaded on the Resources screen — this only chooses from it, so
+ * the same artwork can be on a shelf at two different shows.
+ */
+function artworkPicker() {
+  const { resources } = shelfData;
+  const position = shelfData.positions.find(p => p.id === pickingArtFor.positionId);
+
+  return `
+    <div class="lightbox" id="artworkPicker">
+      <div class="lightbox-bar">
+        <span>${esc(position?.code || "")} · ${esc(pickingArtFor.face.toUpperCase())} board</span>
+        <button class="btn-quiet" id="closePickerBtn">Close</button>
+      </div>
+
+      <div class="picker-body">
+        ${resources.length
+          ? `<div class="resource-grid">
+              ${resources.map(resource => `
+                <button class="card resource-tile pickable" data-pick-resource="${resource.id}">
+                  <div class="resource-art">
+                    <img src="${esc(resource.image_url)}" alt="${esc(resource.name)}"
+                         loading="lazy" decoding="async">
+                  </div>
+                  <div class="resource-name">${esc(resource.name)}</div>
+                </button>
+              `).join("")}
+            </div>`
+          : `<div class="card">
+              <p class="empty-state">
+                Nothing in the library yet. Upload board artwork under
+                Events → Resources and it'll be here for every show.
+              </p>
+            </div>`}
+      </div>
+    </div>
+  `;
+}
+
+/** A photo big enough to actually read a shelf off. */
+function photoLightbox() {
+  const photo = shelfData.positions
+    .flatMap(p => p.photos.map(ph => ({ ...ph, position: p })))
+    .find(ph => ph.id === viewingPhoto);
+
+  if (!photo) return "";
+
+  return `
+    <div class="lightbox" id="photoLightbox">
+      <div class="lightbox-bar">
+        <span>${esc(photo.position.code)}${photo.taken_by_name ? ` · ${esc(photo.taken_by_name)}` : ""}</span>
+        <div class="button-row" style="margin:0;">
+          ${shelfData.canManage
+            ? `<button class="btn-danger" data-photo-delete="${photo.id}">Delete</button>`
+            : ""}
+          <button class="btn-quiet" id="closeLightboxBtn">Close</button>
+        </div>
+      </div>
+      <img src="${esc(photo.image_url)}" alt="">
+    </div>
+  `;
+}
+
 function conflictsCard(conflicts) {
   return `
     <div class="card" style="border-color:var(--alert);">
@@ -611,6 +774,9 @@ function signsList() {
         ${withBoards.map(position => `
           <div class="sign-row" data-block="${position.id}">
             <span style="font-family:'Fredoka',sans-serif; font-weight:600; width:44px;">${esc(position.code)}</span>
+            ${position.boards[0]?.image_url
+              ? `<span class="sign-thumb"><img src="${esc(position.boards[0].image_url)}" alt="" loading="lazy" decoding="async"></span>`
+              : ""}
             <span style="flex:1; font-size:13px;">
               ${esc(position.board_name)}
               <div class="meta">${position.boards.map(b => b.face.toUpperCase()).join(" + ")}</div>
@@ -727,7 +893,135 @@ function wireShelfPlan() {
     };
   }
 
+  wireBoardArt(reload);
+  wireShelfPhotos(reload);
   wireBoothMap(slug, reload);
+}
+
+/** Choosing, and clearing, the library image on a board face. */
+function wireBoardArt(reload) {
+  document.querySelectorAll("[data-board-pick]").forEach(tile => {
+    tile.onclick = (e) => {
+      e.stopPropagation();
+      pickingArtFor = {
+        positionId: Number(tile.dataset.boardPick),
+        face: tile.dataset.face
+      };
+      drawShelfPlan();
+    };
+  });
+
+  document.getElementById("closePickerBtn")?.addEventListener("click", () => {
+    pickingArtFor = null;
+    drawShelfPlan();
+  });
+
+  document.querySelectorAll("[data-pick-resource]").forEach(btn => {
+    btn.onclick = async () => {
+      const { positionId, face } = pickingArtFor;
+
+      const result = await apiSend(`/api/shelf-positions/${positionId}/board-art`, "PUT", {
+        face,
+        resource_id: Number(btn.dataset.pickResource)
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not put that on the shelf.");
+        return;
+      }
+
+      pickingArtFor = null;
+      await reload();
+    };
+  });
+
+  document.querySelectorAll("[data-board-clear]").forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+
+      const result = await apiSend(`/api/shelf-positions/${btn.dataset.boardClear}/board-art`, "PUT", {
+        face: btn.dataset.face,
+        resource_id: null
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not clear that.");
+        return;
+      }
+
+      await reload();
+    };
+  });
+}
+
+/**
+ * Merchandising photos. One hidden input serves every shelf — the label that
+ * opened it writes which position it was for onto the input, since the file
+ * dialog can't carry it back any other way.
+ */
+function wireShelfPhotos(reload) {
+  const picker = document.getElementById("shelfPhotoInput");
+  if (!picker) return;
+
+  document.querySelectorAll("[data-photo-for]").forEach(label => {
+    label.onclick = (e) => {
+      e.stopPropagation();
+      picker.dataset.forPosition = label.dataset.photoFor;
+    };
+  });
+
+  picker.onchange = async () => {
+    const file = picker.files?.[0];
+    const positionId = picker.dataset.forPosition;
+    picker.value = "";
+    if (!file || !positionId) return;
+
+    showFormError("shelfError", "");
+
+    await guard(async () => {
+      // Bigger than a board: you have to be able to read a spine off it in a
+      // hall, not just recognise the shelf.
+      const result = await apiSend(`/api/shelf-positions/${positionId}/photos`, "POST", {
+        image: await readImageScaled(file, 1600)
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not save that photo.");
+        return;
+      }
+
+      await reload();
+    }, err => showFormError("shelfError", err.message));
+  };
+
+  document.querySelectorAll("[data-photo-view]").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      viewingPhoto = Number(btn.dataset.photoView);
+      drawShelfPlan();
+    };
+  });
+
+  document.getElementById("closeLightboxBtn")?.addEventListener("click", () => {
+    viewingPhoto = null;
+    drawShelfPlan();
+  });
+
+  document.querySelectorAll("[data-photo-delete]").forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm("Delete this photo?")) return;
+
+      const result = await apiSend(`/api/shelf-photos/${btn.dataset.photoDelete}`, "DELETE");
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not delete that.");
+        return;
+      }
+
+      viewingPhoto = null;
+      await reload();
+    };
+  });
 }
 
 function recomputeTotals() {

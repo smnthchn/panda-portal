@@ -1,51 +1,18 @@
 import { readJsonBody, optionalText, BadRequest } from "../lib/http.js";
+import { parseImageDataUri, imageResponse, imageUrlFor } from "../lib/images.js";
 import { requireUser } from "../lib/auth.js";
 import { ROLES, ROLE_LABELS } from "../lib/permissions.js";
 import { loadPersonAvailability } from "./availability.js";
 
 /* ---------- Avatars ---------- */
 
-const AVATAR_TYPES = ["image/webp", "image/png", "image/jpeg"];
-
 // The browser shrinks to 256px before uploading, which lands well under this.
 // The cap is here so a bad client can't push a multi-megabyte row into D1.
 const MAX_AVATAR_BYTES = 400 * 1024;
 
-/**
- * Validates an uploaded avatar data URI and splits it into its parts.
- * Throws BadRequest on anything that isn't a plain base64 image — the string
- * ends up in an <img src>, so a stray `svg+xml` would be script execution.
- */
+/** An avatar upload, held to the shared rules on stored pictures. */
 export function parseAvatarDataUri(value) {
-  const text = String(value || "").trim();
-  const match = /^data:([a-z/+.-]+);base64,([A-Za-z0-9+/=]+)$/.exec(text);
-
-  if (!match) {
-    throw new BadRequest("That image didn't upload cleanly. Try another file.");
-  }
-
-  const [, mimeType, base64] = match;
-
-  if (!AVATAR_TYPES.includes(mimeType)) {
-    throw new BadRequest("Avatars have to be a PNG, JPEG or WebP image.");
-  }
-
-  // 4 base64 chars carry 3 bytes; padding trims one byte each.
-  const padding = (base64.match(/=*$/) || [""])[0].length;
-  const bytes = (base64.length * 3) / 4 - padding;
-
-  if (bytes > MAX_AVATAR_BYTES) {
-    throw new BadRequest("That image is too big even after shrinking. Try a smaller one.");
-  }
-
-  return { mimeType, base64, bytes };
-}
-
-function base64ToBytes(base64) {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
+  return parseImageDataUri(value, MAX_AVATAR_BYTES);
 }
 
 /** Anyone signed in can see a colleague's face; nobody else can. */
@@ -59,21 +26,7 @@ export async function handleGetAvatar(request, env, staffId) {
 
   if (!row?.avatar) return new Response("Not found", { status: 404 });
 
-  let parsed;
-  try {
-    parsed = parseAvatarDataUri(row.avatar);
-  } catch {
-    return new Response("Not found", { status: 404 });
-  }
-
-  return new Response(base64ToBytes(parsed.base64), {
-    headers: {
-      "Content-Type": parsed.mimeType,
-      // Cache-busted by the ?v= the client appends, so this can be long.
-      "Cache-Control": "private, max-age=86400",
-      "Content-Security-Policy": "default-src 'none'; sandbox"
-    }
-  });
+  return imageResponse(row.avatar, MAX_AVATAR_BYTES);
 }
 
 export async function handleSetAvatar(request, env, staffId) {
@@ -103,8 +56,7 @@ export async function handleSetAvatar(request, env, staffId) {
 
 /** Where the browser fetches a person's avatar, cache-busted by last edit. */
 export function avatarUrlFor(id, updatedAt) {
-  const version = String(updatedAt || "").replace(/\D/g, "").slice(0, 14);
-  return `/api/avatar/${id}?v=${version}`;
+  return imageUrlFor(`/api/avatar/${id}`, updatedAt);
 }
 
 /**

@@ -85,6 +85,7 @@ function formatDateRange(startsOn, endsOn) {
 const PAGE_URLS = {
   dashboard: () => "/",
   conventions: () => "/conventions",
+  resources: () => "/resources",
   convention: (d) => `/conventions/${encodeURIComponent(d.slug)}`,
   "convention-schedule": (d) => `/conventions/${encodeURIComponent(d.slug)}/schedule`,
   "shelf-plan": (d) => `/conventions/${encodeURIComponent(d.slug)}/shelf-plan`,
@@ -144,41 +145,68 @@ function avatarHtml(person, extraClass = "") {
   </div>`;
 }
 
-/**
- * Shrinks a picked image to a square avatar in the browser, so what reaches
- * the server is a few kilobytes rather than a phone camera's several
- * megabytes. Crops to centre-cover and keeps transparency where the browser
- * supports WebP, which illustrations usually want.
- */
-function readImageAsAvatar(file, size = 256) {
+/** A picked file, loaded far enough to draw. */
+function loadPickedImage(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
     reader.onerror = () => reject(new Error("Could not read that file."));
     reader.onload = () => {
       const img = new Image();
-
       img.onerror = () => reject(new Error("That file isn't an image the browser can open."));
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = size;
-        canvas.height = size;
-
-        const ctx = canvas.getContext("2d");
-        const scale = Math.max(size / img.width, size / img.height);
-        const w = img.width * scale;
-        const h = img.height * scale;
-        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
-
-        const webp = canvas.toDataURL("image/webp", 0.9);
-        resolve(webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/png"));
-      };
-
+      img.onload = () => resolve(img);
       img.src = reader.result;
     };
 
     reader.readAsDataURL(file);
   });
+}
+
+/** WebP where the browser can, so transparency survives; PNG where it can't. */
+function canvasDataUri(canvas, quality) {
+  const webp = canvas.toDataURL("image/webp", quality);
+  return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/png");
+}
+
+/**
+ * Shrinks a picked image to a square avatar in the browser, so what reaches
+ * the server is a few kilobytes rather than a phone camera's several
+ * megabytes. Crops to centre-cover and keeps transparency where the browser
+ * supports WebP, which illustrations usually want.
+ */
+async function readImageAsAvatar(file, size = 256) {
+  const img = await loadPickedImage(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+
+  const ctx = canvas.getContext("2d");
+  const scale = Math.max(size / img.width, size / img.height);
+  const w = img.width * scale;
+  const h = img.height * scale;
+  ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+
+  return canvasDataUri(canvas, 0.9);
+}
+
+/**
+ * Shrinks a picked image to fit inside a box, keeping its shape. Board
+ * artwork is a banner rather than a square face, so cropping it to a square
+ * the way an avatar is cropped would cut the sign in half.
+ */
+async function readImageScaled(file, maxEdge = 900) {
+  const img = await loadPickedImage(file);
+
+  // Never scale up: a small file stays small rather than being blown up into
+  // a bigger one that carries no more detail.
+  const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.width * scale));
+  canvas.height = Math.max(1, Math.round(img.height * scale));
+
+  canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  return canvasDataUri(canvas, 0.82);
 }
 
 /** 95 -> "1h 35m", 40 -> "40m". */

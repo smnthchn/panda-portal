@@ -1436,6 +1436,233 @@ textarea::placeholder {
   background: var(--go);
 }
 
+/* Boards — the printed signs and what each one looks like. */
+
+.board-row {
+  padding: 10px 0;
+  border-bottom: 2px solid var(--track);
+}
+
+.board-row:last-child {
+  border-bottom: none;
+}
+
+.board-row-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 8px;
+}
+
+.board-name {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* The artwork sits in a fixed frame whatever its shape, so a column of boards
+   scans as a column rather than stepping in and out with each picture. */
+.board-art {
+  position: relative;
+  height: 150px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--chip);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.board-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.board-art.empty {
+  border-style: dashed;
+  background: transparent;
+  flex-direction: column;
+  gap: 3px;
+  text-align: center;
+  padding: 0 14px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.board-art.droppable {
+  cursor: pointer;
+}
+
+.board-art.droppable:hover,
+.board-art.dropping {
+  border-color: var(--brand);
+  background: var(--cool-bg);
+}
+
+/* Sits over the picture rather than beside it — the frame is already the
+   right size for the artwork, and a caption row would push it around. */
+.board-art-hint {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  opacity: 0;
+}
+
+.board-art.droppable:hover .board-art-hint {
+  opacity: 1;
+}
+
+/* Resources — the store's library of images. */
+
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 13px;
+}
+
+.resource-tile {
+  margin: 0;
+  text-align: left;
+}
+
+.resource-art {
+  height: 140px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--chip);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resource-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.resource-name {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 13.5px;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+/* A tile that is itself the choice, in the booth plan's artwork picker. */
+.resource-tile.pickable {
+  cursor: pointer;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+
+.resource-tile.pickable:hover {
+  border-color: var(--brand);
+  margin-top: 0;
+}
+
+/* Full-screen overlays: the artwork picker and a photo at a readable size. */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.lightbox-bar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 13px;
+  background: var(--chip);
+  border-bottom: 2px solid var(--ink);
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.05em;
+}
+
+.lightbox > img {
+  max-width: 100%;
+  margin: auto;
+  padding: 13px;
+  object-fit: contain;
+}
+
+.picker-body {
+  padding: 13px;
+}
+
+/* Merchandising photos on a unit. */
+
+.shelf-photos {
+  margin-top: 12px;
+  border-top: 2px solid var(--track);
+  padding-top: 9px;
+}
+
+.shelf-photos-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+/* A label doing a button's job, so it can open the file input. */
+.shelf-photo-add {
+  cursor: pointer;
+  display: inline-block;
+}
+
+/* Scrolls sideways rather than stacking: several angles of one shelf is a
+   strip you flick through, not a column that pushes the stages off screen. */
+.shelf-photo-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 3px;
+}
+
+.shelf-photo {
+  flex: none;
+  width: 84px;
+  height: 84px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--chip);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.shelf-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 /* ---------- Availability ---------- */
 
 .avail-row {
@@ -2065,6 +2292,23 @@ textarea::placeholder {
 
 .sign-row:last-child {
   border-bottom: none;
+}
+
+/* The board you're about to hang, small enough to sit in the list row. */
+.sign-thumb {
+  width: 46px;
+  height: 32px;
+  flex: none;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  background: var(--chip);
+  overflow: hidden;
+}
+
+.sign-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 /* ---------- Break battery ---------- */

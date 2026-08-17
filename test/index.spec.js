@@ -15,9 +15,11 @@ import {
   stageTotals,
   stageApplies,
   boardFaces,
+  splitBoardNames,
   signageList
 } from "../src/routes/shelves.js";
 import { templatePositions, BOOTH_FEET } from "../src/lib/booth-template.js";
+import { parseImageDataUri, imageUrlFor } from "../src/lib/images.js";
 
 function request(path, method = "GET", headers = {}) {
   return new Request(`http://example.com${path}`, { method, headers });
@@ -558,10 +560,50 @@ describe("booth layout", () => {
 
   it("splits board names on the ampersand, back then side then front", () => {
     expect(boardFaces({ board_name: "Space & Gunpla Corner" })).toEqual([
-      { face: "back", name: "Space" },
-      { face: "side", name: "Gunpla Corner" }
+      { face: "back", name: "Space", resource_id: null, image_url: null },
+      { face: "side", name: "Gunpla Corner", resource_id: null, image_url: null }
     ]);
     expect(boardFaces({ board_name: "" })).toEqual([]);
+  });
+
+  // The artwork is a library entry the plan points at, so a face only knows
+  // what its sign looks like once the assignments are handed to it.
+  it("hangs the assigned artwork on the face it was assigned to", () => {
+    const art = new Map([
+      ["back", { id: 3, name: "Space board", image_url: "/api/resource-image/3?v=20260817" }]
+    ]);
+
+    expect(boardFaces({ board_name: "Space & Gunpla Corner" }, art)).toEqual([
+      { face: "back", name: "Space", resource_id: 3, image_url: "/api/resource-image/3?v=20260817" },
+      { face: "side", name: "Gunpla Corner", resource_id: null, image_url: null }
+    ]);
+  });
+
+  // Assigning a picture shouldn't need someone to type a name into the grid
+  // first, so an assigned face with no name of its own borrows the library
+  // entry's name rather than rendering blank.
+  it("gives an assigned face with no board name the library entry's name", () => {
+    const art = new Map([
+      ["side", { id: 8, name: "Plush corner", image_url: "/api/resource-image/8?v=1" }]
+    ]);
+
+    expect(boardFaces({ board_name: "" }, art)).toEqual([
+      { face: "side", name: "Plush corner", resource_id: 8, image_url: "/api/resource-image/8?v=1" }
+    ]);
+  });
+
+  // The names are free text, so a fourth one shouldn't fall off the end.
+  it("keeps a name written past the three faces", () => {
+    const faces = boardFaces({ board_name: "A & B & C & D" });
+    expect(faces.map(f => f.face)).toEqual(["back", "side", "front", "extra"]);
+  });
+
+  it("splits a board name cell the way the plan writes it", () => {
+    expect(splitBoardNames("Space & Gunpla Corner & Nendo")).toEqual([
+      "Space", "Gunpla Corner", "Nendo"
+    ]);
+    expect(splitBoardNames(" & Space & ")).toEqual(["Space"]);
+    expect(splitBoardNames(null)).toEqual([]);
   });
 
   it("keeps only real signage codes", () => {
@@ -583,6 +625,33 @@ describe("booth layout", () => {
     expect(totals[4]).toMatchObject({ label: "BOARDS", done: 1, total: 2 });
     expect(stageApplies(positions[2], 4)).toBe(false);
     expect(stageApplies(positions[2], 0)).toBe(true);
+  });
+});
+
+describe("stored pictures", () => {
+  // Board artwork and shelf photos are banners and camera shots, not square
+  // faces, so they go through the same guard as an avatar with their own caps.
+  it("refuses anything that isn't a plain base64 image", () => {
+    const tiny = (mime) => `data:${mime};base64,AAAA`;
+
+    expect(parseImageDataUri(tiny("image/png"), 1000).mimeType).toBe("image/png");
+    expect(() => parseImageDataUri(tiny("image/svg+xml"), 1000)).toThrow(BadRequest);
+    expect(() => parseImageDataUri(tiny("text/html"), 1000)).toThrow(BadRequest);
+    expect(() => parseImageDataUri("https://example.com/board.png", 1000)).toThrow(BadRequest);
+  });
+
+  it("stamps the url so a replacement isn't served from cache", () => {
+    expect(imageUrlFor("/api/resource-image/7", "2026-08-17 09:15:00")).toBe(
+      "/api/resource-image/7?v=20260817091500"
+    );
+  });
+
+  it("holds each kind of picture to its own size cap", () => {
+    const bigger = `data:image/png;base64,${"A".repeat(700 * 1024)}`;
+
+    // ~525KB decoded: past an avatar's 400KB cap, inside a resource's 800KB.
+    expect(() => parseImageDataUri(bigger, 400 * 1024)).toThrow(BadRequest);
+    expect(parseImageDataUri(bigger, 800 * 1024).mimeType).toBe("image/png");
   });
 });
 
@@ -628,7 +697,13 @@ describe("authentication gate", () => {
     ["GET", "/api/conventions"],
     ["GET", "/api/knowledge-base"],
     ["GET", "/api/my-folder"],
-    ["GET", "/api/clock-status"]
+    ["GET", "/api/clock-status"],
+    ["GET", "/api/resources"],
+    ["POST", "/api/resources"],
+    ["DELETE", "/api/resources/1"],
+    ["PUT", "/api/shelf-positions/1/board-art"],
+    ["POST", "/api/shelf-positions/1/photos"],
+    ["DELETE", "/api/shelf-photos/1"]
   ];
 
   it.each(protectedRoutes)("refuses %s %s without a session", async (method, path) => {

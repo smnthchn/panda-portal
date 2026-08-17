@@ -28,11 +28,10 @@ async function renderConventions(pushState = true) {
       <p>Schedules, booth info and checklists for each event</p>
     </div>
 
-    ${data.canManage ? `
-      <div class="button-row" style="margin:0 0 14px;">
-        <button id="newConventionBtn">New convention</button>
-      </div>
-    ` : ""}
+    <div class="button-row" style="margin:0 0 14px;">
+      ${data.canManage ? `<button id="newConventionBtn">New convention</button>` : ""}
+      <button class="btn-quiet" id="resourcesBtn">Resources</button>
+    </div>
 
     ${current.length
       ? current.map(conventionCard).join("")
@@ -72,6 +71,8 @@ async function renderConventions(pushState = true) {
 
   const newBtn = document.getElementById("newConventionBtn");
   if (newBtn) newBtn.onclick = () => renderConventionForm(null);
+
+  document.getElementById("resourcesBtn").onclick = () => renderResources();
 }
 
 function conventionCard(convention) {

@@ -1,5 +1,7 @@
 import { readJsonBody, optionalText, BadRequest } from "../lib/http.js";
 import { requireUser } from "../lib/auth.js";
+import { parseImageDataUri, imageResponse, imageUrlFor } from "../lib/images.js";
+import { resourceUrl, loadResources } from "./resources.js";
 import {
   templatePositions,
   BOOTH_FEET,
@@ -88,14 +90,53 @@ export function signageList(value) {
     .filter(code => SIGNAGE_KEYS.includes(code));
 }
 
-export function boardFaces(position) {
-  const names = String(position.board_name || "")
+/** The faces a unit's boards stand on, in the order the names are written. */
+export const BOARD_FACES = ["back", "side", "front"];
+
+/** The Board name cell is the names of that unit's boards, ' & '-separated. */
+export function splitBoardNames(value) {
+  return String(value || "")
     .split("&")
     .map(name => name.trim())
     .filter(Boolean);
+}
 
-  const faces = ["back", "side", "front"];
-  return names.map((name, i) => ({ face: faces[i] || "extra", name }));
+/**
+ * A unit's boards, one per face.
+ *
+ * A face is here because the plan named a board on it, because a picture has
+ * been assigned to it, or both — assigning artwork to a bare shelf shouldn't
+ * need someone to type a name into the grid first, and naming a board
+ * shouldn't wait for artwork to exist. An assigned face with no name of its
+ * own borrows the library entry's name.
+ *
+ * `assigned` is a face -> resource map for this position; without it the
+ * faces are just names.
+ */
+export function boardFaces(position, assigned = null) {
+  const names = splitBoardNames(position.board_name);
+  const faces = [];
+
+  BOARD_FACES.forEach((face, i) => {
+    const name = names[i] || null;
+    const art = assigned?.get(face) || null;
+    if (!name && !art) return;
+
+    faces.push({
+      face,
+      name: name || art.name,
+      resource_id: art?.id || null,
+      image_url: art?.image_url || null
+    });
+  });
+
+  // A unit carrying more names than there are faces. Rare, but the names are
+  // free text, so they shouldn't silently vanish off the end.
+  names.slice(BOARD_FACES.length).forEach(name => {
+    faces.push({ face: "extra", name, resource_id: null, image_url: null });
+  });
+
+  return faces;
 }
 
 /**
@@ -121,7 +162,7 @@ export function stageApplies(position, stage) {
 }
 
 async function loadPlan(db, conventionId) {
-  const [positionRows, flagRows] = await Promise.all([
+  const [positionRows, flagRows, artRows, photoRows] = await Promise.all([
     db.prepare(
       `SELECT * FROM shelf_positions WHERE convention_id = ?
        ORDER BY sort_order ASC, id ASC`
@@ -133,6 +174,23 @@ async function loadPlan(db, conventionId) {
        LEFT JOIN employees e ON e.id = f.done_by
        JOIN shelf_positions p ON p.id = f.position_id
        WHERE p.convention_id = ?`
+    ).bind(conventionId).all(),
+
+    db.prepare(
+      `SELECT a.position_id, a.face, r.id, r.name, r.updated_at
+       FROM shelf_board_art a
+       JOIN resources r ON r.id = a.resource_id
+       JOIN shelf_positions p ON p.id = a.position_id
+       WHERE p.convention_id = ?`
+    ).bind(conventionId).all(),
+
+    db.prepare(
+      `SELECT ph.id, ph.position_id, ph.created_at, e.full_name AS taken_by_name
+       FROM shelf_photos ph
+       LEFT JOIN employees e ON e.id = ph.taken_by
+       JOIN shelf_positions p ON p.id = ph.position_id
+       WHERE p.convention_id = ?
+       ORDER BY ph.created_at ASC, ph.id ASC`
     ).bind(conventionId).all()
   ]);
 
@@ -142,6 +200,27 @@ async function loadPlan(db, conventionId) {
       flagsByPosition.set(flag.position_id, new Set());
     }
     flagsByPosition.get(flag.position_id).add(flag.stage);
+  }
+
+  const artByPosition = new Map();
+  for (const row of artRows.results || []) {
+    if (!artByPosition.has(row.position_id)) artByPosition.set(row.position_id, new Map());
+    artByPosition.get(row.position_id).set(row.face, {
+      id: row.id,
+      name: row.name,
+      image_url: resourceUrl(row)
+    });
+  }
+
+  const photosByPosition = new Map();
+  for (const row of photoRows.results || []) {
+    if (!photosByPosition.has(row.position_id)) photosByPosition.set(row.position_id, []);
+    photosByPosition.get(row.position_id).push({
+      id: row.id,
+      created_at: row.created_at,
+      taken_by_name: row.taken_by_name,
+      image_url: imageUrlFor(`/api/shelf-photo/${row.id}`, row.created_at)
+    });
   }
 
   return (positionRows.results || []).map(row => {
@@ -156,7 +235,8 @@ async function loadPlan(db, conventionId) {
       unit_type: row.unit_type || "",
       signage: signageList(row.signage),
       board_name: row.board_name || "",
-      boards: boardFaces(row),
+      boards: boardFaces(row, artByPosition.get(row.id)),
+      photos: photosByPosition.get(row.id) || [],
       kind: row.kind,
       geometry: effectiveGeometry(row),
       baseline: { x: row.x, y: row.y, w: row.w, h: row.h },
@@ -202,7 +282,11 @@ export async function handleShelfPlan(request, env, slug) {
     positions,
     totals: stageTotals(positions),
     conflicts: layoutConflicts(positions),
-    copyFrom: others.results || []
+    copyFrom: others.results || [],
+
+    // What the artwork picker offers. The library is store-wide and small,
+    // so it rides along rather than costing a second request per shelf.
+    resources: await loadResources(env.DB)
   };
 }
 
@@ -497,6 +581,115 @@ export async function handleAddPosition(request, env, slug) {
   return { ok: true };
 }
 
+/* ---------- Board artwork ---------- */
+
+/** Puts a library image on one face of one shelf, or takes it back off. */
+export async function handleAssignBoardArt(request, env, positionId) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const id = Number(positionId);
+  const body = await readJsonBody(request);
+  const face = String(body.face || "");
+
+  if (!BOARD_FACES.includes(face)) {
+    throw new BadRequest("A board stands on the back, the side or the front.");
+  }
+
+  const position = await env.DB.prepare(
+    `SELECT id FROM shelf_positions WHERE id = ?`
+  ).bind(id).first();
+
+  if (!position) return { ok: false, error: "That position no longer exists." };
+
+  if (body.resource_id === null) {
+    await env.DB.prepare(
+      `DELETE FROM shelf_board_art WHERE position_id = ? AND face = ?`
+    ).bind(id, face).run();
+
+    return { ok: true };
+  }
+
+  const resourceId = Number(body.resource_id);
+
+  const resource = await env.DB.prepare(
+    `SELECT id FROM resources WHERE id = ?`
+  ).bind(resourceId).first();
+
+  if (!resource) return { ok: false, error: "That file is no longer in the library." };
+
+  await env.DB.prepare(
+    `INSERT INTO shelf_board_art (position_id, face, resource_id, assigned_by, assigned_at)
+     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT (position_id, face) DO UPDATE SET
+       resource_id = excluded.resource_id,
+       assigned_by = excluded.assigned_by,
+       assigned_at = CURRENT_TIMESTAMP`
+  ).bind(id, face, resourceId, auth.user.id).run();
+
+  return { ok: true };
+}
+
+/* ---------- Shelf photos ---------- */
+
+// Shot on a phone at the store, so bigger than a board: you have to be able
+// to read a spine off it at the venue. D1 caps a row at 2MB and base64
+// inflates by a third, so this still leaves headroom.
+const MAX_PHOTO_BYTES = 900 * 1024;
+
+export async function handleGetShelfPhoto(request, env, photoId) {
+  const auth = await requireUser(request, env);
+  if (!auth.ok) return new Response("Not found", { status: 404 });
+
+  const row = await env.DB.prepare(
+    `SELECT image FROM shelf_photos WHERE id = ?`
+  ).bind(Number(photoId)).first();
+
+  if (!row?.image) return new Response("Not found", { status: 404 });
+
+  return imageResponse(row.image, MAX_PHOTO_BYTES);
+}
+
+/**
+ * A photo of the shelf as it was merchandised.
+ *
+ * Anyone who can see the plan can add one — merchandising and packing is the
+ * floor's job, and a photo nobody could take until the boss was free would
+ * not get taken. Deleting stays with the boss.
+ */
+export async function handleAddShelfPhoto(request, env, positionId) {
+  const auth = await requireUser(request, env, "conventions");
+  if (!auth.ok) return auth;
+
+  const id = Number(positionId);
+  const body = await readJsonBody(request);
+
+  const position = await env.DB.prepare(
+    `SELECT id FROM shelf_positions WHERE id = ?`
+  ).bind(id).first();
+
+  if (!position) return { ok: false, error: "That position no longer exists." };
+
+  const { mimeType, base64 } = parseImageDataUri(body.image, MAX_PHOTO_BYTES);
+
+  await env.DB.prepare(
+    `INSERT INTO shelf_photos (position_id, image, taken_by) VALUES (?, ?, ?)`
+  ).bind(id, `data:${mimeType};base64,${base64}`, auth.user.id).run();
+
+  return { ok: true };
+}
+
+export async function handleDeleteShelfPhoto(request, env, photoId) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  await env.DB.prepare(
+    `DELETE FROM shelf_photos WHERE id = ?`
+  ).bind(Number(photoId)).run();
+
+  return { ok: true };
+}
+
 export async function handleDeletePosition(request, env, positionId) {
   const auth = await requireUser(request, env, "manage_conventions");
   if (!auth.ok) return auth;
@@ -505,6 +698,8 @@ export async function handleDeletePosition(request, env, positionId) {
 
   await env.DB.batch([
     env.DB.prepare(`DELETE FROM shelf_stage_flags WHERE position_id = ?`).bind(id),
+    env.DB.prepare(`DELETE FROM shelf_board_art WHERE position_id = ?`).bind(id),
+    env.DB.prepare(`DELETE FROM shelf_photos WHERE position_id = ?`).bind(id),
     env.DB.prepare(`DELETE FROM shelf_positions WHERE id = ?`).bind(id)
   ]);
 
