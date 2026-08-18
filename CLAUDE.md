@@ -30,6 +30,14 @@ Deploy in three steps instead:
 2. `npm run migrate:check` — "No migrations to apply!" means step 1 worked
 3. `npm run deploy`
 
+`migrate:check` can throw the same `7403` on its own, without applying anything
+— it's a plain read, so a failure there says nothing about the schema. When it
+does, ask the database directly instead:
+
+```bash
+npx wrangler d1 execute panda_portal_db --remote --json   --command "SELECT name FROM d1_migrations ORDER BY id DESC LIMIT 3"
+```
+
 ## Layout
 
 ```
