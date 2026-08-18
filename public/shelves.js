@@ -390,8 +390,8 @@ function shelfRow(position) {
  * and "79" on its own would be a target nobody could hit.
  */
 function groupingChip(grouping, capacity = null) {
-  const shown = capacity?.families.find(f => f.id === grouping.id);
-  const offTier = capacity?.offTier.find(f => f.id === grouping.id);
+  const shown = capacity?.families?.find(f => f.id === grouping.id);
+  const offTier = capacity?.offTier?.find(f => f.id === grouping.id);
 
   const tail = offTier
     ? `<em>· ${offTier.placement === "side" ? "on the side" : "up top"}</em>`
@@ -1086,7 +1086,7 @@ function selectedPositionCard(position) {
             <div class="panel-code">${esc(position.code)}</div>
             <div class="shelf-list-groupings">
               ${position.groupings.length
-                ? position.groupings.map(groupingChip).join("")
+                ? position.groupings.map(g => groupingChip(g, position.capacity)).join("")
                 : `<span class="meta">Nothing on this one yet</span>`}
             </div>
           </div>
