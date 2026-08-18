@@ -18,6 +18,9 @@ let openGroupingsFor = null;    // which row's product strip is open
 let viewingPhoto = null;        // photo id, shown full size
 let viewingBoard = null;        // { positionId, face }, shown full size
 let pickingArtFor = null;       // { positionId, face } while the picker is open
+let shelfDetailFor = null;      // phone: which unit is opened up, tier by tier
+let openTierFor = null;         // phone: which tier of it is expanded
+let movingGrouping = null;      // phone: { groupingId } while picking a tier to move to
 
 /* The design draws the booth at 31px per foot. That's 502px wide, which a
    phone can't show and can't be pinch-zoomed inside the app, so the scale
@@ -88,7 +91,11 @@ function drawShelfPlan() {
 
   pageArea().innerHTML = `
     ${shelfHeader()}
-    ${shelfView === "map" ? boothMap() : list ? shelfList() : shelfGrid()}
+    ${shelfView === "map"
+      ? boothMap()
+      : list
+        ? (shelfDetailFor ? shelfDetail() : shelfList())
+        : shelfGrid()}
 
     <input type="file" id="shelfPhotoInput" style="display:none;"
            accept="image/png,image/jpeg,image/webp" capture="environment">
@@ -733,11 +740,12 @@ function shelfList() {
       return `
         <div class="card shelf-list-card${complete ? " done" : ""}">
           <div class="shelf-list-head">
-            <span class="shelf-list-code">${esc(position.code)}</span>
+            <button class="shelf-list-code" data-open-shelf="${position.id}"
+                    title="Open this unit tier by tier">${esc(position.code)}</button>
             <div style="flex:1; min-width:0;">
               <div class="shelf-list-groupings">
                 ${position.groupings.length
-                  ? position.groupings.map(groupingChip).join("")
+                  ? position.groupings.map(g => groupingChip(g, position.capacity)).join("")
                   : `<span class="meta">Nothing on this one yet</span>`}
               </div>
               <div class="meta">${esc(position.unit_type || "")}${
@@ -764,6 +772,190 @@ function shelfList() {
       `;
     }).join("")}
   `).join("");
+}
+
+/* ---------- One unit, tier by tier (the phone screen) ---------- */
+
+/**
+ * The store floor's view of a single unit.
+ *
+ * The grid is the boss's working tool; this is what someone holds while they
+ * are standing in front of the shelf, so it leads with where the prep is at
+ * and then goes down the tiers in the order the eye does — T1 at the top.
+ *
+ * It's a state of the plan rather than its own page. The booth map earned a
+ * URL because it is the thing you send someone ("look at where C5 is"); a
+ * shelf's tiers are a drill-down you come back out of.
+ */
+function shelfDetail() {
+  const position = shelfData.positions.find(p => p.id === shelfDetailFor);
+  if (!position) {
+    shelfDetailFor = null;
+    return shelfList();
+  }
+
+  const { stages, canManage } = shelfData;
+  const capacity = position.capacity || { tiers: [], families: [], offTier: [], holds: 0 };
+  const notes = stageNotes(position);
+
+  return `
+    <div class="card shelf-detail-card">
+      <div class="shelf-detail-band">
+        <span class="pill pill-paper">${esc(position.wall)}</span>
+        <div class="shelf-detail-code">${esc(position.code)}</div>
+        <div class="shelf-detail-sub">
+          ${esc(position.unit_type || "Unit")} ·
+          ${position.tier_count} tier${position.tier_count === 1 ? "" : "s"} ·
+          ${capacity.holds} SKU${capacity.holds === 1 ? "" : "s"} placed
+        </div>
+      </div>
+
+      <div class="strip">WHERE THIS SHELF IS AT</div>
+      <div class="shelf-detail-stages">
+        ${position.stages.map((done, stage) => `
+          <div class="shelf-detail-stage">
+            ${stageBox(position, stage, done)}
+            <div>
+              <div class="shelf-detail-stage-name">${esc(stages[stage])}</div>
+              ${notes[stage] ? `<div class="meta">${esc(notes[stage])}</div>` : ""}
+            </div>
+          </div>
+        `).join("")}
+      </div>
+
+      ${position.signage.length
+        ? ""
+        : `<div class="note-card">This shelf needs no signage, so there is no
+             Boards box to tick — it drops out of the count rather than sitting
+             there unticked.</div>`}
+
+      ${capacity.offTier.length ? `
+        <div class="note-card">
+          ${capacity.offTier.map(f => `
+            <div><strong>${esc(f.name)}</strong> —
+            ${f.placement === "side"
+              ? "zip-tied to the side of this unit, not on a tier"
+              : "goes up top, on the shelves rather than in them"}${
+              f.pool ? ` · ${f.pool} in stock` : ""}</div>
+          `).join("")}
+        </div>
+      ` : ""}
+
+      <div class="strip">TIERS</div>
+      ${capacity.tiers.length
+        ? capacity.tiers.map(tier => tierRow(position, tier, canManage)).join("")
+        : `<p class="empty-state">This unit has no tiers — it isn't a shelf.</p>`}
+    </div>
+  `;
+}
+
+/**
+ * A note per stage, so a tick means something specific rather than being the
+ * fifth identical checkbox down the card.
+ */
+function stageNotes(position) {
+  const capacity = position.capacity;
+  const families = capacity?.families.filter(f => f.placed) || [];
+
+  return [
+    position.tier_count ? `built as ${position.tier_count} tiers` : "",
+    families.length
+      ? `${families.map(f => f.name).join(", ")} — ${capacity.holds} SKUs`
+      : "nothing placed on it yet",
+    "",
+    "scan at the shelf",
+    position.signage.length
+      ? position.boards.length
+        ? position.boards.map(b => b.name).join(" & ")
+        : "no artwork picked yet"
+      : ""
+  ];
+}
+
+/**
+ * One tier: how full it is, and what's on it once opened.
+ *
+ * Tapping the row opens it rather than navigating, so the tiers above and
+ * below stay on screen — the question being answered is usually "which tier
+ * does this go on", which needs the neighbours visible.
+ */
+function tierRow(position, tier, canManage) {
+  const open = openTierFor === tier.tier;
+  const onShelf = position.groupings.filter(g =>
+    (g.placement || "tier") === "tier" && !tier.families.some(f => f.id === g.id));
+
+  return `
+    <div class="tier-row${tier.over ? " over" : ""}${open ? " open" : ""}">
+      <button class="tier-row-head" data-open-tier="${tier.tier}">
+        <span class="tier-row-name">T${tier.tier}</span>
+        <span class="tier-cells">
+          ${Array.from({ length: 10 }, (_, i) => `
+            <span class="tier-cell${i < Math.round(tier.fill * 10) ? " on" : ""}"></span>
+          `).join("")}
+        </span>
+        <span class="tier-row-count">
+          ${tier.holds} SKU${tier.holds === 1 ? "" : "s"}
+          <em>${Math.round(tier.heightIn)}″</em>
+        </span>
+      </button>
+
+      ${tier.over ? `
+        <div class="tier-row-warn">
+          ${tier.families.some(f => f.tooTall)
+            ? `${esc(tier.families.find(f => f.tooTall).name)} is taller than this
+               tier — it needs one of the deeper ones, or the shelf rebuilt.`
+            : `There isn't room here for one of these at the facings they're set
+               to. Lower the facings, or move one off.`}
+        </div>
+      ` : ""}
+
+      ${open ? `
+        <div class="tier-open">
+          ${tier.families.length
+            ? tier.families.map(f => `
+                <span class="grouping-chip on${f.over ? " over" : ""}">
+                  ${canManage
+                    ? `<button class="chip-name" data-move-grouping="${f.id}"
+                               title="Move it to another tier">${esc(f.name)}</button>`
+                    : esc(f.name)}
+                  <em>${f.tooTall ? "too tall" : `${f.skus} SKU${f.skus === 1 ? "" : "s"}`}</em>
+                  ${canManage ? `
+                    <button class="chip-clear" data-off-tier="${f.id}" data-tier="${tier.tier}"
+                            title="Take it off this tier">×</button>
+                  ` : ""}
+                </span>
+              `).join("")
+            : `<span class="meta">Nothing on this tier.</span>`}
+
+          ${canManage && movingGrouping ? `
+            <div class="tier-move">
+              <span class="board-slot-face">MOVE TO</span>
+              ${position.capacity.tiers
+                .filter(t => t.tier !== tier.tier)
+                .map(t => `
+                  <button class="tier-toggle" data-move-to="${t.tier}">T${t.tier}</button>
+                `).join("")}
+              <button class="btn-quiet" data-move-cancel="1">Cancel</button>
+            </div>
+          ` : ""}
+
+          ${canManage && !movingGrouping ? `
+            <div class="tier-actions">
+              ${onShelf.length ? `
+                <select data-add-to-tier="${tier.tier}">
+                  <option value="">+ Group…</option>
+                  ${onShelf.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join("")}
+                </select>
+              ` : ""}
+              ${tier.families.length ? `
+                <button class="btn-quiet" data-clear-tier="${tier.tier}">Clear tier</button>
+              ` : ""}
+            </div>
+          ` : ""}
+        </div>
+      ` : ""}
+    </div>
+  `;
 }
 
 /* ---------- The booth map ---------- */
@@ -1143,7 +1335,122 @@ function wireShelfPlan() {
   const slug = shelfData.convention.slug;
   const reload = () => renderShelfPlan(slug, false);
 
-  document.getElementById("shelfBackBtn").onclick = () => openConvention(slug);
+  // Back comes out of a unit before it leaves the plan, so the drill-down
+  // behaves like the drill-down it is.
+  document.getElementById("shelfBackBtn").onclick = () => {
+    if (shelfDetailFor) {
+      shelfDetailFor = null;
+      openTierFor = null;
+      movingGrouping = null;
+      drawShelfPlan();
+      return;
+    }
+    openConvention(slug);
+  };
+
+  document.querySelectorAll("[data-open-shelf]").forEach(button => {
+    button.onclick = () => {
+      shelfDetailFor = Number(button.dataset.openShelf);
+      openTierFor = null;
+      movingGrouping = null;
+      drawShelfPlan();
+    };
+  });
+
+  document.querySelectorAll("[data-open-tier]").forEach(button => {
+    button.onclick = () => {
+      const tier = Number(button.dataset.openTier);
+      openTierFor = openTierFor === tier ? null : tier;
+      movingGrouping = null;
+      drawShelfPlan();
+    };
+  });
+
+  // Picking a family to move only arms the move; the tier it lands on is the
+  // next tap, and until then nothing has been written.
+  document.querySelectorAll("[data-move-grouping]").forEach(button => {
+    button.onclick = () => {
+      movingGrouping = Number(button.dataset.moveGrouping);
+      drawShelfPlan();
+    };
+  });
+
+  document.querySelector("[data-move-cancel]")?.addEventListener("click", () => {
+    movingGrouping = null;
+    drawShelfPlan();
+  });
+
+  document.querySelectorAll("[data-move-to]").forEach(button => {
+    button.onclick = async () => {
+      const to = Number(button.dataset.moveTo);
+      const result = await apiSend(`/api/shelf-positions/${shelfDetailFor}/tier`, "PUT", {
+        grouping_id: movingGrouping,
+        from: openTierFor,
+        to
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not move that.");
+        return;
+      }
+
+      // Follow it: the tier it landed on is the one you want to look at.
+      movingGrouping = null;
+      openTierFor = to;
+      await reload();
+    };
+  });
+
+  document.querySelectorAll("[data-off-tier]").forEach(button => {
+    button.onclick = async () => {
+      const result = await apiSend(`/api/shelf-positions/${shelfDetailFor}/tier`, "PUT", {
+        grouping_id: Number(button.dataset.offTier),
+        tier_index: Number(button.dataset.tier),
+        on: false
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not save that.");
+        return;
+      }
+
+      await reload();
+    };
+  });
+
+  document.querySelectorAll("[data-add-to-tier]").forEach(select => {
+    select.onchange = async () => {
+      if (!select.value) return;
+
+      const result = await apiSend(`/api/shelf-positions/${shelfDetailFor}/tier`, "PUT", {
+        grouping_id: Number(select.value),
+        tier_index: Number(select.dataset.addToTier),
+        on: true
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not save that.");
+        return;
+      }
+
+      await reload();
+    };
+  });
+
+  document.querySelectorAll("[data-clear-tier]").forEach(button => {
+    button.onclick = async () => {
+      const result = await apiSend(`/api/shelf-positions/${shelfDetailFor}/tier`, "PUT", {
+        clear_tier: Number(button.dataset.clearTier)
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not save that.");
+        return;
+      }
+
+      await reload();
+    };
+  });
 
   document.querySelectorAll("[data-shelf-view]").forEach(btn => {
     btn.onclick = () => {

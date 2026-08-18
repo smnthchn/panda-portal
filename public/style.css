@@ -3148,3 +3148,185 @@ button.cell-add:hover {
 }
 
 .tier-count-field input { width: 64px; }
+
+/* --------------------------------------------------------------------------
+   One unit, tier by tier — the phone screen for the store floor
+   -------------------------------------------------------------------------- */
+
+.shelf-detail-card { padding: 0; overflow: hidden; }
+
+/* The band names the unit the way someone standing in front of it would:
+   which wall, then the code big enough to match against the shelf. */
+.shelf-detail-band {
+  background: var(--brand);
+  color: var(--on-brand);
+  padding: 14px 16px 16px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.shelf-detail-code {
+  font-family: Fredoka, sans-serif;
+  font-weight: 600;
+  font-size: 26px;
+  line-height: 1.1;
+  margin-top: 8px;
+}
+
+.shelf-detail-sub {
+  font-family: Fredoka, sans-serif;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.shelf-detail-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.shelf-detail-stage {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.shelf-detail-stage-name {
+  font-family: Fredoka, sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.note-card {
+  margin: 0 16px 14px;
+  padding: 10px 12px;
+  border: 2px solid var(--note-border);
+  border-radius: 14px;
+  background: var(--note-bg);
+  color: var(--note-text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.tier-row {
+  border-bottom: 2px solid var(--chip);
+}
+
+.tier-row.open { background: var(--paper); }
+
+.tier-row-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.tier-row-name {
+  font-family: Fredoka, sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+  min-width: 28px;
+}
+
+/* Ten cells, the same battery the dashboard uses, so a tier reads at a glance
+   from the same distance as everything else on the phone. */
+.tier-cells {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  padding: 3px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.tier-cell {
+  flex: 1;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--track);
+}
+
+.tier-cell.on { background: var(--brand); }
+
+.tier-row.over .tier-cell.on { background: var(--warm); }
+.tier-row.over .tier-row-count { color: var(--alert); }
+
+.tier-row-count {
+  font-family: Fredoka, sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--ink);
+  min-width: 66px;
+  text-align: right;
+}
+
+.tier-row-count em {
+  display: block;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.tier-open {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 14px;
+}
+
+.grouping-chip.over {
+  background: var(--note-bg);
+  border-color: var(--warm);
+  color: var(--note-text);
+}
+
+.chip-name {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.chip-clear {
+  border: none;
+  background: none;
+  padding: 0 0 0 6px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tier-move,
+.tier-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+/* An over-capacity tier with nothing on it looks exactly like an empty one —
+   the bar has no fill to turn amber — so it says which of the two it is. */
+.tier-row-warn {
+  margin: -4px 16px 12px;
+  padding: 8px 10px;
+  border: 2px solid var(--warm);
+  border-radius: 12px;
+  background: var(--note-bg);
+  color: var(--note-text);
+  font-size: 12px;
+  line-height: 1.45;
+}
