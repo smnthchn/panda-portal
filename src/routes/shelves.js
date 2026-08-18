@@ -2,6 +2,7 @@ import { readJsonBody, optionalText, BadRequest } from "../lib/http.js";
 import { requireUser } from "../lib/auth.js";
 import { parseImageDataUri, imageResponse, imageUrlFor } from "../lib/images.js";
 import { resourceUrl, loadResources } from "./resources.js";
+import { loadGroupings, BOX_CLASSES } from "./groupings.js";
 import {
   templatePositions,
   BOOTH_FEET,
@@ -138,7 +139,7 @@ export function stageApplies(position, stage) {
 }
 
 async function loadPlan(db, conventionId) {
-  const [positionRows, flagRows, artRows, photoRows] = await Promise.all([
+  const [positionRows, flagRows, artRows, photoRows, groupingRows] = await Promise.all([
     db.prepare(
       `SELECT * FROM shelf_positions WHERE convention_id = ?
        ORDER BY sort_order ASC, id ASC`
@@ -167,6 +168,15 @@ async function loadPlan(db, conventionId) {
        JOIN shelf_positions p ON p.id = ph.position_id
        WHERE p.convention_id = ?
        ORDER BY ph.created_at ASC, ph.id ASC`
+    ).bind(conventionId).all(),
+
+    db.prepare(
+      `SELECT sg.position_id, sg.facings, g.id, g.name, g.box_class
+       FROM shelf_groupings sg
+       JOIN groupings g ON g.id = sg.grouping_id
+       JOIN shelf_positions p ON p.id = sg.position_id
+       WHERE p.convention_id = ?
+       ORDER BY sg.sort_order ASC, g.sort_order ASC`
     ).bind(conventionId).all()
   ]);
 
@@ -185,6 +195,17 @@ async function loadPlan(db, conventionId) {
       id: row.id,
       name: row.name,
       image_url: resourceUrl(row)
+    });
+  }
+
+  const groupingsByPosition = new Map();
+  for (const row of groupingRows.results || []) {
+    if (!groupingsByPosition.has(row.position_id)) groupingsByPosition.set(row.position_id, []);
+    groupingsByPosition.get(row.position_id).push({
+      id: row.id,
+      name: row.name,
+      box_class: row.box_class,
+      facings: row.facings
     });
   }
 
@@ -212,6 +233,7 @@ async function loadPlan(db, conventionId) {
       signage: signageList(row.signage),
       boards: boardFaces(artByPosition.get(row.id)),
       photos: photosByPosition.get(row.id) || [],
+      groupings: groupingsByPosition.get(row.id) || [],
       kind: row.kind,
       geometry: effectiveGeometry(row),
       baseline: { x: row.x, y: row.y, w: row.w, h: row.h },
@@ -259,9 +281,12 @@ export async function handleShelfPlan(request, env, slug) {
     conflicts: layoutConflicts(positions),
     copyFrom: others.results || [],
 
-    // What the artwork picker offers. The library is store-wide and small,
-    // so it rides along rather than costing a second request per shelf.
-    resources: await loadResources(env.DB)
+    // What the artwork and grouping pickers offer. Both libraries are
+    // store-wide and small, so they ride along rather than costing a second
+    // request per shelf.
+    resources: await loadResources(env.DB),
+    groupings: await loadGroupings(env.DB),
+    boxClasses: BOX_CLASSES
   };
 }
 

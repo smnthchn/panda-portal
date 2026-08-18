@@ -2,6 +2,13 @@ import { json, matchPath, BadRequest } from "./lib/http.js";
 import { handleMe, handleLogin, handleLogout, handleSetTheme } from "./routes/session.js";
 import { handleDashboard } from "./routes/dashboard.js";
 import {
+  handleGroupings,
+  handleCreateGrouping,
+  handleUpdateGrouping,
+  handleDeleteGrouping,
+  handleAssignGrouping
+} from "./routes/groupings.js";
+import {
   handleResources,
   handleGetResourceImage,
   handleCreateResource,
@@ -157,6 +164,12 @@ const ROUTES = [
   ["POST", "/api/shelf-positions/:id/photos", handleAddShelfPhoto],
   ["GET", "/api/shelf-photo/:id", handleGetShelfPhoto, { raw: true }],
   ["DELETE", "/api/shelf-photos/:id", handleDeleteShelfPhoto],
+
+  ["GET", "/api/groupings", handleGroupings],
+  ["POST", "/api/groupings", handleCreateGrouping],
+  ["PATCH", "/api/groupings/:id", handleUpdateGrouping],
+  ["DELETE", "/api/groupings/:id", handleDeleteGrouping],
+  ["PUT", "/api/shelf-positions/:id/grouping", handleAssignGrouping],
 
   ["GET", "/api/resources", handleResources],
   ["POST", "/api/resources", handleCreateResource],

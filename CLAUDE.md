@@ -248,6 +248,30 @@ the numerator and the denominator, so the count reads `7 / 20`, not `7 / 31`.
 Adding signage to a shelf brings its Boards box to life and moves the
 denominator; removing all of it clears any stale tick.
 
+### Groupings
+
+**A grouping is a product family — what actually goes on a shelf.** One rack
+is HG Universal Century, one is Gundam SEED, one is Girls; the merchandising
+photos are one family per rack, never mixed. The family belongs to the store
+and outlives any show, so `groupings` sits store-wide beside Resources. What
+changes per show is which shelf carries it and how deep each SKU is faced,
+which is `shelf_groupings` — a row per (position, grouping), because a wide
+unit can carry two families.
+
+`facings` is the dial between shows: **3 or 4 at Anime North becomes 1 or 2 at
+Fan Expo**, and the tail SKUs (Hexa Gear, MSG parts) drop out entirely. Anime
+North is 800 sq ft against Fan Expo's 480, so something has to give.
+
+A grouping carries `shopify_query` rather than a copied list of SKUs — the
+catalogue's tags are structured enough to be the filter on their own
+(`tag:'High Grade' AND tag:'Universal Century'`), so a new kit joins its family
+the moment it's tagged. **Check a query returns something before trusting it**:
+`tag:'Plush'` matches nothing, because the tag is `Plushies`.
+
+`box_class` is how wide one box stands, which is what decides how many face
+out across a 49.5″ tier. It's on the family because it's a property of the
+product, not of the shelf it lands on.
+
 ### Resources, board artwork and shelf photos
 
 Two different pictures, deliberately kept apart:

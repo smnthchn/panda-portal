@@ -14,6 +14,7 @@ let arrangeMode = false;
 let openSignageFor = null;
 let openBoardsFor = null;       // which row's Boards strip is open
 let openShelfFor = null;        // which row's section/remove strip is open
+let openGroupingsFor = null;    // which row's product strip is open
 let viewingPhoto = null;        // photo id, shown full size
 let viewingBoard = null;        // { positionId, face }, shown full size
 let pickingArtFor = null;       // { positionId, face } while the picker is open
@@ -311,9 +312,16 @@ function shelfRow(position) {
 
       <span class="col-product">
         ${canEdit
-          ? `<input class="cell-input" type="text" value="${esc(position.product)}"
-                    data-field="product" data-position="${position.id}" placeholder="—">`
-          : `<span class="cell-static">${esc(position.product || "—")}</span>`}
+          ? `<button class="boards-cell" data-groupings="${position.id}">
+              ${position.groupings.length
+                ? position.groupings.map(groupingChip).join("")
+                : `<span class="cell-add">+</span>`}
+            </button>`
+          : `<span class="boards-cell static">
+              ${position.groupings.length
+                ? position.groupings.map(groupingChip).join("")
+                : `<span class="meta">—</span>`}
+            </span>`}
       </span>
 
       <span class="col-type">
@@ -362,6 +370,55 @@ function shelfRow(position) {
     ${openSignageFor === position.id ? signageStrip(position) : ""}
     ${openBoardsFor === position.id ? boardsStrip(position) : ""}
     ${openShelfFor === position.id ? shelfStrip(position) : ""}
+    ${openGroupingsFor === position.id ? groupingsStrip(position) : ""}
+  `;
+}
+
+/** A family on a shelf, with how deep each of its SKUs is faced. */
+function groupingChip(grouping) {
+  return `
+    <span class="grouping-chip" title="${esc(grouping.name)} · ${grouping.facings} facings">
+      ${esc(grouping.name)}<em>×${grouping.facings}</em>
+    </span>
+  `;
+}
+
+/**
+ * Choosing what stands on a shelf.
+ *
+ * The families come from the store's library rather than being typed here:
+ * one rack is HG Universal Century at every show, and only the depth changes.
+ * Facings is that dial — 3 or 4 at Anime North, 1 or 2 at Fan Expo.
+ */
+function groupingsStrip(position) {
+  const onShelf = new Map(position.groupings.map(g => [g.id, g]));
+
+  return `
+    <div class="signage-strip groupings-strip">
+      ${position.groupings.map(g => `
+        <span class="board-slot">
+          <span class="grouping-chip on">${esc(g.name)}</span>
+          <label class="facings">
+            <span class="board-slot-face">FACINGS</span>
+            <input type="number" min="1" max="12" value="${g.facings}"
+                   data-facings="${position.id}" data-grouping="${g.id}">
+          </label>
+          <button class="board-slot-clear" data-grouping-remove="${position.id}"
+                  data-grouping="${g.id}" title="Take it off this shelf">×</button>
+        </span>
+      `).join("")}
+
+      <select data-grouping-add="${position.id}">
+        <option value="">+ Add a grouping…</option>
+        ${shelfData.groupings
+          .filter(g => !onShelf.has(g.id))
+          .map(g => `<option value="${g.id}">${esc(g.name)}</option>`)
+          .join("")}
+      </select>
+
+      <button class="btn-quiet" id="closeGroupingsBtn"
+              style="border:none; background:none; padding:6px 8px;">Save</button>
+    </div>
   `;
 }
 
@@ -1037,7 +1094,75 @@ function wireShelfPlan() {
       openShelfFor = openShelfFor === id ? null : id;
       openSignageFor = null;
       openBoardsFor = null;
+      openGroupingsFor = null;
       drawShelfPlan();
+    };
+  });
+
+  document.querySelectorAll("[data-groupings]").forEach(cell => {
+    cell.onclick = () => {
+      const id = Number(cell.dataset.groupings);
+      openGroupingsFor = openGroupingsFor === id ? null : id;
+      openSignageFor = null;
+      openBoardsFor = null;
+      openShelfFor = null;
+      drawShelfPlan();
+    };
+  });
+
+  document.getElementById("closeGroupingsBtn")?.addEventListener("click", () => {
+    openGroupingsFor = null;
+    drawShelfPlan();
+  });
+
+  document.querySelectorAll("[data-grouping-add]").forEach(select => {
+    select.onchange = async () => {
+      if (!select.value) return;
+
+      const result = await apiSend(`/api/shelf-positions/${select.dataset.groupingAdd}/grouping`, "PUT", {
+        grouping_id: Number(select.value)
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not put that on the shelf.");
+        return;
+      }
+
+      await reload();
+    };
+  });
+
+  document.querySelectorAll("[data-grouping-remove]").forEach(btn => {
+    btn.onclick = async () => {
+      const result = await apiSend(`/api/shelf-positions/${btn.dataset.groupingRemove}/grouping`, "PUT", {
+        grouping_id: Number(btn.dataset.grouping),
+        remove: true
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not take that off.");
+        return;
+      }
+
+      await reload();
+    };
+  });
+
+  // Facings save on change rather than on Save: the number is the thing you
+  // came here to set, and it shows on the chip the moment it lands.
+  document.querySelectorAll("[data-facings]").forEach(input => {
+    input.onchange = async () => {
+      const result = await apiSend(`/api/shelf-positions/${input.dataset.facings}/grouping`, "PUT", {
+        grouping_id: Number(input.dataset.grouping),
+        facings: Number(input.value)
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not save that.");
+        return;
+      }
+
+      await reload();
     };
   });
 
