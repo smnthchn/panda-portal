@@ -407,6 +407,87 @@ function unavailableOn(availability, staff, date) {
   return out;
 }
 
+/** Sunday of the week containing a date — the far end of a Monday-first week. */
+function weekEnd(isoDate) {
+  return addDays(weekStart(isoDate), 6);
+}
+
+function monthStart(isoDate) {
+  return `${isoDate.slice(0, 7)}-01`;
+}
+
+function addMonths(isoDate, months) {
+  const d = new Date(`${monthStart(isoDate)}T00:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
+
+function monthEnd(isoDate) {
+  return addDays(addMonths(isoDate, 1), -1);
+}
+
+export const SPANS = ["day", "week", "2week", "month", "custom"];
+
+/**
+ * Every view is the same thing underneath — a start date and a number of days.
+ * The presets only decide what that number is and where a step forward lands,
+ * which is why Day, Week, 2 weeks and Month are one screen rather than four.
+ *
+ * Week and 2 weeks snap to Monday, because a week that starts on a Thursday
+ * isn't a week anyone thinks in. A month is the calendar month, so stepping
+ * through the year doesn't drift the way a fixed 30 would. A custom count
+ * starts wherever you pointed it and steps by its own length.
+ */
+export function resolveSpan({ span, from, days, today }) {
+  const anchor = /^\d{4}-\d{2}-\d{2}$/.test(from || "") ? from : today;
+  const kind = SPANS.includes(span) ? span : "week";
+
+  if (kind === "day") {
+    return { span: kind, from: anchor, to: anchor, days: 1, prev_from: addDays(anchor, -1), next_from: addDays(anchor, 1) };
+  }
+
+  if (kind === "month") {
+    const start = monthStart(anchor);
+    const end = monthEnd(start);
+    return {
+      span: kind,
+      from: start,
+      to: end,
+      days: Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86400000) + 1,
+      prev_from: addMonths(start, -1),
+      next_from: addMonths(start, 1)
+    };
+  }
+
+  if (kind === "custom") {
+    // Two months is past the point the grid is readable, and well past the
+    // point a store schedule is decided. A missing count falls back to a week;
+    // a zero clamps up to one, since `|| 7` would read 0 as "not given".
+    const asked = Math.round(Number(days));
+    const count = Math.min(Math.max(Number.isFinite(asked) ? asked : 7, 1), 62);
+    return {
+      span: kind,
+      from: anchor,
+      to: addDays(anchor, count - 1),
+      days: count,
+      prev_from: addDays(anchor, -count),
+      next_from: addDays(anchor, count)
+    };
+  }
+
+  const count = kind === "2week" ? 14 : 7;
+  const start = weekStart(anchor);
+
+  return {
+    span: kind,
+    from: start,
+    to: addDays(start, count - 1),
+    days: count,
+    prev_from: addDays(start, -count),
+    next_from: addDays(start, count)
+  };
+}
+
 /**
  * What the screen needs to say about a holiday: what it's called, and whether
  * anyone has decided about it yet. `decided` is the load-bearing bit — an
@@ -439,11 +520,24 @@ export async function handleStoreSchedule(request, env) {
   if (!auth.ok) return auth;
 
   const url = new URL(request.url);
-  const param = url.searchParams.get("week") || "";
-  const from = weekStart(/^\d{4}-\d{2}-\d{2}$/.test(param) ? param : new Date().toISOString().slice(0, 10));
-  const to = addDays(from, 6);
+  const today = url.searchParams.get("today") || new Date().toISOString().slice(0, 10);
 
-  const prevFrom = addDays(from, -7);
+  const range = resolveSpan({
+    span: url.searchParams.get("span"),
+    // `week` is what this screen used to take, and it still means a Monday-anchored week.
+    from: url.searchParams.get("from") || url.searchParams.get("week"),
+    days: url.searchParams.get("days"),
+    today: /^\d{4}-\d{2}-\d{2}$/.test(today) ? today : new Date().toISOString().slice(0, 10)
+  });
+
+  // The grid is always whole Monday-to-Sunday weeks, so the columns line up
+  // between one week's table and the next however the range was chosen. Days
+  // outside the range are still drawn, just empty.
+  const from = weekStart(range.from);
+  const to = weekEnd(range.to);
+  const dayCount = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000) + 1;
+
+  const prevFrom = addDays(weekStart(range.from), -7);
 
   const [shiftRows, hoursRows, staffRows, availability, holidayRows, prevCount] =
     await Promise.all([
@@ -489,7 +583,7 @@ export async function handleStoreSchedule(request, env) {
     avatar_url: person.has_avatar ? avatarUrlFor(person.id, person.updated_at) : null
   }));
 
-  const days = Array.from({ length: 7 }, (_, i) => {
+  const days = Array.from({ length: dayCount }, (_, i) => {
     const date = addDays(from, i);
     const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
     const usual = hoursByWeekday.get(weekday) || null;
@@ -521,6 +615,10 @@ export async function handleStoreSchedule(request, env) {
       date,
       weekday,
       weekday_name: WEEKDAYS[weekday],
+      // Padding to whole weeks means some columns fall outside what was asked
+      // for. They keep their place in the row so the grid stays square, but
+      // they carry no shifts.
+      in_range: date >= range.from && date <= range.to,
       closed,
       closed_for_holiday: Boolean(closed && holiday?.decided && holiday.is_closed),
       holiday,
@@ -541,11 +639,21 @@ export async function handleStoreSchedule(request, env) {
 
   return {
     ok: true,
+    span: range.span,
+    range_start: range.from,
+    range_end: range.to,
+    range_days: range.days,
+    prev_from: range.prev_from,
+    next_from: range.next_from,
+    // The padded grid, which is what the rota is drawn from.
     week_start: from,
     week_end: to,
+    weeks: rotaWeeks(days),
     prev_week: prevFrom,
     next_week: addDays(from, 7),
     // Between them these decide whether filling from last week is even on offer.
+    // Only meaningful on a single week — on a month, "last week" isn't a thing
+    // the screen is showing.
     week_shifts: days.reduce((n, day) => n + day.shifts.length, 0),
     prev_week_shifts: prevCount?.n || 0,
     days,
@@ -561,6 +669,80 @@ export async function handleStoreSchedule(request, env) {
     }),
     staff
   };
+}
+
+/**
+ * The rota, cut into Monday-to-Sunday blocks: one table per week, a row per
+ * person on that week, seven cells across whether or not the range covers them.
+ *
+ * Rows are built here rather than in the browser so the wall chart and the day
+ * cards under it are reading the same shifts — a name that appears in one and
+ * not the other would be the whole point of the screen going wrong. A person
+ * is a row in the week they actually work, so nobody carries a blank line
+ * through a month they were off for.
+ */
+export function rotaWeeks(days) {
+  const weeks = [];
+
+  for (let i = 0; i < days.length; i += 7) {
+    const block = days.slice(i, i + 7);
+    const people = new Map();
+
+    for (const day of block) {
+      // A padded-out column keeps its place but stays blank — asking for ten
+      // days from a Wednesday shouldn't quietly show you the Monday's shifts.
+      if (!day.in_range) continue;
+
+      for (const shift of [...day.shifts, ...day.event_shifts]) {
+        // Unassigned shifts share one row — they're a job nobody is on yet,
+        // not a person.
+        const key = shift.employee_id || "unassigned";
+
+        if (!people.has(key)) {
+          people.set(key, {
+            employee_id: shift.employee_id || null,
+            name: shift.employee_name || "Unassigned",
+            avatar_url: shift.avatar_url || null,
+            role: shift.employee_role || null,
+            cells: {}
+          });
+        }
+
+        const person = people.get(key);
+        (person.cells[day.date] ||= []).push({
+          id: shift.id,
+          starts_at: shift.starts_at,
+          ends_at: shift.ends_at,
+          title: shift.title,
+          convention_name: shift.convention_name || null
+        });
+      }
+    }
+
+    weeks.push({
+      week_start: block[0].date,
+      days: block.map(day => ({
+        date: day.date,
+        weekday_name: day.weekday_name,
+        in_range: day.in_range,
+        closed: day.closed,
+        closed_for_holiday: day.closed_for_holiday,
+        holiday: day.holiday ? { name: day.holiday.name, decided: day.holiday.decided } : null,
+        hours: day.hours,
+        gaps: day.gaps.length,
+        on: day.shifts.length
+      })),
+      // Unassigned last: it's a hole in the week, and it reads better at the
+      // bottom of the chart than jumbled into the names.
+      rows: [...people.values()].sort((a, b) =>
+        a.employee_id === null ? 1
+          : b.employee_id === null ? -1
+            : a.name.localeCompare(b.name)
+      )
+    });
+  }
+
+  return weeks;
 }
 
 function shiftPayload(shift) {

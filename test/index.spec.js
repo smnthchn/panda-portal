@@ -7,7 +7,7 @@ import { optionalUrl } from "../src/routes/conventions.js";
 import { pairClockEvents } from "../src/routes/clock.js";
 import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/dashboard.js";
 import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
-import { mergeIntervals, coverageGaps, toMinutes } from "../src/routes/schedule.js";
+import { mergeIntervals, coverageGaps, toMinutes, resolveSpan, rotaWeeks } from "../src/routes/schedule.js";
 import { ontarioHolidays, holidaysBetween, holidayOn, easterSunday } from "../src/lib/holidays.js";
 import { fullWeek, availabilityConflict } from "../src/routes/availability.js";
 import {
@@ -468,6 +468,138 @@ describe("booth coverage", () => {
 
   it("drops a backwards or unparseable shift instead of inverting the maths", () => {
     expect(mergeIntervals([shift("18:00", "10:00"), shift("bad", "12:00")])).toEqual([]);
+  });
+});
+
+describe("schedule spans", () => {
+  // 2026-09-16 is a Wednesday, which is the interesting case: the week presets
+  // have to snap back to Monday from it.
+  const wednesday = "2026-09-16";
+  const span = (span, extra = {}) => resolveSpan({ span, today: wednesday, ...extra });
+
+  it("snaps a week and a fortnight back to Monday", () => {
+    expect(span("week")).toMatchObject({ from: "2026-09-14", to: "2026-09-20", days: 7 });
+    expect(span("2week")).toMatchObject({ from: "2026-09-14", to: "2026-09-27", days: 14 });
+  });
+
+  it("steps a week at a time, staying on Mondays", () => {
+    expect(span("week")).toMatchObject({ prev_from: "2026-09-07", next_from: "2026-09-21" });
+  });
+
+  it("treats a month as the calendar month rather than thirty days", () => {
+    expect(span("month")).toMatchObject({ from: "2026-09-01", to: "2026-09-30", days: 30 });
+    // February is the one that catches a fixed count out.
+    expect(resolveSpan({ span: "month", today: "2028-02-10" }))
+      .toMatchObject({ from: "2028-02-01", to: "2028-02-29", days: 29 });
+  });
+
+  it("steps a month to the next month, not forward thirty days", () => {
+    expect(resolveSpan({ span: "month", today: "2026-01-31" }))
+      .toMatchObject({ prev_from: "2025-12-01", next_from: "2026-02-01" });
+  });
+
+  it("starts a custom range where you pointed it and steps by its own length", () => {
+    expect(span("custom", { from: wednesday, days: 10 }))
+      .toMatchObject({ from: wednesday, to: "2026-09-25", days: 10, prev_from: "2026-09-06" });
+  });
+
+  it("clamps a silly custom count instead of building a two-year grid", () => {
+    expect(span("custom", { from: wednesday, days: 900 }).days).toBe(62);
+    expect(span("custom", { from: wednesday, days: 0 }).days).toBe(1);
+  });
+
+  it("falls back to the week for an unknown span", () => {
+    expect(span("fortnightly").span).toBe("week");
+    expect(span(undefined).span).toBe("week");
+  });
+
+  it("defaults a single day to the day itself", () => {
+    expect(span("day")).toMatchObject({ from: wednesday, to: wednesday, days: 1 });
+  });
+});
+
+describe("the rota grid", () => {
+  const day = (date, overrides = {}) => ({
+    date,
+    weekday_name: "Monday",
+    in_range: true,
+    closed: false,
+    closed_for_holiday: false,
+    holiday: null,
+    hours: { opens_at: "12:00", closes_at: "19:00" },
+    gaps: [],
+    shifts: [],
+    event_shifts: [],
+    ...overrides
+  });
+
+  const worked = (employeeId, name, starts = "11:30", ends = "19:30", shiftId = employeeId) => ({
+    id: shiftId, employee_id: employeeId, employee_name: name, avatar_url: null,
+    employee_role: "staff", starts_at: starts, ends_at: ends, title: "Store floor"
+  });
+
+  // A fortnight, Monday 2026-09-14 through Sunday 2026-09-27.
+  const fortnight = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(Date.UTC(2026, 8, 14 + i)).toISOString().slice(0, 10);
+    return day(d);
+  });
+
+  it("cuts the range into Monday-to-Sunday blocks of seven", () => {
+    const weeks = rotaWeeks(fortnight);
+    expect(weeks).toHaveLength(2);
+    expect(weeks.map(w => w.week_start)).toEqual(["2026-09-14", "2026-09-21"]);
+    expect(weeks[0].days).toHaveLength(7);
+  });
+
+  it("gives a person a row only in the week they actually work", () => {
+    const days = fortnight.map((d, i) => (i === 1 ? { ...d, shifts: [worked(4, "Kevin")] } : d));
+    const weeks = rotaWeeks(days);
+
+    expect(weeks[0].rows.map(r => r.name)).toEqual(["Kevin"]);
+    expect(weeks[1].rows).toEqual([]);
+    expect(weeks[0].rows[0].cells["2026-09-15"]).toHaveLength(1);
+  });
+
+  it("keeps a padded-out column in place but empty", () => {
+    const days = fortnight.map((d, i) =>
+      i === 0 ? { ...d, in_range: false, shifts: [worked(4, "Kevin")] } : d
+    );
+    const weeks = rotaWeeks(days);
+
+    // The Monday column still exists, so the two tables line up...
+    expect(weeks[0].days[0].date).toBe("2026-09-14");
+    expect(weeks[0].days[0].in_range).toBe(false);
+    // ...but its shift is not on the chart.
+    expect(weeks[0].rows).toEqual([]);
+  });
+
+  it("stacks two shifts on one person's day in the same cell", () => {
+    const days = fortnight.map((d, i) =>
+      i === 0 ? { ...d, shifts: [worked(4, "Kevin", "11:30", "15:00", 71), worked(4, "Kevin", "16:00", "19:30", 72)] } : d
+    );
+    expect(rotaWeeks(days)[0].rows[0].cells["2026-09-14"]).toHaveLength(2);
+  });
+
+  it("sorts people by name and drops unassigned to the bottom", () => {
+    const days = fortnight.map((d, i) => i === 0 ? {
+      ...d,
+      shifts: [
+        { ...worked(0, null), id: 1, employee_id: null, employee_name: null },
+        worked(4, "Kevin"),
+        worked(3, "Ada")
+      ]
+    } : d);
+
+    expect(rotaWeeks(days)[0].rows.map(r => r.name)).toEqual(["Ada", "Kevin", "Unassigned"]);
+  });
+
+  it("carries an event shift onto the chart, tagged with its show", () => {
+    const days = fortnight.map((d, i) => i === 0 ? {
+      ...d,
+      event_shifts: [{ ...worked(4, "Kevin"), convention_name: "Fan Expo" }]
+    } : d);
+
+    expect(rotaWeeks(days)[0].rows[0].cells["2026-09-14"][0].convention_name).toBe("Fan Expo");
   });
 });
 

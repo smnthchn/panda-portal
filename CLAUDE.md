@@ -414,15 +414,52 @@ dashboard all keep working without knowing which kind they're looking at.
 
 Two screens over that one model:
 
-- **Schedule** (`/schedule`) — the store week. Seven day tabs, week arrows,
-  and the store's usual hours (`store_hours`, one row per weekday, 0 = Sunday)
-  which drive the coverage check. Convention shifts that fall in the week are
-  shown read-only, since they belong to the event.
+- **Schedule** (`/schedule`) — the store, over whatever range you ask for. The
+  store's usual hours (`store_hours`, one row per weekday, 0 = Sunday) drive
+  the coverage check. Convention shifts that fall in the range are shown
+  read-only, since they belong to the event.
 - **Event schedule** (`/conventions/:slug/schedule`) — reached from **Build**
   on the event's Full schedule card. Its day tabs cover the event's run plus its setup
 day plus any date that already has shifts; a day nobody is on is amber, because
 that's the one that needs you. Opening it lands on the first day with gaps,
 unassigned shifts, or nobody on it.
+
+### Spans and the rota
+
+**Day, Week, 2 weeks, Month and Custom are one view, not five.** `resolveSpan()`
+turns any of them into a start date and a number of days — the presets only
+decide what that number is and where a step forward lands. Week and 2 weeks
+snap back to Monday (a week starting Thursday isn't a week anyone thinks in),
+Month is the **calendar** month so stepping through the year doesn't drift the
+way a fixed 30 would, and Custom starts where you pointed it and steps by its
+own length. Custom is capped at 62 days; a `0` clamps up to 1 rather than
+falling through `|| 7` as "not given".
+
+The chart is drawn from **whole Monday-to-Sunday weeks** whatever was asked
+for, so a fortnight's two tables line up under each other and a Wednesday reads
+as a Wednesday in both. Days the padding added carry `in_range: false` — they
+hold their column so the grid stays square, but `rotaWeeks()` skips them, so
+ten days from a Wednesday doesn't quietly show you that Monday's shifts.
+
+`rotaWeeks()` builds the rows **server-side**, from the same day objects the
+detail cards below are drawn from — a name appearing in one and not the other
+would be the whole point of the screen going wrong. A person is a row only in
+the week they actually work, so nobody carries a blank line through a month
+they were off for; unassigned shifts share one row, sorted last, because
+they're a hole in the week rather than a person.
+
+The table scrolls sideways **inside its own card** with the name column pinned,
+rather than pushing the page wide — 620px of columns doesn't fit a phone.
+Tapping a column header selects that day; tapping a shift opens that shift,
+since the chart is where you spot a wrong time.
+
+A selected state is `--clock-bg` / `--clock-text`, **never `--ink` / `--paper`**
+— in arcade those two are both near-black (#191223 on #1A1426) and the text
+vanishes. The clock pair is a dark plate with legible text in all five
+palettes. `.day-tab.on` had this bug and was fixed with it.
+
+Only a `week` span offers **Fill from last week**: on a month, "last week"
+isn't a thing the screen is showing.
 
 **Coverage is the point of the screen.** `coverageGaps()` in `routes/schedule.js`
 merges the day's shifts into stretches and reports the holes *inside hall

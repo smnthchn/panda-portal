@@ -794,6 +794,216 @@ button:disabled {
   color: var(--note-text);
 }
 
+/* ---------- Span picker: Day / Week / 2 weeks / Month / Custom ---------- */
+
+.span-picker {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0 0 11px;
+}
+
+.span-pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  border-bottom-width: 2px;
+}
+
+.span-pill.on {
+  background: var(--clock-bg);
+  color: var(--clock-text);
+}
+
+.span-days {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.span-days input {
+  width: 62px;
+}
+
+/* ---------- The rota: a week per table, a person per row ---------- */
+
+/* The chart is wider than a phone. It scrolls inside its own card rather than
+   pushing the page sideways, and the name column stays put while it does. */
+.rota-scroll {
+  overflow-x: auto;
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
+}
+
+.rota-card {
+  margin-bottom: 13px;
+}
+
+.rota {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 620px;
+  font-size: 12px;
+}
+
+.rota th,
+.rota td {
+  border: 1px solid var(--shadow);
+  padding: 5px 6px;
+  vertical-align: top;
+  text-align: left;
+}
+
+.rota-corner,
+.rota-who {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--paper);
+  min-width: 118px;
+  width: 118px;
+}
+
+.rota-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.rota-who span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rota-day {
+  min-width: 72px;
+  cursor: pointer;
+  font-family: "Fredoka", sans-serif;
+  line-height: 1.2;
+}
+
+.rota-day .rota-dow {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rota-day .rota-date {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.rota-day .rota-flag,
+.rota-day .rota-note {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rota-day .rota-flag {
+  color: var(--note-text);
+}
+
+.rota-day .rota-note {
+  color: var(--muted);
+}
+
+/* A column says its own state, so the hole in the week is visible without
+   opening each day: amber for a gap, quiet for closed, plain when covered. */
+.rota-day.rota-gap,
+.rota-day.rota-bare {
+  background: var(--note-bg);
+}
+
+.rota-day.rota-gap .rota-note,
+.rota-day.rota-bare .rota-note,
+.rota-day.rota-gap .rota-flag,
+.rota-day.rota-bare .rota-flag {
+  color: var(--note-text);
+}
+
+.rota-day.rota-shut {
+  background: var(--cool-bg);
+  color: var(--cool-text);
+}
+
+.rota-day.rota-shut .rota-note {
+  color: var(--cool-text);
+}
+
+/* Padded out to keep the Monday-to-Sunday shape, but not part of the range. */
+.rota-day.rota-out,
+.rota-cell.rota-out {
+  background: var(--surface);
+  opacity: 0.45;
+  cursor: default;
+}
+
+.rota-day.on {
+  background: var(--clock-bg);
+  color: var(--clock-text);
+}
+
+.rota-day.on .rota-note,
+.rota-day.on .rota-flag {
+  color: var(--clock-text);
+  opacity: 0.75;
+}
+
+.rota-cell {
+  min-width: 72px;
+}
+
+.rota-shift {
+  display: block;
+  padding: 3px 5px;
+  margin-bottom: 3px;
+  border-radius: 8px;
+  background: var(--go);
+  color: var(--on-go);
+  font-size: 11px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rota-shift:last-child {
+  margin-bottom: 0;
+}
+
+/* An event shift is on the chart because it's why they aren't in the store,
+   but it belongs to the event and isn't edited here. */
+.rota-shift.at-event {
+  background: var(--note-bg);
+  color: var(--note-text);
+  cursor: default;
+}
+
+.rota-shift .rota-at {
+  display: block;
+  font-size: 9px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rota-empty {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 11px;
+}
+
 /* A day tab carrying a holiday, so the week reads at a glance. */
 .day-tab .day-tab-flag {
   display: block;
@@ -808,7 +1018,7 @@ button:disabled {
 }
 
 .day-tab.on .day-tab-flag {
-  color: var(--paper);
+  color: var(--clock-text);
   opacity: 0.85;
 }
 
@@ -1919,12 +2129,12 @@ html.overlay-open {
 }
 
 .day-tab.on {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--clock-bg);
+  color: var(--clock-text);
 }
 
 .day-tab.on .day-tab-count {
-  color: var(--paper);
+  color: var(--clock-text);
   opacity: 0.7;
 }
 

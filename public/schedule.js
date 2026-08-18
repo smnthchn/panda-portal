@@ -390,11 +390,30 @@ let editingHoliday = null;
 // live somewhere between clicking it and saving.
 let holidayDraft = { is_closed: true, opens_at: "", closes_at: "" };
 
-async function renderStoreSchedule(week = null, pushState = true) {
+// The week is the default because it's the one a store actually runs on; the
+// rest are the same screen over a longer range.
+let storeSpan = "week";
+let storeAnchor = null;
+let storeCustomDays = 10;
+
+const SPAN_LABELS = [
+  ["day", "Day"],
+  ["week", "Week"],
+  ["2week", "2 weeks"],
+  ["month", "Month"],
+  ["custom", "Custom"]
+];
+
+async function renderStoreSchedule(anchor = null, pushState = true) {
   if (pushState) pushPageState("schedule");
 
-  const query = week ? `?week=${encodeURIComponent(week)}` : "";
-  const data = await api(`/api/schedule/store${query}`);
+  if (anchor) storeAnchor = anchor;
+
+  const params = new URLSearchParams({ span: storeSpan, today: todayLocal() });
+  if (storeAnchor) params.set("from", storeAnchor);
+  if (storeSpan === "custom") params.set("days", String(storeCustomDays));
+
+  const data = await api(`/api/schedule/store?${params}`);
 
   if (!data.ok) {
     renderError(data.error || "Could not load the schedule");
@@ -403,13 +422,45 @@ async function renderStoreSchedule(week = null, pushState = true) {
 
   storeData = data;
   storeWeek = data.week_start;
+  storeAnchor = data.range_start;
 
-  if (!data.days.some(d => d.date === storeDay)) {
+  // The day being edited below has to be one the range actually covers, or the
+  // detail card would be describing a day that isn't on screen.
+  const inRange = data.days.filter(d => d.in_range);
+  if (!inRange.some(d => d.date === storeDay)) {
     const today = todayLocal();
-    storeDay = data.days.some(d => d.date === today) ? today : data.days[0].date;
+    storeDay = inRange.some(d => d.date === today) ? today : inRange[0]?.date || null;
   }
 
   drawStoreSchedule();
+}
+
+function rangeLabel() {
+  if (storeData.range_start === storeData.range_end) return formatDate(storeData.range_start);
+  return `${formatDate(storeData.range_start)} – ${formatDate(storeData.range_end)}`;
+}
+
+/**
+ * Day, Week, 2 weeks and Month are all the same view over a different number of
+ * days, so they're one row of pills rather than four screens. Custom exposes
+ * the number the others are setting behind the scenes.
+ */
+function spanControl() {
+  return `
+    <div class="span-picker">
+      ${SPAN_LABELS.map(([value, label]) => `
+        <button class="span-pill${storeSpan === value ? " on" : ""}" data-span="${value}">
+          ${esc(label)}
+        </button>
+      `).join("")}
+      ${storeSpan === "custom" ? `
+        <span class="span-days">
+          <input type="number" id="storeCustomDays" value="${storeCustomDays}" min="1" max="62">
+          <span class="meta">days</span>
+        </span>
+      ` : ""}
+    </div>
+  `;
 }
 
 function drawStoreSchedule() {
@@ -418,20 +469,20 @@ function drawStoreSchedule() {
   pageArea().innerHTML = `
     <div class="page-header">
       <h2>Schedule</h2>
-      <p>Who's on in the store, week by week</p>
+      <p>Who's on in the store</p>
     </div>
+
+    ${spanControl()}
 
     <div class="inline-form" style="margin:0 0 13px; align-items:center;">
       <button class="btn-quiet" id="prevWeekBtn">‹</button>
       <div style="flex:1; text-align:center; font-family:'Fredoka',sans-serif; font-weight:600; font-size:14px;">
-        ${esc(formatDate(storeData.week_start))} – ${esc(formatDate(storeData.week_end))}
+        ${esc(rangeLabel())}
       </div>
       <button class="btn-quiet" id="nextWeekBtn">›</button>
     </div>
 
-    <div class="day-tabs">
-      ${storeData.days.map(storeDayTab).join("")}
-    </div>
+    ${storeData.weeks.map(rotaTable).join("")}
 
     ${copyWeekCard()}
 
@@ -445,11 +496,96 @@ function drawStoreSchedule() {
 }
 
 /**
+ * The wall chart: one table per Monday-to-Sunday week, a column per day and a
+ * row per person on that week. The seven columns are there whatever the range
+ * is, so a fortnight's two tables line up under each other and a Wednesday
+ * reads as a Wednesday in both.
+ *
+ * It scrolls sideways inside its own card on a narrow screen rather than
+ * pushing the page wide, with the name column pinned so a row stays readable
+ * once you've scrolled off it.
+ */
+function rotaTable(week) {
+  const selectedDay = storeDay;
+
+  const head = week.days.map(d => {
+    const date = new Date(`${d.date}T00:00:00`);
+    const state = !d.in_range ? "out"
+      : d.closed ? "shut"
+        : d.gaps ? "gap"
+          : d.on ? "ok" : "bare";
+
+    return `
+      <th class="rota-day rota-${state}${d.date === selectedDay ? " on" : ""}"
+          ${d.in_range ? `data-rota-day="${esc(d.date)}"` : ""}>
+        <span class="rota-dow">${esc(date.toLocaleDateString(undefined, { weekday: "short" }))}</span>
+        <span class="rota-date">${date.getDate()}</span>
+        ${d.holiday ? `<span class="rota-flag">${esc(d.holiday.name)}</span>` : ""}
+        <span class="rota-note">${
+          !d.in_range ? "" : d.closed ? "closed" : d.gaps ? `${d.gaps} gap${d.gaps === 1 ? "" : "s"}` : d.on ? "covered" : "nobody"
+        }</span>
+      </th>
+    `;
+  }).join("");
+
+  const body = week.rows.length
+    ? week.rows.map(row => `
+        <tr>
+          <th class="rota-who">
+            ${avatarHtml({ name: row.name, avatar_url: row.avatar_url }, "small")}
+            <span>${esc(row.name)}</span>
+          </th>
+          ${week.days.map(d => {
+            const shifts = row.cells[d.date] || [];
+            return `
+              <td class="rota-cell${d.in_range ? "" : " rota-out"}">
+                ${shifts.map(s => `
+                  <span class="rota-shift${s.convention_name ? " at-event" : ""}"
+                        ${s.convention_name ? "" : `data-rota-shift="${s.id}" data-rota-shift-day="${esc(d.date)}"`}
+                        title="${esc(s.convention_name || s.title || "")}">
+                    ${esc(compactTime(s.starts_at))}–${esc(compactTime(s.ends_at))}
+                    ${s.convention_name ? `<span class="rota-at">${esc(s.convention_name)}</span>` : ""}
+                  </span>
+                `).join("")}
+              </td>
+            `;
+          }).join("")}
+        </tr>
+      `).join("")
+    : `<tr><td class="rota-empty" colspan="8">Nobody on this week yet.</td></tr>`;
+
+  return `
+    <div class="card stripped rota-card">
+      <div class="strip">
+        WEEK OF ${esc(formatDate(week.week_start)).toUpperCase()}
+        <span class="strip-side">${week.rows.filter(r => r.employee_id).length} on</span>
+      </div>
+      <div class="rota-scroll">
+        <table class="rota">
+          <thead><tr><th class="rota-corner"></th>${head}</tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+/** "11:30" -> "11:30", "19:30" -> "7:30" — the chart has no room for AM/PM. */
+function compactTime(hhmm) {
+  if (!/^\d{2}:\d{2}$/.test(hhmm || "")) return hhmm || "";
+  const [h, m] = hhmm.split(":").map(Number);
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, "0")}`;
+}
+
+/**
  * Most weeks are last week again. Offered only on an empty week — once anyone
  * is on, filling from last week would be doubling up, and the server refuses
  * it anyway.
  */
 function copyWeekCard() {
+  // "Last week" only means something when a week is what you're looking at.
+  if (storeData.span !== "week") return "";
   if (storeData.week_shifts > 0 || !storeData.prev_week_shifts) return "";
 
   return `
@@ -471,25 +607,6 @@ function copyWeekCard() {
   `;
 }
 
-function storeDayTab(day) {
-  const d = new Date(`${day.date}T00:00:00`);
-  const selected = day.date === storeDay;
-  const count = day.shifts.length + day.event_shifts.length;
-
-  // An undecided holiday keeps the amber even on a day that's fully staffed —
-  // it's still the day on this week that needs you.
-  const undecided = day.holiday && !day.holiday.decided;
-
-  return `
-    <button class="day-tab${selected ? " on" : ""}${(!count && !day.closed) || undecided ? " empty" : ""}"
-            data-store-day="${esc(day.date)}">
-      ${esc(d.toLocaleDateString(undefined, { weekday: "short" }))}
-      <span class="day-tab-date">${d.getDate()}</span>
-      <span class="day-tab-count">${day.closed ? "closed" : count ? `${count} on` : "none"}</span>
-      ${day.holiday ? `<span class="day-tab-flag">${esc(day.holiday.name)}</span>` : ""}
-    </button>
-  `;
-}
 
 /**
  * A holiday on the week, and the one question it asks: are we open? Undecided
@@ -811,18 +928,53 @@ function wireStoreSchedule() {
 
   document.getElementById("prevWeekBtn").onclick = () => {
     storeDay = null;
-    renderStoreSchedule(storeData.prev_week, false);
+    renderStoreSchedule(storeData.prev_from, false);
   };
 
   document.getElementById("nextWeekBtn").onclick = () => {
     storeDay = null;
-    renderStoreSchedule(storeData.next_week, false);
+    renderStoreSchedule(storeData.next_from, false);
   };
 
-  document.querySelectorAll("[data-store-day]").forEach(tab => {
-    tab.onclick = () => {
-      storeDay = tab.dataset.storeDay;
+  document.querySelectorAll("[data-span]").forEach(pill => {
+    pill.onclick = () => {
+      // Keep the day you were looking at as the anchor, so switching from Week
+      // to Month lands on the month you were already in rather than today's.
+      storeSpan = pill.dataset.span;
       editingStoreShift = null;
+      addingStoreShift = false;
+      editingHoliday = null;
+      renderStoreSchedule(storeDay || storeData.range_start, false);
+    };
+  });
+
+  const customDays = document.getElementById("storeCustomDays");
+  if (customDays) {
+    customDays.onchange = () => {
+      storeCustomDays = Math.min(Math.max(Number(customDays.value) || 7, 1), 62);
+      renderStoreSchedule(storeData.range_start, false);
+    };
+  }
+
+  const pickDay = date => {
+    storeDay = date;
+    editingStoreShift = null;
+    addingStoreShift = false;
+    editingHoliday = null;
+    drawStoreSchedule();
+  };
+
+  document.querySelectorAll("[data-rota-day]").forEach(cell => {
+    cell.onclick = () => pickDay(cell.dataset.rotaDay);
+  });
+
+  // Tapping a shift in the chart opens that shift, not just its day — the chart
+  // is where you spot the wrong time, so it should be where you fix it.
+  document.querySelectorAll("[data-rota-shift]").forEach(cell => {
+    cell.onclick = event => {
+      event.stopPropagation();
+      storeDay = cell.dataset.rotaShiftDay;
+      editingStoreShift = Number(cell.dataset.rotaShift);
       addingStoreShift = false;
       editingHoliday = null;
       drawStoreSchedule();
