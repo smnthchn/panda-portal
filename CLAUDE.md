@@ -379,7 +379,38 @@ than a false NO GAPS.
 
 Shifts are tapped to edit in place, and **Copy this day** duplicates everyone
 (times and break allotments included) onto an empty day — it refuses a target
-that already has shifts rather than silently doubling them.
+that already has shifts rather than silently doubling them. **Fill from last
+week** is the same idea a week wide: every store shift moves forward exactly
+seven days, so Tuesday's people land on Tuesday and the hours they were built
+against still apply. Event shifts are left where they are — a show doesn't
+recur a week later. The card only appears on a week nobody is on yet, which is
+the only week where filling is what you meant.
+
+A new store shift defaults to **half an hour either side of the door** — someone
+opens the till before the first customer and cashes out after the last. It's
+derived from that day's hours rather than typed in (`SHIFT_PAD_MINUTES` in
+`public/schedule.js`), so today that's 11:30–19:30 most days and 11:30–17:30 on
+a Sunday, and changing the store's week moves every default with it.
+
+### Stat holidays
+
+The dates are worked out in `src/lib/holidays.js` — Ontario's nine public
+holidays plus the August civic holiday, which isn't statutory but closes the
+street anyway (`statutory: false`). Eight are a fixed date or the nth weekday
+of a month; Good Friday hangs off Easter, so there's a computus in there. A
+table of dates would be a thing to remember to refill every December.
+
+What *isn't* a fact about the calendar is whether Panda Hobby opens, so that's
+the only thing in `store_holidays` — sparse the same way `employee_availability`
+is, a row only where the boss has actually decided. **No row means undecided,
+and the schedule says so** in amber rather than quietly assuming the usual
+hours; the day tab stays amber even when it's fully staffed, because that's
+still the day on the week that needs you.
+
+A decided holiday outranks the usual week: closed shuts the day and drops the
+coverage check entirely (the holiday card already said so — no point saying it
+twice), and short hours replace that weekday's, so both the coverage bar and
+the new-shift defaults follow them. Short hours are both ends or neither.
 
 There's no per-day publish state: `conventions.is_published` already gates
 whether staff see the event at all, which is the real switch for a team this

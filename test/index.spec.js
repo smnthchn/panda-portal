@@ -8,6 +8,7 @@ import { pairClockEvents } from "../src/routes/clock.js";
 import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/dashboard.js";
 import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
 import { mergeIntervals, coverageGaps, toMinutes } from "../src/routes/schedule.js";
+import { ontarioHolidays, holidaysBetween, holidayOn, easterSunday } from "../src/lib/holidays.js";
 import { fullWeek, availabilityConflict } from "../src/routes/availability.js";
 import {
   tierHeights,
@@ -470,6 +471,58 @@ describe("booth coverage", () => {
   });
 });
 
+describe("Ontario holidays", () => {
+  const on = (year, name) => ontarioHolidays(year).find(h => h.name === name)?.date;
+  const weekdayOf = isoDate => new Date(`${isoDate}T00:00:00Z`).getUTCDay();
+
+  it("puts Family Day on February's third Monday", () => {
+    expect(on(2026, "Family Day")).toBe("2026-02-16");
+    expect(on(2027, "Family Day")).toBe("2027-02-15");
+  });
+
+  it("puts Victoria Day on the Monday on or before May 24", () => {
+    expect(on(2026, "Victoria Day")).toBe("2026-05-18");
+    // 2027's May 24 is itself a Monday, which the 'on or before' has to keep.
+    expect(on(2027, "Victoria Day")).toBe("2027-05-24");
+  });
+
+  it("puts Thanksgiving on October's second Monday", () => {
+    expect(on(2026, "Thanksgiving")).toBe("2026-10-12");
+  });
+
+  it("lands every moveable holiday on a Monday except Good Friday", () => {
+    for (const holiday of ontarioHolidays(2026)) {
+      if (["New Year's Day", "Canada Day", "Christmas Day", "Boxing Day"].includes(holiday.name)) continue;
+      expect(weekdayOf(holiday.date)).toBe(holiday.name === "Good Friday" ? 5 : 1);
+    }
+  });
+
+  it("derives Good Friday from Easter", () => {
+    expect(easterSunday(2026)).toBe("2026-04-05");
+    expect(on(2026, "Good Friday")).toBe("2026-04-03");
+    expect(easterSunday(2027)).toBe("2027-03-28");
+    expect(on(2027, "Good Friday")).toBe("2027-03-26");
+  });
+
+  it("marks the August civic holiday as observed rather than statutory", () => {
+    const civic = ontarioHolidays(2026).find(h => h.name === "Civic Holiday");
+    expect(civic.statutory).toBe(false);
+    expect(ontarioHolidays(2026).filter(h => h.statutory)).toHaveLength(9);
+  });
+
+  it("spans both years when a week straddles New Year", () => {
+    const dates = holidaysBetween("2026-12-28", "2027-01-03").map(h => h.date);
+    expect(dates).toEqual(["2027-01-01"]);
+    expect(holidaysBetween("2026-12-21", "2027-01-03").map(h => h.date))
+      .toEqual(["2026-12-25", "2026-12-26", "2027-01-01"]);
+  });
+
+  it("finds nothing on an ordinary day", () => {
+    expect(holidayOn("2026-03-11")).toBeNull();
+    expect(holidayOn("2026-12-25").name).toBe("Christmas Day");
+  });
+});
+
 describe("availability", () => {
   // Thursday 13 August 2026 is weekday 4.
   const THURSDAY = { date: "2026-08-13", weekday: 4 };
@@ -862,6 +915,9 @@ describe("authentication gate", () => {
     ["GET", "/api/knowledge-base"],
     ["GET", "/api/my-folder"],
     ["GET", "/api/clock-status"],
+    ["GET", "/api/schedule/store"],
+    ["POST", "/api/schedule/copy-week"],
+    ["PUT", "/api/schedule/holiday"],
     ["GET", "/api/resources"],
     ["POST", "/api/resources"],
     ["DELETE", "/api/resources/1"],

@@ -385,6 +385,10 @@ let storeDay = null;
 let editingStoreShift = null;
 let addingStoreShift = false;
 let editingStoreHours = false;
+let editingHoliday = null;
+// Open/Closed is a pair of buttons rather than a checkbox, so the choice has to
+// live somewhere between clicking it and saving.
+let holidayDraft = { is_closed: true, opens_at: "", closes_at: "" };
 
 async function renderStoreSchedule(week = null, pushState = true) {
   if (pushState) pushPageState("schedule");
@@ -429,6 +433,8 @@ function drawStoreSchedule() {
       ${storeData.days.map(storeDayTab).join("")}
     </div>
 
+    ${copyWeekCard()}
+
     ${day ? storeDaySection(day) : ""}
 
     ${storeHoursCard()}
@@ -438,18 +444,127 @@ function drawStoreSchedule() {
   wireStoreSchedule();
 }
 
+/**
+ * Most weeks are last week again. Offered only on an empty week — once anyone
+ * is on, filling from last week would be doubling up, and the server refuses
+ * it anyway.
+ */
+function copyWeekCard() {
+  if (storeData.week_shifts > 0 || !storeData.prev_week_shifts) return "";
+
+  return `
+    <div class="card stripped">
+      <div class="strip">
+        NOBODY ON THIS WEEK
+        <span class="strip-side">${storeData.prev_week_shifts} last week</span>
+      </div>
+      <div class="card-body">
+        <p class="meta" style="margin:0 0 10px;">
+          Copy last week's ${storeData.prev_week_shifts}
+          shift${storeData.prev_week_shifts === 1 ? "" : "s"} across —
+          same people, same times, each on the same weekday.
+        </p>
+        <p class="form-error" id="copyWeekError"></p>
+        <button id="copyWeekBtn" style="width:100%;">Fill from last week</button>
+      </div>
+    </div>
+  `;
+}
+
 function storeDayTab(day) {
   const d = new Date(`${day.date}T00:00:00`);
   const selected = day.date === storeDay;
   const count = day.shifts.length + day.event_shifts.length;
 
+  // An undecided holiday keeps the amber even on a day that's fully staffed —
+  // it's still the day on this week that needs you.
+  const undecided = day.holiday && !day.holiday.decided;
+
   return `
-    <button class="day-tab${selected ? " on" : ""}${!count && !day.closed ? " empty" : ""}"
+    <button class="day-tab${selected ? " on" : ""}${(!count && !day.closed) || undecided ? " empty" : ""}"
             data-store-day="${esc(day.date)}">
       ${esc(d.toLocaleDateString(undefined, { weekday: "short" }))}
       <span class="day-tab-date">${d.getDate()}</span>
       <span class="day-tab-count">${day.closed ? "closed" : count ? `${count} on` : "none"}</span>
+      ${day.holiday ? `<span class="day-tab-flag">${esc(day.holiday.name)}</span>` : ""}
     </button>
+  `;
+}
+
+/**
+ * A holiday on the week, and the one question it asks: are we open? Undecided
+ * is amber, because an unanswered holiday is the thing that catches you out —
+ * the schedule says so rather than quietly assuming the usual hours.
+ */
+function holidayCard(day) {
+  const holiday = day.holiday;
+  if (!holiday) return "";
+
+  if (editingHoliday === day.date) {
+    return `
+      <div class="card stripped">
+        <div class="strip">${esc(holiday.name.toUpperCase())}</div>
+        <div class="card-body">
+          <div class="button-row" style="margin-bottom:10px;">
+            <button id="holidayClosedBtn" class="${holidayDraft.is_closed ? "" : "btn-quiet"}"
+                    style="flex:1;">Closed</button>
+            <button id="holidayOpenBtn" class="${holidayDraft.is_closed ? "btn-quiet" : ""}"
+                    style="flex:1;">Open</button>
+          </div>
+
+          ${holidayDraft.is_closed ? "" : `
+            <p class="meta" style="margin:0 0 8px;">
+              Shorter hours than usual? Fill both in. Leave them blank to open the
+              normal ${esc(day.weekday_name)} hours.
+            </p>
+
+            <div class="inline-form" style="margin-bottom:10px;">
+              <input type="time" id="holidayOpens" value="${esc(holidayDraft.opens_at || "")}">
+              <input type="time" id="holidayCloses" value="${esc(holidayDraft.closes_at || "")}">
+            </div>
+          `}
+
+          <p class="form-error" id="holidayError"></p>
+
+          <div class="button-row">
+            <button id="saveHolidayBtn" style="flex:1;">Save</button>
+            <button class="btn-quiet" id="cancelHolidayBtn">Cancel</button>
+            ${holiday.decided ? `<button class="btn-danger" id="clearHolidayBtn">Undecide</button>` : ""}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  const answer = !holiday.decided
+    ? `<span class="pill pill-warm">OPEN?</span>`
+    : holiday.is_closed
+      ? `<span class="pill pill-warm">CLOSED</span>`
+      : `<span class="pill pill-go">OPEN</span>`;
+
+  const detail = !holiday.decided
+    ? "Nobody's said whether the store opens. Until then it's on the usual hours."
+    : holiday.is_closed
+      ? "Store closed — nothing to cover."
+      : holiday.opens_at
+        ? `Open ${formatTime(holiday.opens_at)} – ${formatTime(holiday.closes_at)}, instead of the usual.`
+        : "Open as usual.";
+
+  return `
+    <div class="card ${holiday.decided ? "cool" : "note"}"
+         style="display:flex; align-items:flex-start; gap:10px;">
+      <div style="flex:1;">
+        <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:11.5px; letter-spacing:0.06em;">
+          ${esc(holiday.name.toUpperCase())}${holiday.statutory ? "" : " · OBSERVED"}
+        </div>
+        <div style="font-size:11.5px; margin-top:2px;">${esc(detail)}</div>
+      </div>
+      ${answer}
+      <button class="btn-quiet" id="editHolidayBtn"
+              style="font-size:11.5px; padding:5px 9px; border-bottom-width:2px;">
+        ${holiday.decided ? "Change" : "Decide"}
+      </button>
+    </div>
   `;
 }
 
@@ -457,6 +572,8 @@ function storeDaySection(day) {
   const otherDays = storeData.days.filter(d => d.date !== day.date && !d.closed);
 
   return `
+    ${holidayCard(day)}
+
     ${storeCoverageCard(day)}
 
     ${day.event_shifts.length ? `
@@ -516,6 +633,9 @@ function storeDaySection(day) {
 }
 
 function storeCoverageCard(day) {
+  // A holiday closure already said so in its own card; don't say it twice.
+  if (day.closed_for_holiday) return "";
+
   if (day.closed) {
     return `
       <div class="card cool">
@@ -567,10 +687,28 @@ function storeCoverageCard(day) {
   `;
 }
 
+/**
+ * A store shift runs half an hour either side of the door — someone has to open
+ * the till before the first customer and cash out after the last one. Derived
+ * from the day's own hours rather than typed in, so a change to the store's
+ * week moves every default with it, and a day on short holiday hours gets a
+ * shift that fits them.
+ */
+const SHIFT_PAD_MINUTES = 30;
+
+function shiftTime(hhmm, pad) {
+  if (!/^\d{2}:\d{2}$/.test(hhmm || "")) return null;
+  const [h, m] = hhmm.split(":").map(Number);
+  const total = Math.min(Math.max(h * 60 + m + pad, 0), 23 * 60 + 59);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
 function storeShiftEditor(shift, day) {
   const { staff } = storeData;
   const minutes = shift ? shift.break_allotment_minutes : 30;
   const count = shift ? shift.break_count : 1;
+  const defaultFrom = shiftTime(day.hours?.opens_at, -SHIFT_PAD_MINUTES) || "11:30";
+  const defaultTo = shiftTime(day.hours?.closes_at, SHIFT_PAD_MINUTES) || "19:30";
 
   return `
     <div class="card" style="border-style:dashed;">
@@ -594,10 +732,10 @@ function storeShiftEditor(shift, day) {
           <input type="text" id="storeWhat" value="${esc(shift?.title || "Store floor")}" placeholder="Store floor">
         </label>
         <label>Start
-          <input type="time" id="storeFrom" value="${esc(shift?.starts_at || day.hours?.opens_at || "11:00")}">
+          <input type="time" id="storeFrom" value="${esc(shift?.starts_at || defaultFrom)}">
         </label>
         <label>End
-          <input type="time" id="storeTo" value="${esc(shift?.ends_at || day.hours?.closes_at || "19:00")}">
+          <input type="time" id="storeTo" value="${esc(shift?.ends_at || defaultTo)}">
         </label>
         <label>Break minutes
           <input type="number" id="storeBreakMins" value="${minutes}" min="0" max="240">
@@ -686,9 +824,31 @@ function wireStoreSchedule() {
       storeDay = tab.dataset.storeDay;
       editingStoreShift = null;
       addingStoreShift = false;
+      editingHoliday = null;
       drawStoreSchedule();
     };
   });
+
+  const copyWeekBtn = document.getElementById("copyWeekBtn");
+  if (copyWeekBtn) {
+    copyWeekBtn.onclick = async () => {
+      copyWeekBtn.disabled = true;
+
+      const result = await apiSend("/api/schedule/copy-week", "POST", {
+        from_week: storeData.prev_week,
+        to_week: storeData.week_start
+      });
+
+      copyWeekBtn.disabled = false;
+
+      if (!result.ok) {
+        showFormError("copyWeekError", result.error || "Could not copy last week.");
+        return;
+      }
+
+      await reload();
+    };
+  }
 
   document.querySelectorAll("[data-edit-shift]").forEach(card => {
     card.onclick = () => {
@@ -777,6 +937,80 @@ function wireStoreSchedule() {
       }
 
       storeDay = target;
+      await reload();
+    };
+  }
+
+  const editHoliday = document.getElementById("editHolidayBtn");
+  if (editHoliday) {
+    editHoliday.onclick = () => {
+      const holiday = storeData.days.find(d => d.date === storeDay)?.holiday;
+      editingHoliday = storeDay;
+      holidayDraft = {
+        // An undecided holiday opens on Closed, which is the answer most of them get.
+        is_closed: holiday?.decided ? holiday.is_closed : true,
+        opens_at: holiday?.opens_at || "",
+        closes_at: holiday?.closes_at || ""
+      };
+      drawStoreSchedule();
+    };
+  }
+
+  const cancelHoliday = document.getElementById("cancelHolidayBtn");
+  if (cancelHoliday) {
+    cancelHoliday.onclick = () => {
+      editingHoliday = null;
+      drawStoreSchedule();
+    };
+  }
+
+  // Switching to Closed keeps any short hours already typed, in case it was a slip.
+  for (const [id, closed] of [["holidayClosedBtn", true], ["holidayOpenBtn", false]]) {
+    const button = document.getElementById(id);
+    if (!button) continue;
+
+    button.onclick = () => {
+      if (!closed) {
+        holidayDraft.opens_at = document.getElementById("holidayOpens")?.value || holidayDraft.opens_at;
+        holidayDraft.closes_at = document.getElementById("holidayCloses")?.value || holidayDraft.closes_at;
+      }
+      holidayDraft.is_closed = closed;
+      drawStoreSchedule();
+    };
+  }
+
+  const saveHoliday = document.getElementById("saveHolidayBtn");
+  if (saveHoliday) {
+    saveHoliday.onclick = async () => {
+      saveHoliday.disabled = true;
+
+      const result = await apiSend("/api/schedule/holiday", "PUT", {
+        holiday_date: editingHoliday,
+        is_closed: holidayDraft.is_closed,
+        opens_at: document.getElementById("holidayOpens")?.value || null,
+        closes_at: document.getElementById("holidayCloses")?.value || null
+      });
+
+      saveHoliday.disabled = false;
+
+      if (!result.ok) {
+        showFormError("holidayError", result.error || "Could not save that.");
+        return;
+      }
+
+      editingHoliday = null;
+      await reload();
+    };
+  }
+
+  const clearHoliday = document.getElementById("clearHolidayBtn");
+  if (clearHoliday) {
+    clearHoliday.onclick = async () => {
+      await apiSend("/api/schedule/holiday", "PUT", {
+        holiday_date: editingHoliday,
+        clear: true
+      });
+      editingHoliday = null;
       await reload();
     };
   }

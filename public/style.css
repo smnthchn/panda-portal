@@ -784,6 +784,34 @@ button:disabled {
   color: var(--cool-text);
 }
 
+/* Amber card, for the thing that still needs answering — an undecided holiday. */
+.card.note {
+  background: var(--note-bg);
+  color: var(--note-text);
+}
+
+.card.note h3 {
+  color: var(--note-text);
+}
+
+/* A day tab carrying a holiday, so the week reads at a glance. */
+.day-tab .day-tab-flag {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 600;
+  font-family: "Fredoka", sans-serif;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--note-text);
+}
+
+.day-tab.on .day-tab-flag {
+  color: var(--paper);
+  opacity: 0.85;
+}
+
 /* Amber note callout. */
 .note-block {
   background: var(--note-bg);

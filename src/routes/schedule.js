@@ -2,6 +2,7 @@ import { readJsonBody, optionalText, requiredText, BadRequest } from "../lib/htt
 import { requireUser } from "../lib/auth.js";
 import { avatarUrlFor } from "./staff.js";
 import { loadTeamAvailability, availabilityConflict } from "./availability.js";
+import { holidaysBetween } from "../lib/holidays.js";
 
 /**
  * The schedule builder: a convention's shifts laid out day by day, with the
@@ -407,6 +408,28 @@ function unavailableOn(availability, staff, date) {
 }
 
 /**
+ * What the screen needs to say about a holiday: what it's called, and whether
+ * anyone has decided about it yet. `decided` is the load-bearing bit — an
+ * undecided holiday is a question the schedule asks, not a day it assumes is
+ * open. A saved decision on a date that isn't a listed holiday still shows,
+ * labelled with its own note, so nothing written here can go missing.
+ */
+function holidayPayload(date, named, row) {
+  if (!named && !row) return null;
+
+  return {
+    date,
+    name: named?.name || row?.note || "Special hours",
+    statutory: Boolean(named?.statutory),
+    decided: Boolean(row),
+    is_closed: row ? Boolean(row.is_closed) : null,
+    opens_at: row?.opens_at || null,
+    closes_at: row?.closes_at || null,
+    note: row?.note || null
+  };
+}
+
+/**
  * A week of ordinary store days: who's on, and whether the shop is covered
  * for the hours it's open. Convention shifts are shown alongside but not
  * edited here — those belong to the event's own builder.
@@ -420,30 +443,45 @@ export async function handleStoreSchedule(request, env) {
   const from = weekStart(/^\d{4}-\d{2}-\d{2}$/.test(param) ? param : new Date().toISOString().slice(0, 10));
   const to = addDays(from, 6);
 
-  const [shiftRows, hoursRows, staffRows, availability] = await Promise.all([
-    env.DB.prepare(
-      `SELECT s.*, e.full_name AS employee_name, e.role AS employee_role,
-              e.avatar IS NOT NULL AS has_avatar, e.updated_at AS employee_updated_at,
-              c.name AS convention_name, c.slug AS convention_slug
-       FROM convention_shifts s
-       LEFT JOIN employees e ON e.id = s.employee_id
-       LEFT JOIN conventions c ON c.id = s.convention_id
-       WHERE s.shift_date >= ? AND s.shift_date <= ?
-       ORDER BY s.shift_date ASC, s.starts_at ASC`
-    ).bind(from, to).all(),
+  const prevFrom = addDays(from, -7);
 
-    env.DB.prepare(`SELECT * FROM store_hours`).all(),
+  const [shiftRows, hoursRows, staffRows, availability, holidayRows, prevCount] =
+    await Promise.all([
+      env.DB.prepare(
+        `SELECT s.*, e.full_name AS employee_name, e.role AS employee_role,
+                e.avatar IS NOT NULL AS has_avatar, e.updated_at AS employee_updated_at,
+                c.name AS convention_name, c.slug AS convention_slug
+         FROM convention_shifts s
+         LEFT JOIN employees e ON e.id = s.employee_id
+         LEFT JOIN conventions c ON c.id = s.convention_id
+         WHERE s.shift_date >= ? AND s.shift_date <= ?
+         ORDER BY s.shift_date ASC, s.starts_at ASC`
+      ).bind(from, to).all(),
 
-    env.DB.prepare(
-      `SELECT id, full_name, role, avatar IS NOT NULL AS has_avatar, updated_at
-       FROM employees WHERE is_active = 1 ORDER BY full_name ASC`
-    ).all(),
+      env.DB.prepare(`SELECT * FROM store_hours`).all(),
 
-    loadTeamAvailability(env.DB, from, to)
-  ]);
+      env.DB.prepare(
+        `SELECT id, full_name, role, avatar IS NOT NULL AS has_avatar, updated_at
+         FROM employees WHERE is_active = 1 ORDER BY full_name ASC`
+      ).all(),
+
+      loadTeamAvailability(env.DB, from, to),
+
+      env.DB.prepare(
+        `SELECT * FROM store_holidays WHERE holiday_date >= ? AND holiday_date <= ?`
+      ).bind(from, to).all(),
+
+      // Only store shifts count — an event week isn't a week you'd copy forward.
+      env.DB.prepare(
+        `SELECT COUNT(*) AS n FROM convention_shifts
+         WHERE convention_id IS NULL AND shift_date >= ? AND shift_date <= ?`
+      ).bind(prevFrom, addDays(prevFrom, 6)).first()
+    ]);
 
   const allShifts = shiftRows.results || [];
   const hoursByWeekday = new Map((hoursRows.results || []).map(row => [row.weekday, row]));
+  const decisions = new Map((holidayRows.results || []).map(row => [row.holiday_date, row]));
+  const named = new Map(holidaysBetween(from, to).map(h => [h.date, h]));
   const staff = (staffRows.results || []).map(person => ({
     id: person.id,
     full_name: person.full_name,
@@ -454,8 +492,22 @@ export async function handleStoreSchedule(request, env) {
   const days = Array.from({ length: 7 }, (_, i) => {
     const date = addDays(from, i);
     const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
-    const hours = hoursByWeekday.get(weekday) || null;
-    const closed = Boolean(hours?.is_closed);
+    const usual = hoursByWeekday.get(weekday) || null;
+    const holiday = holidayPayload(date, named.get(date), decisions.get(date));
+
+    // A holiday the boss has answered outranks the usual week: closed shuts the
+    // day, and short hours replace it. An unanswered one changes nothing yet.
+    const closed = holiday?.decided && holiday.is_closed
+      ? true
+      : Boolean(usual?.is_closed);
+
+    const hours = closed
+      ? null
+      : holiday?.decided && holiday.opens_at && holiday.closes_at
+        ? { opens_at: holiday.opens_at, closes_at: holiday.closes_at }
+        : usual?.opens_at && usual?.closes_at
+          ? { opens_at: usual.opens_at, closes_at: usual.closes_at }
+          : null;
 
     const shifts = allShifts.filter(s => s.shift_date === date);
     const storeShifts = shifts.filter(s => !s.convention_id);
@@ -470,7 +522,9 @@ export async function handleStoreSchedule(request, env) {
       weekday,
       weekday_name: WEEKDAYS[weekday],
       closed,
-      hours: hours && !closed ? { opens_at: hours.opens_at, closes_at: hours.closes_at } : null,
+      closed_for_holiday: Boolean(closed && holiday?.decided && holiday.is_closed),
+      holiday,
+      hours,
       shifts: storeShifts.map(shiftPayload),
       event_shifts: eventShifts.map(shift => ({
         ...shiftPayload(shift),
@@ -489,8 +543,11 @@ export async function handleStoreSchedule(request, env) {
     ok: true,
     week_start: from,
     week_end: to,
-    prev_week: addDays(from, -7),
+    prev_week: prevFrom,
     next_week: addDays(from, 7),
+    // Between them these decide whether filling from last week is even on offer.
+    week_shifts: days.reduce((n, day) => n + day.shifts.length, 0),
+    prev_week_shifts: prevCount?.n || 0,
     days,
     store_hours: WEEKDAYS.map((name, weekday) => {
       const row = hoursByWeekday.get(weekday);
@@ -558,6 +615,134 @@ export async function handleSaveStoreHours(request, env) {
   });
 
   if (statements.length) await env.DB.batch(statements);
+
+  return { ok: true };
+}
+
+/**
+ * Lifts a whole week of store shifts onto the next one. Every shift moves by
+ * exactly seven days, so Tuesday's people land on Tuesday and the store hours
+ * they were built against still apply.
+ *
+ * Event shifts are left where they are — they belong to the event, and a show
+ * doesn't recur a week later. Like Copy this day, it refuses a target that
+ * already has shifts rather than doubling them up.
+ */
+export async function handleCopyWeek(request, env) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const body = await readJsonBody(request);
+  const rawFrom = optionalText(body.from_week);
+  const rawTo = optionalText(body.to_week);
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(rawFrom || "") || !/^\d{4}-\d{2}-\d{2}$/.test(rawTo || "")) {
+    throw new BadRequest("Pick a week to copy from and a week to copy to.");
+  }
+
+  const from = weekStart(rawFrom);
+  const to = weekStart(rawTo);
+
+  if (from === to) throw new BadRequest("That's the same week.");
+
+  // Whole weeks only, so every shift shifts by the same number of days and
+  // keeps its weekday. Anything else would land Saturday's crew on a Tuesday.
+  const offset = Math.round(
+    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000
+  );
+
+  const source = await env.DB.prepare(
+    `SELECT title, employee_id, shift_date, starts_at, ends_at, notes,
+            break_allotment_minutes, break_count
+     FROM convention_shifts
+     WHERE convention_id IS NULL AND shift_date >= ? AND shift_date <= ?
+     ORDER BY shift_date ASC, starts_at ASC`
+  ).bind(from, addDays(from, 6)).all();
+
+  const shifts = source.results || [];
+  if (!shifts.length) {
+    return { ok: false, error: "That week has no store shifts to copy." };
+  }
+
+  const existing = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM convention_shifts
+     WHERE convention_id IS NULL AND shift_date >= ? AND shift_date <= ?`
+  ).bind(to, addDays(to, 6)).first();
+
+  if ((existing?.n || 0) > 0) {
+    return {
+      ok: false,
+      error: "That week already has store shifts. Clear them first, or pick another week."
+    };
+  }
+
+  await env.DB.batch(shifts.map(shift =>
+    env.DB.prepare(
+      `INSERT INTO convention_shifts
+         (convention_id, employee_id, title, shift_date, starts_at, ends_at, notes,
+          break_allotment_minutes, break_count)
+       VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      shift.employee_id,
+      shift.title,
+      addDays(shift.shift_date, offset),
+      shift.starts_at,
+      shift.ends_at,
+      shift.notes,
+      shift.break_allotment_minutes,
+      shift.break_count
+    )
+  ));
+
+  return { ok: true, copied: shifts.length };
+}
+
+/**
+ * Records whether the store opens on a holiday. Saved as one row per date;
+ * clearing it puts the day back to being an open question rather than
+ * quietly asserting the store is open.
+ */
+export async function handleSaveHoliday(request, env) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const body = await readJsonBody(request);
+  const date = optionalText(body.holiday_date);
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) {
+    throw new BadRequest("That isn't a date like 2026-12-25.");
+  }
+
+  if (body.clear === true) {
+    await env.DB.prepare(`DELETE FROM store_holidays WHERE holiday_date = ?`).bind(date).run();
+    return { ok: true };
+  }
+
+  const closed = body.is_closed !== false;
+  const opensAt = closed ? null : optionalText(body.opens_at);
+  const closesAt = closed ? null : optionalText(body.closes_at);
+
+  // Short hours are both ends or neither — one alone can't say when to open.
+  if (Boolean(opensAt) !== Boolean(closesAt)) {
+    throw new BadRequest("Give both a start and a finish for the short hours, or leave both blank.");
+  }
+
+  if (opensAt && closesAt && toMinutes(closesAt) <= toMinutes(opensAt)) {
+    throw new BadRequest("That day closes before it opens.");
+  }
+
+  await env.DB.prepare(
+    `INSERT INTO store_holidays
+       (holiday_date, is_closed, opens_at, closes_at, note, decided_by, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT (holiday_date) DO UPDATE SET
+       is_closed  = excluded.is_closed,
+       opens_at   = excluded.opens_at,
+       closes_at  = excluded.closes_at,
+       note       = excluded.note,
+       decided_by = excluded.decided_by,
+       updated_at = CURRENT_TIMESTAMP`
+  ).bind(date, closed ? 1 : 0, opensAt, closesAt, optionalText(body.note), auth.user.id).run();
 
   return { ok: true };
 }
