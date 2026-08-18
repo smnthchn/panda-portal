@@ -272,6 +272,52 @@ the moment it's tagged. **Check a query returns something before trusting it**:
 out across a 49.5″ tier. It's on the family because it's a property of the
 product, not of the shelf it lands on.
 
+### Tiers and capacity
+
+**A grouping says what stands on a unit; the tiers say where, and capacity says
+how many.** `shelf_grouping_tiers` is a row per (position, grouping, tier)
+rather than a range, because a family skips tiers on purpose: small
+easy-to-pocket stock is kept in the top three or four so nobody is bending over
+an open bag. **Tier 1 is the top tier** — the numbering exists to serve that
+rule, so it runs the way the shelf is looked at.
+
+Tier heights are sparse, the way `employee_availability` is. A unit has a tier
+count and a usable height (72″ by default), and `shelf_tiers` holds a row only
+where a tier deviates from the even split — a blind-box unit is four short
+tiers over two taller ones, so two rows describe it. Shelves are adjustable,
+which is what SIZED means, so the tier count is a build decision rather than a
+property of the model of shelf.
+
+`lib/capacity.js` turns that into numbers. Families on a tier split its width
+evenly and each shows as many SKUs as its faced boxes fit into that share, so
+**raising facings lowers the SKU count** — that is the dial between shows.
+Over capacity means a family can't show even one SKU, either because its share
+is too narrow or its box is taller than the tier; it draws amber and says
+which, and **nothing is ever blocked**, the same way `layoutConflicts()`
+reports an overlap rather than refusing the move. Capacity is computed
+server-side in `loadPlan()` for the same reason the roster decides its own
+statuses: the grid, the phone and the map all draw it.
+
+**A family's `sku_count` is the pool it is picked from, never a target.** The
+catalogue runs about ten times the booth — ~4,700 in-stock SKUs across the
+families against roughly 250 box widths on the floor — so a bar comparing tier
+space against the catalogue would paint every shelf red. The honest reading is
+"shows 8 of 79 in stock". The count is a hand-refreshed snapshot with the date
+it was taken beside it; the worker has no Shopify access.
+
+**Not everything lives on a tier.** `groupings.placement` is `tier`, `side`
+(tools, TCG, action bases — zip-tied to the side of a unit) or `up_top` (the
+big expensive boxes that sit on top of the shelves; there are only ever one or
+two of each, and in a tier they would eat a whole run). Those show their
+placement instead of an empty tier row, and what they need is a bring quantity
+rather than a position — which isn't built yet.
+
+**The phone shelf detail is a state, not a route.** The booth map earned its
+own URL because it is the thing you send someone; a shelf's tiers are a
+drill-down you come back out of, so Back steps out of the unit before it leaves
+the plan. `box_class` and `box_height_in` were inert before capacity existed
+and are now load-bearing — check them before trusting a tier that looks wrong.
+
 ### Resources, board artwork and shelf photos
 
 Two different pictures, deliberately kept apart:
