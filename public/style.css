@@ -2248,6 +2248,14 @@ button.cell-add:hover {
   gap: 10px;
 }
 
+/* The families on a unit, wherever the unit is being shown. */
+.shelf-list-groupings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+
 /* A product family on a shelf, with its per-SKU depth. */
 .grouping-chip {
   display: inline-flex;

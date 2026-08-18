@@ -604,7 +604,11 @@ function shelfList() {
           <div class="shelf-list-head">
             <span class="shelf-list-code">${esc(position.code)}</span>
             <div style="flex:1; min-width:0;">
-              <div style="font-size:13px;">${esc(position.product || "—")}</div>
+              <div class="shelf-list-groupings">
+                ${position.groupings.length
+                  ? position.groupings.map(groupingChip).join("")
+                  : `<span class="meta">Nothing on this one yet</span>`}
+              </div>
               <div class="meta">${esc(position.unit_type || "")}${
                 position.boards.length ? ` · ${esc(boardNameList(position))}` : ""
               }</div>
@@ -705,7 +709,7 @@ function boothBlock(position) {
       <div class="block-label">
         ${signsMode
           ? (position.boards.length ? esc(boardNameList(position)) : `<span style="color:var(--muted);">—</span>`)
-          : esc(position.product || "")}
+          : esc(position.groupings.map(g => g.name).join(" + "))}
       </div>
     </div>
   `;
@@ -757,7 +761,11 @@ function selectedPositionCard(position) {
         <div class="panel-head">
           <div style="min-width:0;">
             <div class="panel-code">${esc(position.code)}</div>
-            <div class="meta">${esc(position.product || "Nothing set")}</div>
+            <div class="shelf-list-groupings">
+              ${position.groupings.length
+                ? position.groupings.map(groupingChip).join("")
+                : `<span class="meta">Nothing on this one yet</span>`}
+            </div>
           </div>
           ${position.signage.length
             ? `<div class="badge-row" style="margin:0; justify-content:flex-end;">
