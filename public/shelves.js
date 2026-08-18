@@ -314,12 +314,12 @@ function shelfRow(position) {
         ${canEdit
           ? `<button class="boards-cell" data-groupings="${position.id}">
               ${position.groupings.length
-                ? position.groupings.map(groupingChip).join("")
+                ? position.groupings.map(g => groupingChip(g, position.capacity)).join("")
                 : `<span class="cell-add">+</span>`}
             </button>`
           : `<span class="boards-cell static">
               ${position.groupings.length
-                ? position.groupings.map(groupingChip).join("")
+                ? position.groupings.map(g => groupingChip(g, position.capacity)).join("")
                 : `<span class="meta">—</span>`}
             </span>`}
       </span>
@@ -374,12 +374,109 @@ function shelfRow(position) {
   `;
 }
 
-/** A family on a shelf, with how deep each of its SKUs is faced. */
-function groupingChip(grouping) {
+/**
+ * A family on a shelf, with how deep each of its SKUs is faced and — once it's
+ * standing somewhere — how many SKUs that comes to.
+ *
+ * The SKU count is what the shelf shows, not what the family holds: the
+ * catalogue runs about ten times the booth, so "8 of 79" is the honest reading
+ * and "79" on its own would be a target nobody could hit.
+ */
+function groupingChip(grouping, capacity = null) {
+  const shown = capacity?.families.find(f => f.id === grouping.id);
+  const offTier = capacity?.offTier.find(f => f.id === grouping.id);
+
+  const tail = offTier
+    ? `<em>· ${offTier.placement === "side" ? "on the side" : "up top"}</em>`
+    : shown && shown.placed
+      ? `<em>×${grouping.facings} · ${shown.shows}</em>`
+      : `<em>×${grouping.facings}</em>`;
+
+  const unplaced = shown && !shown.placed;
+
   return `
-    <span class="grouping-chip" title="${esc(grouping.name)} · ${grouping.facings} facings">
-      ${esc(grouping.name)}<em>×${grouping.facings}</em>
+    <span class="grouping-chip${unplaced ? " unplaced" : ""}"
+          title="${esc(grouping.name)} · ${grouping.facings} facings${
+            shown && shown.placed
+              ? ` · shows ${shown.shows} of ${shown.pool ?? "?"} in stock`
+              : unplaced ? " · not on a tier yet" : ""}">
+      ${esc(grouping.name)}${tail}
     </span>
+  `;
+}
+
+/** Tier 1 is the top one, so a range reads the way the shelf is looked at. */
+function tierRange(tiers) {
+  if (!tiers.length) return "not placed";
+  const runs = [];
+  for (const tier of tiers) {
+    const last = runs[runs.length - 1];
+    if (last && tier === last[1] + 1) last[1] = tier;
+    else runs.push([tier, tier]);
+  }
+  return runs.map(([from, to]) => from === to ? `T${from}` : `T${from}–T${to}`).join(", ");
+}
+
+/**
+ * Which tiers a family stands on.
+ *
+ * Toggles rather than a range, because a family skips tiers on purpose: small
+ * easy-to-pocket stock is kept in the top three or four so nobody is bending
+ * over an open bag.
+ */
+function tierToggles(position, grouping) {
+  const on = new Set(
+    (position.capacity?.tiers || [])
+      .filter(t => t.families.some(f => f.id === grouping.id))
+      .map(t => t.tier)
+  );
+
+  if (!position.tier_count) {
+    return `<span class="meta">This unit has no tiers.</span>`;
+  }
+
+  return `
+    <span class="tier-toggles">
+      ${Array.from({ length: position.tier_count }, (_, i) => i + 1).map(tier => `
+        <button class="tier-toggle${on.has(tier) ? " on" : ""}"
+                data-tier-toggle="${position.id}" data-grouping="${grouping.id}"
+                data-tier="${tier}"
+                title="${on.has(tier) ? "Take it off" : "Put it on"} tier ${tier}">T${tier}</button>
+      `).join("")}
+    </span>
+  `;
+}
+
+/**
+ * How full each tier of the unit is.
+ *
+ * The bar is what's used against the tier's width, so a tier holding one wide
+ * box at three facings reads two-thirds full and the wasted third is visible —
+ * that gap is the reason to change the facings, and a count alone would hide
+ * it. Amber means something on the tier can't show a single SKU.
+ */
+function tierBars(position) {
+  const capacity = position.capacity;
+  if (!capacity?.tiers.length) return "";
+
+  return `
+    <div class="tier-bars">
+      ${capacity.tiers.map(tier => `
+        <div class="tier-bar-row${tier.over ? " over" : ""}">
+          <span class="tier-bar-label">T${tier.tier}</span>
+          <span class="tier-bar" title="${Math.round(tier.usedIn)}″ of ${Math.round(tier.widthIn)}″ used">
+            <span class="tier-bar-fill" style="width:${Math.round(tier.fill * 100)}%"></span>
+          </span>
+          <span class="tier-bar-count">
+            ${tier.holds ? `${tier.holds} SKU${tier.holds === 1 ? "" : "s"}` : "—"}
+            <em>${Math.round(tier.heightIn)}″ tall</em>
+          </span>
+          ${tier.over ? `<span class="tier-bar-warn">${
+            tier.families.some(f => f.tooTall) ? "box too tall" : "no room"
+          }</span>` : ""}
+        </div>
+      `).join("")}
+    </div>
   `;
 }
 
@@ -395,18 +492,52 @@ function groupingsStrip(position) {
 
   return `
     <div class="signage-strip groupings-strip">
-      ${position.groupings.map(g => `
+      ${position.groupings.map(g => {
+        const offTier = position.capacity?.offTier.find(f => f.id === g.id);
+        const shown = position.capacity?.families.find(f => f.id === g.id);
+
+        return `
         <span class="board-slot">
           <span class="grouping-chip on">${esc(g.name)}</span>
-          <label class="facings">
-            <span class="board-slot-face">FACINGS</span>
-            <input type="number" min="1" max="12" value="${g.facings}"
-                   data-facings="${position.id}" data-grouping="${g.id}">
-          </label>
+
+          ${offTier ? `
+            <span class="tier-note">
+              ${offTier.placement === "side"
+                ? "Zip-tied to the side — no tier of its own."
+                : "Goes up top, on the shelves rather than in them."}
+              ${offTier.pool ? `<em>${offTier.pool} in stock</em>` : ""}
+            </span>
+          ` : `
+            <label class="facings">
+              <span class="board-slot-face">FACINGS</span>
+              <input type="number" min="1" max="12" value="${g.facings}"
+                     data-facings="${position.id}" data-grouping="${g.id}">
+            </label>
+
+            <span class="tier-pick">
+              <span class="board-slot-face">TIERS</span>
+              ${tierToggles(position, g)}
+            </span>
+
+            <span class="tier-note">
+              ${shown && shown.placed
+                ? `Shows <strong>${shown.shows}</strong> of ${shown.pool ?? "?"} in stock · ${tierRange(shown.tiers)}`
+                : `<span class="unplaced-note">Not on a tier yet.</span>`}
+            </span>
+          `}
+
           <button class="board-slot-clear" data-grouping-remove="${position.id}"
                   data-grouping="${g.id}" title="Take it off this shelf">×</button>
         </span>
-      `).join("")}
+      `;}).join("")}
+
+      ${tierBars(position)}
+
+      <label class="facings tier-count-field">
+        <span class="board-slot-face">TIERS ON THIS UNIT</span>
+        <input type="number" min="0" max="12" value="${position.tier_count ?? 0}"
+               data-tier-count="${position.id}">
+      </label>
 
       <select data-grouping-add="${position.id}">
         <option value="">+ Add a grouping…</option>
@@ -1163,6 +1294,47 @@ function wireShelfPlan() {
       const result = await apiSend(`/api/shelf-positions/${input.dataset.facings}/grouping`, "PUT", {
         grouping_id: Number(input.dataset.grouping),
         facings: Number(input.value)
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not save that.");
+        return;
+      }
+
+      await reload();
+    };
+  });
+
+  // Putting a family on a tier is a stage tick by another name — small, and
+  // several people do it at once — so it's written optimistically and only
+  // reloaded if the write is refused.
+  document.querySelectorAll("[data-tier-toggle]").forEach(button => {
+    button.onclick = async () => {
+      const on = button.classList.contains("on");
+      button.classList.toggle("on", !on);
+
+      const result = await apiSend(`/api/shelf-positions/${button.dataset.tierToggle}/tier`, "PUT", {
+        grouping_id: Number(button.dataset.grouping),
+        tier_index: Number(button.dataset.tier),
+        on: !on
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not save that.");
+      }
+
+      // The counts on every other tier move with this one, so redraw either
+      // way — the optimistic flip is only there to keep the click instant.
+      await reload();
+    };
+  });
+
+  // How the unit is built. Dropping tiers takes whatever stood on them, which
+  // is why this reloads rather than patching the row in place.
+  document.querySelectorAll("[data-tier-count]").forEach(input => {
+    input.onchange = async () => {
+      const result = await apiSend(`/api/shelf-positions/${input.dataset.tierCount}/tiers`, "PUT", {
+        tier_count: Number(input.value)
       });
 
       if (!result.ok) {
