@@ -176,7 +176,7 @@ const PAGE_URLS = {
 /** The five palettes. Applied as a class on <body> from the user's record. */
 const THEMES = [
   { id: "habbo", name: "Panda", blurb: "Teal and cream · the default", swatches: ["#17879B", "#F2B53B", "#5FD1A0"], ink: "#23324A" },
-  { id: "mario", name: "Mushroom Kingdom", blurb: "Red, sky blue, coin yellow", swatches: ["#E03A2F", "#2A63C4", "#FBC01D"], ink: "#2B2118" },
+  { id: "mario", name: "Mushroom Kingdom", blurb: "Logo red, coin yellow, sky blue", swatches: ["#D8231C", "#FBD000", "#049CD8"], ink: "#17203B" },
   { id: "bubble", name: "Bubblegum", blurb: "Candy pink, periwinkle, mint", swatches: ["#F7A8CD", "#BBB0F0", "#A9E7CE"], ink: "#56406E" },
   { id: "sherbet", name: "Sherbet", blurb: "Coral and turquoise", swatches: ["#FF7A59", "#2FB6A8", "#FFC94D"], ink: "#33261F" },
   { id: "arcade", name: "Arcade night", blurb: "Dark · easier in a dim hall", swatches: ["#2E2540", "#FF5C8A", "#5FE3C0"], ink: "#241C2E" }

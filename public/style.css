@@ -46,40 +46,43 @@ body.theme-habbo {
   --nav-muted: #8A8468;
 }
 
+/* Mushroom Kingdom: the logo's own letters — red, coin yellow, green and sky
+   blue — on white, over the deep blue the logo sits on. The red is a shade
+   deeper than the artwork so white can sit on it and still be read. */
 body.theme-mario {
-  --ink: #2B2118;
-  --paper: #FFF6E2;
+  --ink: #17203B;
+  --paper: #F1F6FF;
   --surface: #FFFFFF;
-  --chip: #FFE9B8;
+  --chip: #DCE9FF;
   --field: #FFFFFF;
-  --text: #2B2118;
-  --muted: #8A7A5E;
-  --shadow: #D6CBB0;
-  --track: #F0EBE0;
-  --brand: #E03A2F;
-  --on-brand: #FFF6E2;
-  --brand-text: #C22A20;
-  --warm: #FBC01D;
-  --on-warm: #4A3708;
-  --cool: #2A63C4;
-  --on-cool: #FFFFFF;
-  --cool-bg: #D9EDF7;
-  --cool-text: #1B4694;
-  --cool-muted: #7E8894;
-  --note-bg: #FFF1CE;
-  --note-border: #EFD9A0;
-  --note-text: #6B5312;
-  --go: #3FA34A;
-  --go-text: #2E7D36;
-  --on-go: #FFF6E2;
-  --alert: #C22A20;
-  --clock-bg: #2A63C4;
-  --clock-shadow: #1B4694;
-  --clock-text: #EAF3FF;
-  --clock-sub: #BFDCFF;
-  --nav-bg: #FFE9B8;
-  --nav-dot: #D6C69C;
-  --nav-muted: #A08F6E;
+  --text: #17203B;
+  --muted: #5C6883;
+  --shadow: #C4D3EC;
+  --track: #E7EDF9;
+  --brand: #D8231C;
+  --on-brand: #FFFFFF;
+  --brand-text: #BE1912;
+  --warm: #FBD000;
+  --on-warm: #453200;
+  --cool: #049CD8;
+  --on-cool: #04263A;
+  --cool-bg: #DBEEFB;
+  --cool-text: #0A5A84;
+  --cool-muted: #6B8496;
+  --note-bg: #FFF4CC;
+  --note-border: #F1DF9E;
+  --note-text: #5B4708;
+  --go: #43B047;
+  --go-text: #237A28;
+  --on-go: #0D2B11;
+  --alert: #BE1912;
+  --clock-bg: #0B57C7;
+  --clock-shadow: #073C8A;
+  --clock-text: #FFFFFF;
+  --clock-sub: #CBE1FB;
+  --nav-bg: #DCE9FF;
+  --nav-dot: #B4C8E8;
+  --nav-muted: #5C6883;
 }
 
 /* Bubblegum: candy pink, periwinkle and mint on blush paper. The fills are
@@ -92,7 +95,7 @@ body.theme-bubble {
   --chip: #FFE5F1;
   --field: #FFFFFF;
   --text: #56406E;
-  --muted: #7B6A8D;
+  --muted: #6E5F78;
   --shadow: #F0D3E4;
   --track: #F9E9F2;
   --brand: #F7A8CD;
@@ -109,7 +112,7 @@ body.theme-bubble {
   --note-border: #F6E3BC;
   --note-text: #6B5730;
   --go: #A9E7CE;
-  --go-text: #2E8266;
+  --go-text: #27735A;
   --on-go: #1D4A39;
   --alert: #C44573;
   --clock-bg: #56406E;
@@ -118,7 +121,7 @@ body.theme-bubble {
   --clock-sub: #C7B5D8;
   --nav-bg: #FFE5F1;
   --nav-dot: #F0C6DD;
-  --nav-muted: #8E7286;
+  --nav-muted: #79596C;
 }
 
 body.theme-sherbet {
@@ -158,39 +161,44 @@ body.theme-sherbet {
 }
 
 body.theme-arcade {
-  --ink: #241C2E;
-  --paper: #2E2540;
-  --surface: #3E3352;
-  --chip: #241C2E;
-  --field: #251E33;
-  --text: #F4EFFA;
-  --muted: #A79CBB;
-  --shadow: #241C2E;
-  --track: #2E2540;
+  /* The one dark palette. Ink is only ever an outline colour, never text, so
+     here it inverts to a light lavender — a near-black 2px outline on a dark
+     fill is invisible, which is what flattened every card and block into the
+     background. The page drops, the cards lift, and the shadow goes properly
+     black so the hard offset still reads. */
+  --ink: #C9BAE8;
+  --paper: #1E1729;
+  --surface: #3A2E54;
+  --chip: #4A3B70;
+  --field: #2A2139;
+  --text: #F8F4FF;
+  --muted: #C3B7DB;
+  --shadow: #120D1B;
+  --track: #2C2340;
   --brand: #FF5C8A;
   --on-brand: #3D0E20;
-  --brand-text: #FF7FA4;
+  --brand-text: #FF93B4;
   --warm: #FFC94D;
   --on-warm: #3A2A05;
   --cool: #7FC6F0;
-  --on-cool: #123049;
-  --cool-bg: #2A3B52;
-  --cool-text: #CFE3F2;
-  --cool-muted: #8296AB;
-  --note-bg: #3A3352;
-  --note-border: #4E4470;
-  --note-text: #DCD2EC;
+  --on-cool: #10293E;
+  --cool-bg: #31496B;
+  --cool-text: #DCEDFA;
+  --cool-muted: #A6BACC;
+  --note-bg: #463C63;
+  --note-border: #5D4F82;
+  --note-text: #EDE5F9;
   --go: #5FE3C0;
-  --go-text: #6FEFCC;
-  --on-go: #123B32;
+  --go-text: #7DF2D3;
+  --on-go: #0F3A30;
   --alert: #FF8AAE;
-  --clock-bg: #3E3352;
-  --clock-shadow: #241C2E;
-  --clock-text: #EDE7F7;
-  --clock-sub: #A99CBE;
-  --nav-bg: #241C2E;
-  --nav-dot: #4A4060;
-  --nav-muted: #8B81A0;
+  --clock-bg: #3A2E54;
+  --clock-shadow: #120D1B;
+  --clock-text: #F8F4FF;
+  --clock-sub: #C3B7DB;
+  --nav-bg: #251D36;
+  --nav-dot: #5B4C7E;
+  --nav-muted: #B0A3CA;
 }
 
 body {
