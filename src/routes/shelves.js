@@ -3,6 +3,7 @@ import { requireUser } from "../lib/auth.js";
 import { parseImageDataUri, imageResponse, imageUrlFor } from "../lib/images.js";
 import { resourceUrl, loadResources } from "./resources.js";
 import { loadGroupings, BOX_CLASSES } from "./groupings.js";
+import { positionCapacity, DEFAULT_USABLE_HEIGHT_IN } from "../lib/capacity.js";
 import {
   templatePositions,
   BOOTH_FEET,
@@ -139,7 +140,8 @@ export function stageApplies(position, stage) {
 }
 
 async function loadPlan(db, conventionId) {
-  const [positionRows, flagRows, artRows, photoRows, groupingRows] = await Promise.all([
+  const [positionRows, flagRows, artRows, photoRows, groupingRows, tierRows, heightRows] =
+    await Promise.all([
     db.prepare(
       `SELECT * FROM shelf_positions WHERE convention_id = ?
        ORDER BY sort_order ASC, id ASC`
@@ -171,12 +173,29 @@ async function loadPlan(db, conventionId) {
     ).bind(conventionId).all(),
 
     db.prepare(
-      `SELECT sg.position_id, sg.facings, g.id, g.name, g.box_class
+      `SELECT sg.position_id, sg.facings, g.id, g.name, g.box_class,
+              g.box_height_in, g.placement, g.sku_count
        FROM shelf_groupings sg
        JOIN groupings g ON g.id = sg.grouping_id
        JOIN shelf_positions p ON p.id = sg.position_id
        WHERE p.convention_id = ?
        ORDER BY sg.sort_order ASC, g.sort_order ASC`
+    ).bind(conventionId).all(),
+
+    db.prepare(
+      `SELECT t.position_id, t.grouping_id, t.tier_index
+       FROM shelf_grouping_tiers t
+       JOIN shelf_positions p ON p.id = t.position_id
+       WHERE p.convention_id = ?
+       ORDER BY t.tier_index ASC`
+    ).bind(conventionId).all(),
+
+    db.prepare(
+      `SELECT t.position_id, t.tier_index, t.height_in
+       FROM shelf_tiers t
+       JOIN shelf_positions p ON p.id = t.position_id
+       WHERE p.convention_id = ?
+       ORDER BY t.tier_index ASC`
     ).bind(conventionId).all()
   ]);
 
@@ -205,8 +224,23 @@ async function loadPlan(db, conventionId) {
       id: row.id,
       name: row.name,
       box_class: row.box_class,
+      box_height_in: row.box_height_in,
+      placement: row.placement || "tier",
+      sku_count: row.sku_count,
       facings: row.facings
     });
+  }
+
+  const tiersByPosition = new Map();
+  for (const row of tierRows.results || []) {
+    if (!tiersByPosition.has(row.position_id)) tiersByPosition.set(row.position_id, []);
+    tiersByPosition.get(row.position_id).push(row);
+  }
+
+  const heightsByPosition = new Map();
+  for (const row of heightRows.results || []) {
+    if (!heightsByPosition.has(row.position_id)) heightsByPosition.set(row.position_id, []);
+    heightsByPosition.get(row.position_id).push(row);
   }
 
   const photosByPosition = new Map();
@@ -222,8 +256,10 @@ async function loadPlan(db, conventionId) {
 
   return (positionRows.results || []).map(row => {
     const ticked = flagsByPosition.get(row.id) || new Set();
+    const groupings = groupingsByPosition.get(row.id) || [];
+    const geometry = effectiveGeometry(row);
 
-    return {
+    const position = {
       id: row.id,
       code: row.code,
       wall: row.wall,
@@ -233,13 +269,27 @@ async function loadPlan(db, conventionId) {
       signage: signageList(row.signage),
       boards: boardFaces(artByPosition.get(row.id)),
       photos: photosByPosition.get(row.id) || [],
-      groupings: groupingsByPosition.get(row.id) || [],
+      groupings,
+      tier_count: row.tier_count,
+      usable_height_in: row.usable_height_in,
       kind: row.kind,
-      geometry: effectiveGeometry(row),
+      geometry,
       baseline: { x: row.x, y: row.y, w: row.w, h: row.h },
       moved: row.move_x !== null,
       stages: STAGES.map((_, stage) => ticked.has(stage))
     };
+
+    // Worked out here rather than in the browser, for the same reason the
+    // roster decides its own statuses: the grid, the phone card and the map
+    // all draw this, and they can't be allowed to disagree about it.
+    position.capacity = positionCapacity(
+      { tier_count: row.tier_count, usable_height_in: row.usable_height_in, ...geometry },
+      groupings,
+      tiersByPosition.get(row.id) || [],
+      heightsByPosition.get(row.id) || []
+    );
+
+    return position;
   });
 }
 
@@ -755,6 +805,78 @@ export async function handleDeletePosition(request, env, positionId) {
     env.DB.prepare(`DELETE FROM shelf_photos WHERE position_id = ?`).bind(id),
     env.DB.prepare(`DELETE FROM shelf_positions WHERE id = ?`).bind(id)
   ]);
+
+  return { ok: true };
+}
+
+/**
+ * How a unit is built: how many tiers, how tall the unit is, and any tier that
+ * isn't the even split of that height.
+ *
+ * SIZED means the unit was physically assembled to its tier count, so this is
+ * the number the floor works to. Shrinking it drops the tiers that no longer
+ * exist along with anything standing on them — leaving a family placed on tier
+ * 6 of a 4-tier unit would be a placement nothing can show.
+ */
+export async function handleUpdateTiers(request, env, positionId) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const id = Number(positionId);
+  const body = await readJsonBody(request);
+
+  const position = await env.DB.prepare(
+    `SELECT id, tier_count, usable_height_in FROM shelf_positions WHERE id = ?`
+  ).bind(id).first();
+
+  if (!position) return { ok: false, error: "That position no longer exists." };
+
+  const tierCount = body.tier_count === undefined
+    ? Number(position.tier_count)
+    : Math.max(0, Math.min(12, Math.round(Number(body.tier_count)) || 0));
+
+  const usableHeight = body.usable_height_in === undefined
+    ? Number(position.usable_height_in)
+    : Math.max(12, Math.min(120, Number(body.usable_height_in) || DEFAULT_USABLE_HEIGHT_IN));
+
+  const writes = [
+    env.DB.prepare(
+      `UPDATE shelf_positions SET tier_count = ?, usable_height_in = ? WHERE id = ?`
+    ).bind(tierCount, usableHeight, id)
+  ];
+
+  // Tiers that no longer exist take whatever stood on them with them.
+  writes.push(
+    env.DB.prepare(
+      `DELETE FROM shelf_grouping_tiers WHERE position_id = ? AND tier_index > ?`
+    ).bind(id, tierCount),
+    env.DB.prepare(
+      `DELETE FROM shelf_tiers WHERE position_id = ? AND tier_index > ?`
+    ).bind(id, tierCount)
+  );
+
+  // Heights stay sparse: a row only where a tier isn't the even split, so a
+  // blind-box unit is described by its two tall bottom tiers and nothing else.
+  if (Array.isArray(body.heights)) {
+    for (const row of body.heights) {
+      const tier = Number(row.tier_index);
+      if (!Number.isFinite(tier) || tier < 1 || tier > tierCount) continue;
+
+      const height = Number(row.height_in);
+      if (!height) {
+        writes.push(env.DB.prepare(
+          `DELETE FROM shelf_tiers WHERE position_id = ? AND tier_index = ?`
+        ).bind(id, tier));
+      } else {
+        writes.push(env.DB.prepare(
+          `INSERT INTO shelf_tiers (position_id, tier_index, height_in) VALUES (?, ?, ?)
+           ON CONFLICT (position_id, tier_index) DO UPDATE SET height_in = excluded.height_in`
+        ).bind(id, tier, Math.max(1, Math.min(48, height))));
+      }
+    }
+  }
+
+  await env.DB.batch(writes);
 
   return { ok: true };
 }

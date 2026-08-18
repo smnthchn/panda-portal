@@ -164,9 +164,10 @@ export async function handleAssignGrouping(request, env, positionId) {
   if (!position) return { ok: false, error: "That position no longer exists." };
 
   if (body.grouping_id === null) {
-    await env.DB.prepare(
-      `DELETE FROM shelf_groupings WHERE position_id = ?`
-    ).bind(id).run();
+    await env.DB.batch([
+      env.DB.prepare(`DELETE FROM shelf_grouping_tiers WHERE position_id = ?`).bind(id),
+      env.DB.prepare(`DELETE FROM shelf_groupings WHERE position_id = ?`).bind(id)
+    ]);
 
     return { ok: true };
   }
@@ -180,9 +181,14 @@ export async function handleAssignGrouping(request, env, positionId) {
   if (!grouping) return { ok: false, error: "That grouping no longer exists." };
 
   if (body.remove === true) {
-    await env.DB.prepare(
-      `DELETE FROM shelf_groupings WHERE position_id = ? AND grouping_id = ?`
-    ).bind(id, groupingId).run();
+    await env.DB.batch([
+      env.DB.prepare(
+        `DELETE FROM shelf_grouping_tiers WHERE position_id = ? AND grouping_id = ?`
+      ).bind(id, groupingId),
+      env.DB.prepare(
+        `DELETE FROM shelf_groupings WHERE position_id = ? AND grouping_id = ?`
+      ).bind(id, groupingId)
+    ]);
 
     return { ok: true };
   }
@@ -196,6 +202,111 @@ export async function handleAssignGrouping(request, env, positionId) {
      VALUES (?, ?, ?)
      ON CONFLICT (position_id, grouping_id) DO UPDATE SET facings = excluded.facings`
   ).bind(id, groupingId, facings).run();
+
+  return { ok: true };
+}
+
+/**
+ * Which tiers of a unit a family stands on.
+ *
+ * Like the stage ticks, this is a per-cell write rather than a whole-shelf
+ * save: two people can be laying out the booth at once, and reading a unit's
+ * whole placement back and writing it again would lose the other's work.
+ *
+ * Four shapes, all small:
+ *   { grouping_id, tier_index, on }   put it on that tier, or take it off
+ *   { grouping_id, tiers: [1,2,3] }   set every tier it stands on at once
+ *   { grouping_id, from, to }         move it off one tier and onto another
+ *   { clear_tier }                    empty a tier of everything
+ */
+export async function handleAssignTier(request, env, positionId) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const id = Number(positionId);
+  const body = await readJsonBody(request);
+
+  const position = await env.DB.prepare(
+    `SELECT id, tier_count FROM shelf_positions WHERE id = ?`
+  ).bind(id).first();
+
+  if (!position) return { ok: false, error: "That position no longer exists." };
+
+  const tiers = Number(position.tier_count) || 0;
+  const withinUnit = tier => Number.isFinite(tier) && tier >= 1 && tier <= tiers;
+
+  if (body.clear_tier !== undefined) {
+    const tier = Number(body.clear_tier);
+    if (!withinUnit(tier)) return { ok: false, error: "That unit has no such tier." };
+
+    await env.DB.prepare(
+      `DELETE FROM shelf_grouping_tiers WHERE position_id = ? AND tier_index = ?`
+    ).bind(id, tier).run();
+
+    return { ok: true };
+  }
+
+  const groupingId = Number(body.grouping_id);
+
+  const onShelf = await env.DB.prepare(
+    `SELECT grouping_id FROM shelf_groupings WHERE position_id = ? AND grouping_id = ?`
+  ).bind(id, groupingId).first();
+
+  // A family has to be on the unit before it can be on one of its tiers —
+  // otherwise the plan would carry a tier placement nothing else knows about.
+  if (!onShelf) return { ok: false, error: "That family isn't on this shelf." };
+
+  if (Array.isArray(body.tiers)) {
+    const wanted = [...new Set(body.tiers.map(Number))].filter(withinUnit);
+
+    await env.DB.batch([
+      env.DB.prepare(
+        `DELETE FROM shelf_grouping_tiers WHERE position_id = ? AND grouping_id = ?`
+      ).bind(id, groupingId),
+      ...wanted.map(tier => env.DB.prepare(
+        `INSERT OR IGNORE INTO shelf_grouping_tiers (position_id, grouping_id, tier_index)
+         VALUES (?, ?, ?)`
+      ).bind(id, groupingId, tier))
+    ]);
+
+    return { ok: true };
+  }
+
+  if (body.from !== undefined && body.to !== undefined) {
+    const from = Number(body.from);
+    const to = Number(body.to);
+    if (!withinUnit(from) || !withinUnit(to)) {
+      return { ok: false, error: "That unit has no such tier." };
+    }
+
+    await env.DB.batch([
+      env.DB.prepare(
+        `DELETE FROM shelf_grouping_tiers
+         WHERE position_id = ? AND grouping_id = ? AND tier_index = ?`
+      ).bind(id, groupingId, from),
+      env.DB.prepare(
+        `INSERT OR IGNORE INTO shelf_grouping_tiers (position_id, grouping_id, tier_index)
+         VALUES (?, ?, ?)`
+      ).bind(id, groupingId, to)
+    ]);
+
+    return { ok: true };
+  }
+
+  const tier = Number(body.tier_index);
+  if (!withinUnit(tier)) return { ok: false, error: "That unit has no such tier." };
+
+  if (body.on === false) {
+    await env.DB.prepare(
+      `DELETE FROM shelf_grouping_tiers
+       WHERE position_id = ? AND grouping_id = ? AND tier_index = ?`
+    ).bind(id, groupingId, tier).run();
+  } else {
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO shelf_grouping_tiers (position_id, grouping_id, tier_index)
+       VALUES (?, ?, ?)`
+    ).bind(id, groupingId, tier).run();
+  }
 
   return { ok: true };
 }

@@ -6,7 +6,8 @@ import {
   handleCreateGrouping,
   handleUpdateGrouping,
   handleDeleteGrouping,
-  handleAssignGrouping
+  handleAssignGrouping,
+  handleAssignTier
 } from "./routes/groupings.js";
 import {
   handleResources,
@@ -24,6 +25,7 @@ import {
   handleResetArrangement,
   handleAddPosition,
   handleDeletePosition,
+  handleUpdateTiers,
   handleAssignBoardArt,
   handleGetShelfPhoto,
   handleAddShelfPhoto,
@@ -42,9 +44,11 @@ import {
   handleScheduleView,
   handleUpdateShift,
   handleCopyDay,
+  handleCopyWeek,
   handleCreateShiftAnywhere,
   handleStoreSchedule,
-  handleSaveStoreHours
+  handleSaveStoreHours,
+  handleSaveHoliday
 } from "./routes/schedule.js";
 import {
   handleStaffList,
@@ -149,6 +153,8 @@ const ROUTES = [
   ["GET", "/api/schedule/store", handleStoreSchedule],
   ["PUT", "/api/schedule/store-hours", handleSaveStoreHours],
   ["POST", "/api/schedule/copy-day", handleCopyDay],
+  ["POST", "/api/schedule/copy-week", handleCopyWeek],
+  ["PUT", "/api/schedule/holiday", handleSaveHoliday],
   ["POST", "/api/shifts", handleCreateShiftAnywhere],
 
   ["GET", "/api/conventions/:slug/shelf-plan", handleShelfPlan],
@@ -170,6 +176,8 @@ const ROUTES = [
   ["PATCH", "/api/groupings/:id", handleUpdateGrouping],
   ["DELETE", "/api/groupings/:id", handleDeleteGrouping],
   ["PUT", "/api/shelf-positions/:id/grouping", handleAssignGrouping],
+  ["PUT", "/api/shelf-positions/:id/tier", handleAssignTier],
+  ["PUT", "/api/shelf-positions/:id/tiers", handleUpdateTiers],
 
   ["GET", "/api/resources", handleResources],
   ["POST", "/api/resources", handleCreateResource],
