@@ -34,6 +34,7 @@ body.theme-habbo {
   --note-border: #EADFBE;
   --note-text: #6B5A2E;
   --go: #5FD1A0;
+  --go-text: #1E8F68;
   --on-go: #16223A;
   --alert: #C6412F;
   --clock-bg: #23324A;
@@ -69,6 +70,7 @@ body.theme-mario {
   --note-border: #EFD9A0;
   --note-text: #6B5312;
   --go: #3FA34A;
+  --go-text: #2E7D36;
   --on-go: #FFF6E2;
   --alert: #C22A20;
   --clock-bg: #2A63C4;
@@ -80,39 +82,43 @@ body.theme-mario {
   --nav-muted: #A08F6E;
 }
 
+/* Bubblegum: candy pink, periwinkle and mint on blush paper. The fills are
+   pastel, so anything sitting on one takes a deep berry rather than white —
+   pale text on a pale fill is the way a soft palette turns unreadable. */
 body.theme-bubble {
-  --ink: #3A3350;
-  --paper: #FFF7F4;
+  --ink: #56406E;
+  --paper: #FFF4F9;
   --surface: #FFFFFF;
-  --chip: #F6E3EC;
+  --chip: #FFE5F1;
   --field: #FFFFFF;
-  --text: #3A3350;
-  --muted: #8A8299;
-  --shadow: #D8CFE0;
-  --track: #F1ECF4;
-  --brand: #8E7BD6;
-  --on-brand: #FFF7F4;
-  --brand-text: #6F5CB8;
-  --warm: #FFD98E;
-  --on-warm: #5C4A20;
-  --cool: #8E7BD6;
-  --on-cool: #FFFFFF;
-  --cool-bg: #EDE8FA;
-  --cool-text: #5B4A93;
-  --cool-muted: #8A85A0;
-  --note-bg: #FFF2DC;
-  --note-border: #F0DFC0;
+  --text: #56406E;
+  --muted: #7B6A8D;
+  --shadow: #F0D3E4;
+  --track: #F9E9F2;
+  --brand: #F7A8CD;
+  --on-brand: #4A2340;
+  --brand-text: #B24A83;
+  --warm: #FFE1A3;
+  --on-warm: #6A5220;
+  --cool: #BBB0F0;
+  --on-cool: #31245A;
+  --cool-bg: #EFEAFF;
+  --cool-text: #5B4899;
+  --cool-muted: #8B81A6;
+  --note-bg: #FFF3DA;
+  --note-border: #F6E3BC;
   --note-text: #6B5730;
-  --go: #5FCFA8;
-  --on-go: #1F3A31;
-  --alert: #D9527A;
-  --clock-bg: #3A3350;
-  --clock-shadow: #262035;
-  --clock-text: #F0EBF7;
-  --clock-sub: #B7AECB;
-  --nav-bg: #F6E3EC;
-  --nav-dot: #DCC9D5;
-  --nav-muted: #A093AA;
+  --go: #A9E7CE;
+  --go-text: #2E8266;
+  --on-go: #1D4A39;
+  --alert: #C44573;
+  --clock-bg: #56406E;
+  --clock-shadow: #3A2A4D;
+  --clock-text: #FDEFF7;
+  --clock-sub: #C7B5D8;
+  --nav-bg: #FFE5F1;
+  --nav-dot: #F0C6DD;
+  --nav-muted: #8E7286;
 }
 
 body.theme-sherbet {
@@ -139,6 +145,7 @@ body.theme-sherbet {
   --note-border: #EFDCB6;
   --note-text: #6B5228;
   --go: #2FB6A8;
+  --go-text: #1F7F76;
   --on-go: #0E3733;
   --alert: #D2472B;
   --clock-bg: #1F6F6B;
@@ -174,8 +181,9 @@ body.theme-arcade {
   --note-border: #4E4470;
   --note-text: #DCD2EC;
   --go: #5FE3C0;
+  --go-text: #6FEFCC;
   --on-go: #123B32;
-  --alert: #FF5C8A;
+  --alert: #FF8AAE;
   --clock-bg: #3E3352;
   --clock-shadow: #241C2E;
   --clock-text: #EDE7F7;
@@ -2481,9 +2489,12 @@ button.cell-add:hover {
   background: var(--paper);
 }
 
+/* Mixed from the palette rather than a fixed pale green: on a dark theme a
+   literal light fill left the block's own light text sitting on it at about
+   1:1, which is the "done" block reading as blank. */
 .booth-block.done {
-  background: #DCF3E6;
-  border-color: #2C8F6C;
+  background: color-mix(in srgb, var(--go) 30%, var(--surface));
+  border-color: var(--go-deep);
 }
 
 .booth-block.other {
@@ -2551,10 +2562,17 @@ button.cell-add:hover {
   background: #E4DDC6;
 }
 
-.block-label {
+/* Scoped to the block, because `.block-label` is also a form label further up
+   this file — that's where the muted colour and the 12px margin were coming
+   from, and neither belongs on a unit in the booth. Muted on the "done" fill
+   read at about 2:1 on a dark palette. */
+.booth-block .block-label {
   font-size: 9px;
   line-height: 1.15;
   overflow: hidden;
+  margin-bottom: 0;
+  letter-spacing: 0.02em;
+  color: var(--text);
 }
 
 /* A bar on the face a board stands on. */

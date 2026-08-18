@@ -210,7 +210,9 @@ function shelfHeader() {
 }
 
 function stageBattery({ label, done, total }) {
-  const colour = total && done === total ? "#1E8F68" : done === 0 ? "var(--alert)" : "var(--text)";
+  const colour = total && done === total
+    ? "var(--go-text)"
+    : done === 0 ? "var(--alert)" : "var(--text)";
 
   return `
     <div class="stage-battery">
@@ -645,7 +647,7 @@ function boothBlock(position) {
       </div>
       <div class="block-label">
         ${signsMode
-          ? (position.boards.length ? esc(boardNameList(position)) : `<span style="color:#B0A88F;">—</span>`)
+          ? (position.boards.length ? esc(boardNameList(position)) : `<span style="color:var(--muted);">—</span>`)
           : esc(position.product || "")}
       </div>
     </div>
@@ -670,7 +672,7 @@ function signSpines(position) {
 
   const clearsOnly = position.signage.length > 0 &&
     position.signage.every(code => code === "fc" || code === "sc");
-  const colour = clearsOnly ? "#17879B" : "#F2B53B";
+  const colour = clearsOnly ? "var(--cool)" : "var(--warm)";
 
   const edges = {
     back: vertical ? (nearLeft ? "left" : "right") : (nearTop ? "top" : "bottom"),
@@ -930,7 +932,7 @@ function signsList() {
               <div class="meta">${position.boards.map(b => b.face.toUpperCase()).join(" + ")}</div>
             </span>
             ${position.stages[4]
-              ? `<span style="color:#1E8F68; font-weight:600; font-size:12px;">✓ up</span>`
+              ? `<span style="color:var(--go-text); font-weight:600; font-size:12px;">✓ up</span>`
               : ""}
           </div>
         `).join("")}
