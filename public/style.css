@@ -161,44 +161,49 @@ body.theme-sherbet {
 }
 
 body.theme-arcade {
-  /* The one dark palette. Ink is only ever an outline colour, never text, so
-     here it inverts to a light lavender — a near-black 2px outline on a dark
-     fill is invisible, which is what flattened every card and block into the
-     background. The page drops, the cards lift, and the shadow goes properly
-     black so the hard offset still reads. */
-  --ink: #C9BAE8;
-  --paper: #1E1729;
-  --surface: #3A2E54;
-  --chip: #4A3B70;
+  /* The one dark palette, and the one where the outline cannot carry the
+     structure. A 2px ink outline separates everything in the light palettes,
+     but on a dark fill you can have a dark card or a strong dark edge, not
+     both — and a light edge turns the page neon. So the edge stays dark and
+     quiet, and the separation comes from the step up to the card.
+
+     The tones keep the same relationships the light palettes have: chip sits
+     just above paper (they are the booth floor and an unstarted block, which
+     should barely differ) and below surface (a strip is a tint across the top
+     of a card, darker than the card). Break that and the map inverts. */
+  --ink: #191223;
+  --paper: #1A1426;
+  --surface: #4E3F72;
+  --chip: #2E2447;
   --field: #2A2139;
-  --text: #F8F4FF;
-  --muted: #C3B7DB;
-  --shadow: #120D1B;
-  --track: #2C2340;
+  --text: #FBF8FF;
+  --muted: #D3C8E7;
+  --shadow: #0E0A16;
+  --track: #3A2F55;
   --brand: #FF5C8A;
   --on-brand: #3D0E20;
-  --brand-text: #FF93B4;
+  --brand-text: #FFA8C2;
   --warm: #FFC94D;
   --on-warm: #3A2A05;
   --cool: #7FC6F0;
   --on-cool: #10293E;
-  --cool-bg: #31496B;
-  --cool-text: #DCEDFA;
-  --cool-muted: #A6BACC;
-  --note-bg: #463C63;
-  --note-border: #5D4F82;
-  --note-text: #EDE5F9;
+  --cool-bg: #33496B;
+  --cool-text: #E3F0FB;
+  --cool-muted: #B4C6D6;
+  --note-bg: #453969;
+  --note-border: #57487F;
+  --note-text: #F3ECFC;
   --go: #5FE3C0;
-  --go-text: #7DF2D3;
+  --go-text: #8CF5DA;
   --on-go: #0F3A30;
-  --alert: #FF8AAE;
-  --clock-bg: #3A2E54;
-  --clock-shadow: #120D1B;
-  --clock-text: #F8F4FF;
-  --clock-sub: #C3B7DB;
-  --nav-bg: #251D36;
-  --nav-dot: #5B4C7E;
-  --nav-muted: #B0A3CA;
+  --alert: #FF9BBB;
+  --clock-bg: #4E3F72;
+  --clock-shadow: #0E0A16;
+  --clock-text: #FBF8FF;
+  --clock-sub: #D3C8E7;
+  --nav-bg: #211A30;
+  --nav-dot: #4B3D6E;
+  --nav-muted: #B7ABD0;
 }
 
 body {
