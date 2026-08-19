@@ -44,6 +44,23 @@ function phaseOf(convention, today) {
   return "upcoming";
 }
 
+/**
+ * Whether an event is hidden from someone without manage_conventions.
+ *
+ * Two reasons: it isn't published yet, or it's over. A finished show is the
+ * boss's record — the history next year's plan is built from — not something
+ * the floor needs in their list.
+ *
+ * The date test matches phaseOf()'s, so the list and the phase badge can't
+ * disagree about whether a show is over, and an event with no end date is
+ * never past.
+ */
+export function hiddenFromStaff(convention, today) {
+  if (!convention) return true;
+  if (!convention.is_published) return true;
+  return Boolean(convention.ends_on && convention.ends_on < today);
+}
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -129,11 +146,16 @@ export async function handleConventionList(request, env) {
             (SELECT COUNT(*) FROM convention_shifts s
               WHERE s.convention_id = c.id AND s.employee_id = ?) AS my_shift_count
      FROM conventions c
-     WHERE ? = 1 OR c.is_published = 1
      ORDER BY COALESCE(c.starts_on, '9999-12-31') ASC`
-  ).bind(auth.user.id, canManage ? 1 : 0).all();
+  ).bind(auth.user.id).all();
 
-  const conventions = (rows.results || []).map(row => ({
+  // Filtered here rather than in the query so the list and the detail apply
+  // one rule from one place. There are a handful of events, so the cost of
+  // reading them all and dropping some is nothing against the cost of two
+  // copies of this rule drifting apart.
+  const conventions = (rows.results || [])
+    .filter(row => canManage || !hiddenFromStaff(row, today))
+    .map(row => ({
     ...row,
     is_published: row.is_published === 1,
     phase: phaseOf(row, today)
@@ -152,7 +174,10 @@ export async function handleConventionDetail(request, env, slug) {
     `SELECT * FROM conventions WHERE slug = ?`
   ).bind(slug).first();
 
-  if (!convention || (!convention.is_published && !canManage)) {
+  // Hiding it from the list is only half of it — the URL survives in history
+  // and in anything anyone shared. Same wording either way: a hidden thing
+  // shouldn't confirm it exists.
+  if (!convention || (!canManage && hiddenFromStaff(convention, todayIso()))) {
     return { ok: false, error: "Convention not found." };
   }
 

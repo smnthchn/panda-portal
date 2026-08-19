@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import worker from "../src";
 import { matchPath, getCookie, optionalText, requiredText, BadRequest } from "../src/lib/http.js";
 import { roleOutranks, isValidRole } from "../src/lib/permissions.js";
-import { optionalUrl } from "../src/routes/conventions.js";
+import { optionalUrl, hiddenFromStaff } from "../src/routes/conventions.js";
 import { pairClockEvents } from "../src/routes/clock.js";
 import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/dashboard.js";
 import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
@@ -1001,6 +1001,48 @@ describe("stored pictures", () => {
     // ~525KB decoded: past an avatar's 400KB cap, inside a resource's 800KB.
     expect(() => parseImageDataUri(bigger, 400 * 1024)).toThrow(BadRequest);
     expect(parseImageDataUri(bigger, 800 * 1024).mimeType).toBe("image/png");
+  });
+});
+
+describe("what staff can see of an event", () => {
+  const event = (over = {}) => ({ is_published: 1, starts_on: "2026-08-27", ends_on: "2026-08-30", ...over });
+  const DURING = "2026-08-28";
+  const AFTER = "2026-09-01";
+  const BEFORE = "2026-08-01";
+
+  it("shows a published event that hasn't happened yet", () => {
+    expect(hiddenFromStaff(event(), BEFORE)).toBe(false);
+  });
+
+  it("shows a published event while it's on", () => {
+    expect(hiddenFromStaff(event(), DURING)).toBe(false);
+  });
+
+  it("shows it on its own last day, not the morning after", () => {
+    expect(hiddenFromStaff(event(), "2026-08-30")).toBe(false);
+    expect(hiddenFromStaff(event(), "2026-08-31")).toBe(true);
+  });
+
+  it("hides a show that's over", () => {
+    expect(hiddenFromStaff(event(), AFTER)).toBe(true);
+  });
+
+  it("hides a draft whatever the date", () => {
+    expect(hiddenFromStaff(event({ is_published: 0 }), BEFORE)).toBe(true);
+    expect(hiddenFromStaff(event({ is_published: 0 }), DURING)).toBe(true);
+  });
+
+  // phaseOf() calls a dateless event upcoming rather than past, and this has to
+  // agree with it or an event would vanish from the list while still claiming
+  // to be upcoming on the card.
+  it("never treats an event with no end date as over", () => {
+    expect(hiddenFromStaff(event({ starts_on: null, ends_on: null }), AFTER)).toBe(false);
+    expect(hiddenFromStaff(event({ ends_on: null }), AFTER)).toBe(false);
+  });
+
+  it("hides nothing that doesn't exist", () => {
+    expect(hiddenFromStaff(null, DURING)).toBe(true);
+    expect(hiddenFromStaff(undefined, DURING)).toBe(true);
   });
 });
 
