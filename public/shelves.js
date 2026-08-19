@@ -1208,7 +1208,7 @@ function photosBlock(position) {
       <div class="shelf-photos-head">
         <span class="kicker">HOW IT WAS PACKED</span>
         <label class="btn-quiet shelf-photo-add" for="shelfPhotoInput"
-               style="font-size:11.5px; padding:5px 9px; border-bottom-width:2px;"
+               style="font-size:11.5px; padding:5px 9px; --depress: 0px;"
                data-photo-for="${position.id}">
           ${position.photos.length ? "Add another" : "Add a photo"}
         </label>

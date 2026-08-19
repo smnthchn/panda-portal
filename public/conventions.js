@@ -264,12 +264,12 @@ function myShiftsCard() {
             <span style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:12.5px;">
               ${esc(breakBasisText(total, todayShift.break_count || 1))}
             </span>
-            <button class="btn-ghost-go" style="margin-left:auto; padding:6px 11px; font-size:12.5px; border-radius:999px; border-bottom-width:2px;"
+            <button class="btn-ghost-go" style="margin-left:auto; padding:6px 11px; font-size:12.5px; border-radius:999px; --depress: 0px;"
                     id="goToClockBtn">Clock ›</button>
           </div>
         ` : `
           <div style="margin-top:12px; display:flex;">
-            <button class="btn-ghost-go" style="margin-left:auto; padding:6px 11px; font-size:12.5px; border-radius:999px; border-bottom-width:2px;"
+            <button class="btn-ghost-go" style="margin-left:auto; padding:6px 11px; font-size:12.5px; border-radius:999px; --depress: 0px;"
                     id="goToClockBtn">Clock ›</button>
           </div>
         `}
@@ -707,7 +707,7 @@ function dayWindowTexts(day) {
  */
 function manageJumpButton(anchorId, label) {
   if (!detailData.canManage) return "";
-  return `<button class="btn-quiet" style="font-size:11.5px; padding:5px 9px; border-bottom-width:2px;"
+  return `<button class="btn-quiet" style="font-size:11.5px; padding:5px 9px; --depress: 0px;"
                   data-manage-jump="${esc(anchorId)}">${esc(label)}</button>`;
 }
 
@@ -720,7 +720,7 @@ function scheduleCard() {
       <div class="strip">
         FULL SCHEDULE
         ${canManage
-          ? `<button class="btn-quiet" style="font-size:11.5px; padding:5px 9px; border-bottom-width:2px;"
+          ? `<button class="btn-quiet" style="font-size:11.5px; padding:5px 9px; --depress: 0px;"
                      id="buildScheduleBtn">${shifts.length ? "Build" : "Build schedule"}</button>`
           : ""}
       </div>

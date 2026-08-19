@@ -678,7 +678,7 @@ function holidayCard(day) {
       </div>
       ${answer}
       <button class="btn-quiet" id="editHolidayBtn"
-              style="font-size:11.5px; padding:5px 9px; border-bottom-width:2px;">
+              style="font-size:11.5px; padding:5px 9px; --depress: 0px;">
         ${holiday.decided ? "Change" : "Decide"}
       </button>
     </div>
@@ -888,7 +888,7 @@ function storeHoursCard() {
         <div class="strip">
           STORE HOURS
           <button class="btn-quiet strip-side" id="editHoursBtn"
-                  style="font-size:11.5px; padding:5px 9px; border-bottom-width:2px;">Edit</button>
+                  style="font-size:11.5px; padding:5px 9px; --depress: 0px;">Edit</button>
         </div>
         <div class="card-body">
           <div class="meta" style="line-height:1.7;">${summary.map(esc).join("<br>")}</div>

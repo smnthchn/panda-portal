@@ -72,7 +72,16 @@ kept outside the repo). The rules that make it cohere:
 - **2px solid ink outlines** on every card, never a 1px hairline.
 - **Chunky radii**: cards 16px, inner blocks 14px, buttons 12px, pills 999px.
 - **Hard offset shadows, no blur**: `0 4px 0 var(--shadow)`.
-- **Buttons depress on hover** — `border-bottom-width` 4px → 2px plus `margin-top: 2px`.
+- **Buttons depress on hover**, and the depress must not move the page. The
+  bottom edge is `--edge` at rest plus `--depress` of give; hovering takes
+  `--depress` off the edge and adds it above, so the box never changes size.
+  **Never set `border-bottom-width` on a button** — that used to be two
+  hard-coded 2px values which only cancelled for a full 4px edge, so every
+  smaller button grew by 2px on hover and twitched the whole page. A rule using
+  the `border` shorthand resets the bottom edge behind the calc and so must
+  declare what it changed: `--depress: 0px` for a flat button, `--edge: 0px;
+  --depress: 0px` for a borderless one. Zeroes need units, or the `calc()` is
+  invalid and the border silently falls back to `medium` (3px).
   Green and amber buttons outline in a deeper shade of their own fill, never ink.
 - **Section headers are tinted strips** across the top of a card (`.card.stripped`
   + `.strip`), not floating headings.

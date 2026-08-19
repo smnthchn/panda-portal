@@ -238,12 +238,33 @@ button {
 
 /* ---------- Buttons: thick bottom border that depresses on hover ---------- */
 
+/* A button presses down on hover: the bottom edge gives way by --depress, and
+   the button moves down by the same amount. Because it's the same amount, the
+   space the button occupies never changes, so nothing below it moves.
+
+   That balance is the whole point of expressing it this way. It used to be two
+   hard-coded 2px values, which only cancelled out for a button whose bottom
+   border was the full 4px — override that to 2px for a smaller button and the
+   hover had nothing left to take away, so it added its 2px and grew, shoving
+   the rest of the page down and back on every pass of the mouse.
+
+   The bottom edge is --edge at rest, plus --depress of give on top of it.
+   Hover takes exactly --depress off the edge and puts exactly --depress above.
+   Both halves read the same number, so they cannot drift apart.
+
+   Don't set border-bottom-width directly. A rule that sets the `border`
+   shorthand resets the bottom edge behind the calc, so it has to say what it
+   changed to:
+     --depress: 0            a flat button that doesn't move
+     --edge: 0px; --depress: 0 a borderless button, which has no edge at all */
 button {
+  --edge: 2px;
+  --depress: 2px;
   font-weight: 600;
   font-size: 14px;
   padding: 10px 14px;
   border: 2px solid var(--ink);
-  border-bottom-width: 4px;
+  border-bottom-width: calc(var(--edge) + var(--depress));
   border-radius: 12px;
   background: var(--brand);
   color: var(--on-brand);
@@ -251,21 +272,8 @@ button {
 }
 
 button:hover:not(:disabled) {
-  border-bottom-width: 2px;
-  margin-top: 2px;
-}
-
-/* The depress above only stays put because the 2px it adds above is the 2px it
-   takes off the bottom edge. A button already sitting at a 2px bottom border
-   has nothing to give back, so it just grows — and every hover shoves the rest
-   of the page down and back, which reads as the screen twitching. Flat-bottomed
-   buttons keep the border rule and drop the nudge.
-   `.btn-dashed`, `.back-tile`, `.sig-toggle` and `.stage-box` each say this
-   themselves, next to their own hover styling. */
-.span-pill:hover:not(:disabled),
-.day-tab:hover:not(:disabled),
-.board-slot-clear:hover:not(:disabled) {
-  margin-top: 0;
+  border-bottom-width: var(--edge);
+  margin-top: var(--depress);
 }
 
 button:disabled {
@@ -306,7 +314,7 @@ button:disabled {
 
 .btn-dashed {
   border-style: dashed;
-  border-bottom-width: 2px;
+  --depress: 0px;
   background: transparent;
   color: var(--text);
   border-radius: 14px;
@@ -314,7 +322,6 @@ button:disabled {
 
 .btn-dashed:hover:not(:disabled) {
   background: var(--surface);
-  margin-top: 0;
 }
 
 /* A pill-shaped button (Floorplan / Booth / Maps rows). */
@@ -530,6 +537,7 @@ button:disabled {
 
 /* Back-chevron square used at the top of detail screens. */
 .back-tile {
+  --depress: 0px;
   width: 30px;
   height: 30px;
   flex: none;
@@ -545,11 +553,6 @@ button:disabled {
   font-size: 15px;
   cursor: pointer;
   padding: 0;
-}
-
-.back-tile:hover:not(:disabled) {
-  border-bottom-width: 2px;
-  margin-top: 0;
 }
 
 .title-row {
@@ -823,7 +826,7 @@ button:disabled {
   background: var(--surface);
   color: var(--text);
   font-size: 12px;
-  border-bottom-width: 2px;
+  --depress: 0px;
 }
 
 .span-pill.on {
@@ -2122,7 +2125,7 @@ html.overlay-open {
   color: var(--text);
   font-size: 12.5px;
   line-height: 1.25;
-  border-bottom-width: 2px;
+  --depress: 0px;
 }
 
 .day-tab .day-tab-date {
@@ -2277,7 +2280,6 @@ html.overlay-open {
   margin-top: 0;
   background: var(--paper);
 }
-
 
 .shelf-row .col-stage {
   text-align: center;
@@ -2572,6 +2574,8 @@ button.cell-add:hover {
 }
 
 .board-slot-name {
+  --edge: 0px;
+  --depress: 0px;
   max-width: 190px;
   padding: 3px 2px;
   border: none;
@@ -2591,7 +2595,6 @@ button.cell-add:hover {
 }
 
 .board-slot-name:hover {
-  margin-top: 0;
   color: var(--brand-text);
 }
 
@@ -2600,7 +2603,7 @@ button.cell-add:hover {
   height: 24px;
   padding: 0;
   border: 2px solid var(--ink);
-  border-bottom-width: 2px;
+  --depress: 0px;
   border-radius: 999px;
   background: var(--surface);
   font-family: "Fredoka", sans-serif;
@@ -2643,7 +2646,7 @@ button.cell-add:hover {
   padding: 5px 9px;
   border-radius: 6px;
   border: 2px dashed var(--shadow);
-  border-bottom-width: 2px;
+  --depress: 0px;
   background: transparent;
   color: var(--muted);
   letter-spacing: 0.04em;
@@ -2654,27 +2657,17 @@ button.cell-add:hover {
   border-color: var(--ink);
 }
 
-.sig-toggle:hover:not(:disabled) {
-  margin-top: 0;
-  border-bottom-width: 2px;
-}
-
 .stage-box {
   width: 30px;
   height: 26px;
   padding: 0;
   border: 2px solid var(--ink);
-  border-bottom-width: 2px;
+  --depress: 0px;
   border-radius: 7px;
   background: var(--surface);
   color: var(--on-go);
   font-size: 13px;
   line-height: 1;
-}
-
-.stage-box:hover:not(:disabled) {
-  margin-top: 0;
-  border-bottom-width: 2px;
 }
 
 .stage-box.on {
@@ -3258,6 +3251,7 @@ button.cell-add:hover {
 }
 
 .tier-toggle {
+  --depress: 0px;
   min-width: 32px;
   padding: 4px 6px;
   border: 2px dashed var(--shadow);
@@ -3521,6 +3515,8 @@ button.cell-add:hover {
 }
 
 .chip-name {
+  --edge: 0px;
+  --depress: 0px;
   border: none;
   background: none;
   padding: 0;
@@ -3531,6 +3527,8 @@ button.cell-add:hover {
 }
 
 .chip-clear {
+  --edge: 0px;
+  --depress: 0px;
   border: none;
   background: none;
   padding: 0 0 0 6px;

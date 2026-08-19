@@ -91,11 +91,11 @@ function resourceTile(resource) {
 
       ${canManage && !renaming ? `
         <div class="button-row" style="margin:8px 0 0;">
-          <button class="btn-quiet" style="font-size:11.5px; padding:5px 9px; border-bottom-width:2px;"
+          <button class="btn-quiet" style="font-size:11.5px; padding:5px 9px; --depress: 0px;"
                   data-resource-rename="${resource.id}">Rename</button>
-          <button class="btn-quiet" style="font-size:11.5px; padding:5px 9px; border-bottom-width:2px;"
+          <button class="btn-quiet" style="font-size:11.5px; padding:5px 9px; --depress: 0px;"
                   data-resource-replace="${resource.id}">Replace</button>
-          <button class="btn-danger" style="font-size:11.5px; padding:5px 9px; border-bottom-width:2px;"
+          <button class="btn-danger" style="font-size:11.5px; padding:5px 9px; --depress: 0px;"
                   data-resource-delete="${resource.id}">Delete</button>
         </div>
       ` : ""}
