@@ -7,7 +7,7 @@ import { optionalUrl, hiddenFromStaff } from "../src/routes/conventions.js";
 import { pairClockEvents } from "../src/routes/clock.js";
 import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/dashboard.js";
 import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
-import { mergeIntervals, coverageGaps, toMinutes, resolveSpan, rotaWeeks } from "../src/routes/schedule.js";
+import { mergeIntervals, coverageGaps, toMinutes, resolveSpan, rotaWeeks, scheduleDates } from "../src/routes/schedule.js";
 import { ontarioHolidays, holidaysBetween, holidayOn, easterSunday } from "../src/lib/holidays.js";
 import { fullWeek, availabilityConflict } from "../src/routes/availability.js";
 import {
@@ -1043,6 +1043,49 @@ describe("what staff can see of an event", () => {
   it("hides nothing that doesn't exist", () => {
     expect(hiddenFromStaff(null, DURING)).toBe(true);
     expect(hiddenFromStaff(undefined, DURING)).toBe(true);
+  });
+});
+
+describe("which days an event's builder offers", () => {
+  // Fan Expo 2026: store shuts Monday to pack, load-in Wednesday, doors Thu–Sun.
+  const fanExpo = {
+    store_close_on: "2026-08-24",
+    setup_on: "2026-08-26",
+    starts_on: "2026-08-27",
+    ends_on: "2026-08-30"
+  };
+
+  it("offers the packing day the store closes for", () => {
+    expect(scheduleDates(fanExpo, [])).toContain("2026-08-24");
+  });
+
+  it("leaves no holes between the first day and the last", () => {
+    const days = scheduleDates(fanExpo, []);
+    expect(days).toEqual([
+      "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27",
+      "2026-08-28", "2026-08-29", "2026-08-30"
+    ]);
+  });
+
+  it("stretches to reach a shift outside the run", () => {
+    // A tear-down shift the Monday after doors close.
+    const days = scheduleDates(fanExpo, ["2026-08-31"]);
+    expect(days[days.length - 1]).toBe("2026-08-31");
+    expect(days).toContain("2026-08-24");
+  });
+
+  it("still works for an event with nothing but a start date", () => {
+    expect(scheduleDates({ starts_on: "2026-05-22" }, [])).toEqual(["2026-05-22"]);
+  });
+
+  it("offers nothing when there are no dates at all", () => {
+    expect(scheduleDates({}, [])).toEqual([]);
+  });
+
+  // A mistyped year would otherwise loop for years of tabs.
+  it("stops rather than spinning on a typo'd date", () => {
+    const days = scheduleDates({ starts_on: "2026-08-27", ends_on: "2126-08-30" }, []);
+    expect(days.length).toBe(400);
   });
 });
 

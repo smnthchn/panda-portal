@@ -62,22 +62,45 @@ export function coverageGaps(shifts, hallStart, hallEnd) {
   return gaps;
 }
 
-/** Every date this event touches: its run, its setup day, and any day already worked. */
-function scheduleDates(convention, shiftDates) {
-  const dates = new Set(shiftDates);
+/**
+ * Every date the event's builder offers, end to end with no holes.
+ *
+ * The dates that bound it are the store-closed day, the setup day, the run,
+ * and any day already worked — then every day in between, whether or not
+ * anything is known to happen on it.
+ *
+ * It used to be a sparse set of the days that mattered, and that was the bug:
+ * the store shuts on the Monday so the team can pack for the show, which is a
+ * working day people need shifts on, and it had no tab to put anyone on. The
+ * builder shouldn't be deciding which days count — every day between the first
+ * and the last is offered, and the boss schedules what they schedule.
+ *
+ * Bounded rather than padded to whole weeks on purpose: the screen opens on the
+ * first day needing attention, and a padded Monday a week before setup would
+ * be an empty day with nobody on it, so it would open there every time.
+ */
+export function scheduleDates(convention, shiftDates) {
+  const marks = [...shiftDates].filter(Boolean);
 
-  if (convention.setup_on) dates.add(convention.setup_on);
-
-  if (convention.starts_on) {
-    const end = convention.ends_on || convention.starts_on;
-    for (let d = new Date(`${convention.starts_on}T00:00:00Z`);
-         d <= new Date(`${end}T00:00:00Z`);
-         d.setUTCDate(d.getUTCDate() + 1)) {
-      dates.add(d.toISOString().slice(0, 10));
-    }
+  for (const date of [convention.store_close_on, convention.setup_on,
+                      convention.starts_on, convention.ends_on]) {
+    if (date) marks.push(date);
   }
 
-  return [...dates].sort();
+  if (!marks.length) return [];
+
+  marks.sort();
+  const first = marks[0];
+  const last = marks[marks.length - 1];
+
+  // A typo'd year shouldn't spin: the loop stops, and the wrong dates are
+  // visible in the tabs rather than quietly trimmed to look reasonable.
+  const dates = [];
+  for (let date = first; date <= last && dates.length < 400; date = addDays(date, 1)) {
+    dates.push(date);
+  }
+
+  return dates;
 }
 
 export async function handleScheduleView(request, env, slug) {
@@ -85,7 +108,8 @@ export async function handleScheduleView(request, env, slug) {
   if (!auth.ok) return auth;
 
   const convention = await env.DB.prepare(
-    `SELECT id, name, slug, booth_number, starts_on, ends_on, setup_on FROM conventions WHERE slug = ?`
+    `SELECT id, name, slug, booth_number, starts_on, ends_on, setup_on, store_close_on
+     FROM conventions WHERE slug = ?`
   ).bind(slug).first();
 
   if (!convention) return { ok: false, error: "Convention not found." };
