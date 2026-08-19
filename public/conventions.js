@@ -1002,10 +1002,10 @@ function manageSection() {
       </p>
       <div class="form-grid">
         <label>Date <input type="date" id="dayDate" value="${esc(nextUnsetDay())}"></label>
-        <label>Regular start <input type="time" id="dayRegularStart"></label>
-        <label>Regular end <input type="time" id="dayRegularEnd"></label>
-        <label>Early access start <input type="time" id="dayEarlyStart"></label>
-        <label>Setup start <input type="time" id="daySetupStart"></label>
+        <label>Regular start <input type="time" ${QUARTER_HOUR} id="dayRegularStart"></label>
+        <label>Regular end <input type="time" ${QUARTER_HOUR} id="dayRegularEnd"></label>
+        <label>Early access start <input type="time" ${QUARTER_HOUR} id="dayEarlyStart"></label>
+        <label>Setup start <input type="time" ${QUARTER_HOUR} id="daySetupStart"></label>
         <label>Notes <input type="text" id="dayNotes" placeholder="Optional"></label>
       </div>
       <div class="button-row">
@@ -1048,8 +1048,8 @@ function manageSection() {
           </select>
         </label>
         <label>Date <input type="date" id="shiftDate" value="${esc(convention.starts_on || "")}"></label>
-        <label>Start <input type="time" id="shiftStart" value="09:00"></label>
-        <label>End <input type="time" id="shiftEnd" value="17:00"></label>
+        <label>Start <input type="time" ${QUARTER_HOUR} id="shiftStart" value="09:00"></label>
+        <label>End <input type="time" ${QUARTER_HOUR} id="shiftEnd" value="17:00"></label>
         <label>Notes <input type="text" id="shiftNotes" placeholder="Optional"></label>
         <label>Break minutes <input type="number" id="shiftBreakMinutes" value="0" min="0" max="240"></label>
         <label>Split into
@@ -1524,9 +1524,9 @@ function renderConventionForm(convention) {
       <div style="margin-top:10px;">
         <span style="display:block; font-family:'Fredoka',sans-serif; font-weight:500; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); margin-bottom:4px;">Load-in window</span>
         <div style="display:flex; align-items:center; gap:8px;">
-          <input type="time" id="cLoadInStart" value="${esc(convention?.load_in_start || "")}">
+          <input type="time" ${QUARTER_HOUR} id="cLoadInStart" value="${esc(convention?.load_in_start || "")}">
           <span style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:13px; color:var(--muted);">to</span>
-          <input type="time" id="cLoadInEnd" value="${esc(convention?.load_in_end || "")}">
+          <input type="time" ${QUARTER_HOUR} id="cLoadInEnd" value="${esc(convention?.load_in_end || "")}">
         </div>
       </div>
       <label class="block-label" style="margin:10px 0 0;">Important notes

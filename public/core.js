@@ -96,6 +96,20 @@ function hideUploadBar() {
   uploadBar = null;
 }
 
+/**
+ * Shifts and opening hours are decided in quarter hours, so that's all the
+ * time picker offers to scroll through — a minute-by-minute list whizzes past
+ * the :30 you were aiming for. Drop it into any `<input type="time">`.
+ *
+ * It steers the picker without fencing the field in: nothing here validates
+ * against it, so an odd time typed in still reads back and still saves.
+ *
+ * Deliberately not on the clock-out fix in `app.js` — that's a
+ * `datetime-local` and stays on whole minutes, because somebody who forgot to
+ * clock out arrived at 11:47, not a quarter past anything.
+ */
+const QUARTER_HOUR = 'step="900"';
+
 /** Every piece of interpolated data goes through this before hitting innerHTML. */
 function esc(value) {
   if (value === null || value === undefined) return "";

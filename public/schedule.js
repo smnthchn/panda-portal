@@ -238,8 +238,8 @@ function shiftEditor(shift, day) {
         <label>What
           <input type="text" id="shiftWhat" value="${esc(shift?.title || "Booth")}" placeholder="Booth">
         </label>
-        <label>Start <input type="time" id="shiftFrom" value="${esc(shift?.starts_at || suggestedStart())}"></label>
-        <label>End <input type="time" id="shiftTo" value="${esc(shift?.ends_at || suggestedEnd())}"></label>
+        <label>Start <input type="time" ${QUARTER_HOUR} id="shiftFrom" value="${esc(shift?.starts_at || suggestedStart())}"></label>
+        <label>End <input type="time" ${QUARTER_HOUR} id="shiftTo" value="${esc(shift?.ends_at || suggestedEnd())}"></label>
         <label>Break minutes
           <input type="number" id="shiftBreakMins" value="${minutes}" min="0" max="240">
         </label>
@@ -636,8 +636,8 @@ function holidayCard(day) {
             </p>
 
             <div class="inline-form" style="margin-bottom:10px;">
-              <input type="time" id="holidayOpens" value="${esc(holidayDraft.opens_at || "")}">
-              <input type="time" id="holidayCloses" value="${esc(holidayDraft.closes_at || "")}">
+              <input type="time" ${QUARTER_HOUR} id="holidayOpens" value="${esc(holidayDraft.opens_at || "")}">
+              <input type="time" ${QUARTER_HOUR} id="holidayCloses" value="${esc(holidayDraft.closes_at || "")}">
             </div>
           `}
 
@@ -849,10 +849,10 @@ function storeShiftEditor(shift, day) {
           <input type="text" id="storeWhat" value="${esc(shift?.title || "Store floor")}" placeholder="Store floor">
         </label>
         <label>Start
-          <input type="time" id="storeFrom" value="${esc(shift?.starts_at || defaultFrom)}">
+          <input type="time" ${QUARTER_HOUR} id="storeFrom" value="${esc(shift?.starts_at || defaultFrom)}">
         </label>
         <label>End
-          <input type="time" id="storeTo" value="${esc(shift?.ends_at || defaultTo)}">
+          <input type="time" ${QUARTER_HOUR} id="storeTo" value="${esc(shift?.ends_at || defaultTo)}">
         </label>
         <label>Break minutes
           <input type="number" id="storeBreakMins" value="${minutes}" min="0" max="240">
@@ -906,8 +906,8 @@ function storeHoursCard() {
             <span style="width:78px; flex:none; font-family:'Fredoka',sans-serif; font-weight:600; font-size:12.5px;">
               ${esc(row.name)}
             </span>
-            <input type="time" data-opens="${row.weekday}" value="${esc(row.opens_at)}" ${row.is_closed ? "disabled" : ""}>
-            <input type="time" data-closes="${row.weekday}" value="${esc(row.closes_at)}" ${row.is_closed ? "disabled" : ""}>
+            <input type="time" ${QUARTER_HOUR} data-opens="${row.weekday}" value="${esc(row.opens_at)}" ${row.is_closed ? "disabled" : ""}>
+            <input type="time" ${QUARTER_HOUR} data-closes="${row.weekday}" value="${esc(row.closes_at)}" ${row.is_closed ? "disabled" : ""}>
             <label class="meta" style="display:flex; align-items:center; gap:5px; white-space:nowrap;">
               <input type="checkbox" data-closed="${row.weekday}" ${row.is_closed ? "checked" : ""}> Closed
             </label>
