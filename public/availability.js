@@ -25,11 +25,9 @@ function availabilityEditor(week) {
           <span>${esc(day.name)}</span>
         </label>
         <div class="avail-times">
-          <input type="time" ${QUARTER_HOUR} data-avail-from="${day.weekday}" value="${esc(day.earliest)}"
-                 placeholder="From" ${day.is_available ? "" : "disabled"}>
+          ${timeSelect(`data-avail-from="${day.weekday}" ${day.is_available ? "" : "disabled"}`, day.earliest)}
           <span class="meta">to</span>
-          <input type="time" ${QUARTER_HOUR} data-avail-to="${day.weekday}" value="${esc(day.latest)}"
-                 ${day.is_available ? "" : "disabled"}>
+          ${timeSelect(`data-avail-to="${day.weekday}" ${day.is_available ? "" : "disabled"}`, day.latest)}
         </div>
       </div>
     `).join("")}

@@ -86,16 +86,22 @@ kept outside the repo). The rules that make it cohere:
 - **Section headers are tinted strips** across the top of a card (`.card.stripped`
   + `.strip`), not floating headings.
 - Fredoka for numbers/labels/buttons, Public Sans for body copy.
-- **Time pickers offer quarter hours.** Every `<input type="time">` carries
-  `${QUARTER_HOUR}` from `core.js` (`step="900"`), because shifts and opening
-  hours are decided in quarter hours and a minute-by-minute scroll list whizzes
-  straight past the :30 you were aiming for. It steers the picker without
-  fencing the field in — nothing in the app calls `checkValidity()`, there are
-  no `<form>` elements and no `:invalid` styling, so an odd time typed in still
-  reads back and still saves. **The clock-out fix in `app.js` is deliberately
-  excluded**: it's a `datetime-local` on default whole-minute steps, because
-  somebody who forgot to clock out arrived at 11:47, not a quarter past
-  anything.
+- **Times are picked from `timeSelect()` in `core.js`, not `<input type="time">`.**
+  Shifts and opening hours are decided in quarter hours, and the native picker
+  can't be told to list them: Chrome honours `step="900"` for the arrow keys
+  (11:30 up is 11:45) but its dropdown still shows all sixty minutes, so
+  scrolling it with a mouse whizzes straight past the :30 you were aiming for.
+  A select lists exactly what we put in it, and matches the other controls on
+  these forms. It reads back through `.value` like the input it replaced, so
+  save handlers didn't change.
+  **Assign into one with `setTimeSelect()`, never `.value =`** — a select
+  silently ignores a value it has no option for, so an odd stored time would
+  blank the field and the next save would write that blank back over it.
+  `setTimeSelect()` gives the odd time an option first, in the right place in
+  the order; `timeSelect()` does the same for a value it renders with.
+  **The clock-out fix in `app.js` is deliberately excluded**: it stays a
+  `datetime-local` on whole minutes, because somebody who forgot to clock out
+  arrived at 11:47, not a quarter past anything.
 
 **Every colour comes from a CSS custom property**, never a literal — five palettes
 ship (`habbo`, `mario`, `bubble`, `sherbet`, `arcade`) and staff pick one in

@@ -97,18 +97,69 @@ function hideUploadBar() {
 }
 
 /**
- * Shifts and opening hours are decided in quarter hours, so that's all the
- * time picker offers to scroll through — a minute-by-minute list whizzes past
- * the :30 you were aiming for. Drop it into any `<input type="time">`.
+ * A time field offering quarter hours and nothing else.
  *
- * It steers the picker without fencing the field in: nothing here validates
- * against it, so an odd time typed in still reads back and still saves.
+ * `<input type="time" step="900">` does not do this. Chrome honours step for
+ * the arrow keys — 11:30 up is 11:45 — but its dropdown still lists all sixty
+ * minutes, so scrolling it with a mouse whizzes straight past the :30 you were
+ * aiming for. A select lists exactly what we put in it, and matches the other
+ * controls on these forms, which are already selects.
  *
- * Deliberately not on the clock-out fix in `app.js` — that's a
- * `datetime-local` and stays on whole minutes, because somebody who forgot to
- * clock out arrived at 11:47, not a quarter past anything.
+ * Shifts and opening hours are decided in quarter hours, so the list is a
+ * quarter hour apart all day. An odd time already saved keeps its own entry in
+ * the right place in the order, so opening a form can never quietly round
+ * somebody's hours to the nearest quarter.
+ *
+ * Deliberately not used by the clock-out fix in `app.js` — that stays a
+ * `datetime-local` on whole minutes, because somebody who forgot to clock out
+ * arrived at 11:47, not a quarter past anything.
  */
-const QUARTER_HOUR = 'step="900"';
+const QUARTER_MINUTES = 15;
+
+function quarterHours(chosen) {
+  const times = [];
+  for (let m = 0; m < 24 * 60; m += QUARTER_MINUTES) {
+    times.push(`${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+  }
+  if (chosen && !times.includes(chosen)) times.push(chosen);
+  return times.sort();
+}
+
+/**
+ * `attrs` is the raw attribute string — id, data-*, disabled. `value` is an
+ * "HH:MM" or blank. Reads back through `.value` exactly like the input it
+ * replaced, so every existing save handler keeps working untouched.
+ */
+function timeSelect(attrs = "", value = "") {
+  const chosen = /^\d{2}:\d{2}$/.test(value || "") ? value : "";
+
+  return `<select class="time-select" ${attrs}>
+    <option value="">—</option>
+    ${quarterHours(chosen).map(t =>
+      `<option value="${t}"${t === chosen ? " selected" : ""}>${esc(formatTime(t))}</option>`
+    ).join("")}
+  </select>`;
+}
+
+/**
+ * Put a time into a time select. **Always use this rather than assigning
+ * `.value`** — a select silently ignores a value it has no option for, so an
+ * odd stored time would blank the field, and the next save would write that
+ * blank back over it. Here the odd time gets an option first, in the right
+ * place in the order.
+ */
+function setTimeSelect(el, value) {
+  if (!el) return;
+
+  const time = /^\d{2}:\d{2}$/.test(value || "") ? value : "";
+
+  if (time && ![...el.options].some(o => o.value === time)) {
+    const before = [...el.options].find(o => o.value && o.value > time);
+    el.add(new Option(formatTime(time), time), before || null);
+  }
+
+  el.value = time;
+}
 
 /** Every piece of interpolated data goes through this before hitting innerHTML. */
 function esc(value) {

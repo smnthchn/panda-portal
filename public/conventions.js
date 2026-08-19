@@ -1002,10 +1002,10 @@ function manageSection() {
       </p>
       <div class="form-grid">
         <label>Date <input type="date" id="dayDate" value="${esc(nextUnsetDay())}"></label>
-        <label>Regular start <input type="time" ${QUARTER_HOUR} id="dayRegularStart"></label>
-        <label>Regular end <input type="time" ${QUARTER_HOUR} id="dayRegularEnd"></label>
-        <label>Early access start <input type="time" ${QUARTER_HOUR} id="dayEarlyStart"></label>
-        <label>Setup start <input type="time" ${QUARTER_HOUR} id="daySetupStart"></label>
+        <label>Regular start ${timeSelect('id="dayRegularStart"')}</label>
+        <label>Regular end ${timeSelect('id="dayRegularEnd"')}</label>
+        <label>Early access start ${timeSelect('id="dayEarlyStart"')}</label>
+        <label>Setup start ${timeSelect('id="daySetupStart"')}</label>
         <label>Notes <input type="text" id="dayNotes" placeholder="Optional"></label>
       </div>
       <div class="button-row">
@@ -1048,8 +1048,8 @@ function manageSection() {
           </select>
         </label>
         <label>Date <input type="date" id="shiftDate" value="${esc(convention.starts_on || "")}"></label>
-        <label>Start <input type="time" ${QUARTER_HOUR} id="shiftStart" value="09:00"></label>
-        <label>End <input type="time" ${QUARTER_HOUR} id="shiftEnd" value="17:00"></label>
+        <label>Start ${timeSelect('id="shiftStart"', "09:00")}</label>
+        <label>End ${timeSelect('id="shiftEnd"', "17:00")}</label>
         <label>Notes <input type="text" id="shiftNotes" placeholder="Optional"></label>
         <label>Break minutes <input type="number" id="shiftBreakMinutes" value="0" min="0" max="240"></label>
         <label>Split into
@@ -1132,9 +1132,15 @@ function readDayForm() {
   return payload;
 }
 
+const DAY_TIME_FIELDS = ["setup_start", "early_start", "regular_start", "regular_end"];
+
 function fillDayForm(day) {
   for (const [field, id] of Object.entries(DAY_FIELD_IDS)) {
-    document.getElementById(id).value = day?.[field] || "";
+    const el = document.getElementById(id);
+    // The time fields are selects; assigning a value they have no option for
+    // would quietly empty them, and the next save would write that back.
+    if (DAY_TIME_FIELDS.includes(field)) setTimeSelect(el, day?.[field]);
+    else el.value = day?.[field] || "";
   }
 }
 
@@ -1204,11 +1210,11 @@ function wireDayForm(conventionId, reload) {
     if (!regular) return;
 
     if (!earlyStart.value) {
-      earlyStart.value = oneHourEarlier(regular) || "";
+      setTimeSelect(earlyStart, oneHourEarlier(regular));
     }
 
     if (!setupStart.value) {
-      setupStart.value = oneHourEarlier(earlyStart.value || regular) || "";
+      setTimeSelect(setupStart, oneHourEarlier(earlyStart.value || regular));
     }
   };
 
@@ -1524,9 +1530,9 @@ function renderConventionForm(convention) {
       <div style="margin-top:10px;">
         <span style="display:block; font-family:'Fredoka',sans-serif; font-weight:500; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); margin-bottom:4px;">Load-in window</span>
         <div style="display:flex; align-items:center; gap:8px;">
-          <input type="time" ${QUARTER_HOUR} id="cLoadInStart" value="${esc(convention?.load_in_start || "")}">
+          ${timeSelect('id="cLoadInStart"', convention?.load_in_start)}
           <span style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:13px; color:var(--muted);">to</span>
-          <input type="time" ${QUARTER_HOUR} id="cLoadInEnd" value="${esc(convention?.load_in_end || "")}">
+          ${timeSelect('id="cLoadInEnd"', convention?.load_in_end)}
         </div>
       </div>
       <label class="block-label" style="margin:10px 0 0;">Important notes
