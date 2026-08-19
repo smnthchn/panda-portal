@@ -255,6 +255,19 @@ button:hover:not(:disabled) {
   margin-top: 2px;
 }
 
+/* The depress above only stays put because the 2px it adds above is the 2px it
+   takes off the bottom edge. A button already sitting at a 2px bottom border
+   has nothing to give back, so it just grows — and every hover shoves the rest
+   of the page down and back, which reads as the screen twitching. Flat-bottomed
+   buttons keep the border rule and drop the nudge.
+   `.btn-dashed`, `.back-tile`, `.sig-toggle` and `.stage-box` each say this
+   themselves, next to their own hover styling. */
+.span-pill:hover:not(:disabled),
+.day-tab:hover:not(:disabled),
+.board-slot-clear:hover:not(:disabled) {
+  margin-top: 0;
+}
+
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -816,6 +829,13 @@ button:disabled {
 .span-pill.on {
   background: var(--clock-bg);
   color: var(--clock-text);
+}
+
+/* Hover has to say something, and it can't be a size — see the flat-bottomed
+   button note above. A tint costs no layout. The selected pill is left alone,
+   or it would flicker off its own colour on the way past. */
+.span-pill:not(.on):hover:not(:disabled) {
+  background: var(--chip);
 }
 
 .span-days {
