@@ -68,7 +68,7 @@ export async function handleCreateGrouping(request, env) {
 
   const last = await env.DB.prepare(`SELECT MAX(sort_order) AS n FROM groupings`).first();
 
-  await env.DB.prepare(
+  const added = await env.DB.prepare(
     `INSERT INTO groupings (name, name_key, shopify_query, box_class, notes, sort_order)
      VALUES (?, ?, ?, ?, ?, ?)`
   ).bind(
@@ -80,7 +80,7 @@ export async function handleCreateGrouping(request, env) {
     (last?.n ?? -1) + 1
   ).run();
 
-  return { ok: true };
+  return { ok: true, id: added.meta?.last_row_id };
 }
 
 export async function handleUpdateGrouping(request, env, groupingId) {
@@ -101,8 +101,16 @@ export async function handleUpdateGrouping(request, env, groupingId) {
 
   if (body.name !== undefined) {
     const name = requiredText(body.name, "Name");
+    const key = groupingKey(name);
+
+    const clash = await env.DB.prepare(
+      `SELECT id FROM groupings WHERE name_key = ? AND id != ?`
+    ).bind(key, id).first();
+
+    if (clash) return { ok: false, error: `There's already a grouping called ${name}.` };
+
     updates.push("name = ?", "name_key = ?");
-    values.push(name, groupingKey(name));
+    values.push(name, key);
   }
 
   if (body.shopify_query !== undefined) {

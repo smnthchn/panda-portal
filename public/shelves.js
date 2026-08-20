@@ -14,6 +14,7 @@ let arrangeMode = false;
 let openSignageFor = null;
 let openBoardsFor = null;       // which row's Boards strip is open
 let openShelfFor = null;        // which row's section/remove strip is open
+let newGroupingFor = null;      // which row's strip is showing the new-family form
 let openGroupingsFor = null;    // which row's product strip is open
 let viewingPhoto = null;        // photo id, shown full size
 let viewingBoard = null;        // { positionId, face }, shown full size
@@ -490,9 +491,12 @@ function tierBars(position) {
 /**
  * Choosing what stands on a shelf.
  *
- * The families come from the store's library rather than being typed here:
- * one rack is HG Universal Century at every show, and only the depth changes.
- * Facings is that dial — 3 or 4 at Anime North, 1 or 2 at Fan Expo.
+ * The families come from the store's library — one rack is HG Universal
+ * Century at every show, and only the depth changes. Facings is that dial:
+ * 3 or 4 at Anime North, 1 or 2 at Fan Expo. The library is edited from
+ * here too — the add list ends in "+ New grouping…", and the ✎ renames a
+ * family everywhere it appears, since this strip is the only place the
+ * library surfaces.
  */
 function groupingsStrip(position) {
   const onShelf = new Map(position.groupings.map(g => [g.id, g]));
@@ -506,6 +510,9 @@ function groupingsStrip(position) {
         return `
         <span class="board-slot">
           <span class="grouping-chip on">${esc(g.name)}</span>
+          <button class="board-slot-clear" data-grouping-rename="${g.id}"
+                  data-name="${esc(g.name)}"
+                  title="Rename this family — everywhere it appears">✎</button>
 
           ${offTier ? `
             <span class="tier-note">
@@ -546,13 +553,27 @@ function groupingsStrip(position) {
                data-tier-count="${position.id}">
       </label>
 
-      <select data-grouping-add="${position.id}">
-        <option value="">+ Add a grouping…</option>
-        ${shelfData.groupings
-          .filter(g => !onShelf.has(g.id))
-          .map(g => `<option value="${g.id}">${esc(g.name)}</option>`)
-          .join("")}
-      </select>
+      ${newGroupingFor === position.id ? `
+        <span class="board-slot">
+          <input type="text" id="newGroupingName" placeholder="Family name" style="width:160px;">
+          <select id="newGroupingBox" title="How wide one box stands — it decides how many face out per tier">
+            <option value="small">Small box</option>
+            <option value="medium" selected>Medium box</option>
+            <option value="large">Large box</option>
+            <option value="oversize">Oversize box</option>
+          </select>
+          <button class="btn-quiet" id="createGroupingBtn">Add</button>
+        </span>
+      ` : `
+        <select data-grouping-add="${position.id}">
+          <option value="">+ Add a grouping…</option>
+          ${shelfData.groupings
+            .filter(g => !onShelf.has(g.id))
+            .map(g => `<option value="${g.id}">${esc(g.name)}</option>`)
+            .join("")}
+          <option value="__new">+ New grouping…</option>
+        </select>
+      `}
 
       <button class="btn-quiet" id="closeGroupingsBtn"
               style="border:none; background:none; padding:6px 8px;">Save</button>
@@ -581,6 +602,11 @@ function shelfStrip(position) {
           <option value="${esc(wall)}" ${wall === position.wall ? "selected" : ""}>${esc(wall)}</option>
         `).join("")}
       </select>
+
+      <label class="checkbox-label" title="Draws in the cream fill on the map, like the cash desk">
+        <input type="checkbox" data-shelf-kind ${position.kind === "other" ? "checked" : ""}>
+        Not a selling shelf
+      </label>
 
       <button class="btn-danger" data-delete-shelf="${position.id}">Remove ${esc(position.code)}</button>
 
@@ -1574,6 +1600,7 @@ function wireShelfPlan() {
 
   document.getElementById("closeGroupingsBtn")?.addEventListener("click", () => {
     openGroupingsFor = null;
+    newGroupingFor = null;
     drawShelfPlan();
   });
 
@@ -1581,12 +1608,66 @@ function wireShelfPlan() {
     select.onchange = async () => {
       if (!select.value) return;
 
+      if (select.value === "__new") {
+        newGroupingFor = Number(select.dataset.groupingAdd);
+        drawShelfPlan();
+        return;
+      }
+
       const result = await apiSend(`/api/shelf-positions/${select.dataset.groupingAdd}/grouping`, "PUT", {
         grouping_id: Number(select.value)
       });
 
       if (!result.ok) {
         showFormError("shelfError", result.error || "Could not put that on the shelf.");
+        return;
+      }
+
+      await reload();
+    };
+  });
+
+  // A brand-new family goes straight onto the shelf it was typed on — that's
+  // why you were adding it.
+  document.getElementById("createGroupingBtn")?.addEventListener("click", async () => {
+    const positionId = newGroupingFor;
+    const name = document.getElementById("newGroupingName")?.value.trim();
+    const boxClass = document.getElementById("newGroupingBox")?.value;
+    if (!name) return;
+
+    const created = await apiSend("/api/groupings", "POST", { name, box_class: boxClass });
+
+    if (!created.ok) {
+      showFormError("shelfError", created.error || "Could not add that family.");
+      return;
+    }
+
+    if (created.id) {
+      const assigned = await apiSend(`/api/shelf-positions/${positionId}/grouping`, "PUT", {
+        grouping_id: created.id
+      });
+
+      if (!assigned.ok) {
+        showFormError("shelfError", assigned.error || "Added the family, but could not put it on the shelf.");
+      }
+    }
+
+    newGroupingFor = null;
+    await reload();
+  });
+
+  document.querySelectorAll("[data-grouping-rename]").forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const name = prompt("Rename this family — it changes everywhere it appears:", btn.dataset.name);
+      if (!name || !name.trim() || name.trim() === btn.dataset.name) return;
+
+      const result = await apiSend(`/api/groupings/${btn.dataset.groupingRename}`, "PATCH", {
+        name: name.trim()
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not rename that.");
         return;
       }
 
@@ -1675,12 +1756,15 @@ function wireShelfPlan() {
   document.getElementById("closeShelfBtn")?.addEventListener("click", async () => {
     const select = document.querySelector("[data-wall]");
     const codeInput = document.querySelector("[data-shelf-code]");
+    const kindBox = document.querySelector("[data-shelf-kind]");
     const position = shelfData.positions.find(p => p.id === openShelfFor);
 
     const patch = {};
     if (position && select && select.value !== position.wall) patch.wall = select.value;
     const code = codeInput?.value.trim();
     if (position && code && code !== position.code) patch.code = code;
+    const kind = kindBox?.checked ? "other" : "shelf";
+    if (position && kindBox && kind !== position.kind) patch.kind = kind;
 
     if (!position || !Object.keys(patch).length) {
       openShelfFor = null;

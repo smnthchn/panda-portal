@@ -547,6 +547,13 @@ export async function handleUpdatePosition(request, env, positionId) {
     values.push(optionalText(body.product) || "");
   }
 
+  // "other" is the cream fill on the map — a unit that isn't a selling shelf,
+  // like the cash desk or the A-frame.
+  if (body.kind !== undefined) {
+    updates.push("kind = ?");
+    values.push(body.kind === "other" ? "other" : "shelf");
+  }
+
   if (body.unit_type !== undefined) {
     const type = optionalText(body.unit_type) || "";
     if (type && !UNIT_TYPES.includes(type)) throw new BadRequest("Unknown unit type.");
