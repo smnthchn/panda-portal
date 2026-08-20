@@ -313,7 +313,7 @@ function shelfRow(position) {
       <span class="col-shelf">
         ${canEdit
           ? `<button class="shelf-code" data-shelf="${position.id}"
-                     title="Move it to another section, or remove it">${esc(position.code)}</button>`
+                     title="Rename it, move it to another section, or remove it">${esc(position.code)}</button>`
           : esc(position.code)}
       </span>
 
@@ -561,7 +561,7 @@ function groupingsStrip(position) {
 }
 
 /**
- * Which section a shelf is in, and the way to remove it.
+ * A shelf's name, which section it's in, and the way to remove it.
  *
  * Unlike the signage and boards strips, this one waits for Save. Moving a
  * shelf takes its row out from under you and re-sorts the grid around it, so
@@ -571,6 +571,10 @@ function groupingsStrip(position) {
 function shelfStrip(position) {
   return `
     <div class="signage-strip shelf-strip">
+      <span class="board-slot-face">NAME</span>
+      <input type="text" data-shelf-code="${position.id}" value="${esc(position.code)}"
+             maxlength="12" style="width:76px;">
+
       <span class="board-slot-face">SECTION</span>
       <select data-wall="${position.id}">
         ${shelfData.walls.map(wall => `
@@ -1653,24 +1657,29 @@ function wireShelfPlan() {
     };
   });
 
-  // Save is what moves the shelf. Choosing a section only fills the box in;
-  // walking away from the strip leaves the shelf exactly where it was.
+  // Save is what moves or renames the shelf. Filling the boxes in does
+  // nothing on its own; walking away from the strip leaves the shelf exactly
+  // as it was.
   document.getElementById("closeShelfBtn")?.addEventListener("click", async () => {
     const select = document.querySelector("[data-wall]");
+    const codeInput = document.querySelector("[data-shelf-code]");
     const position = shelfData.positions.find(p => p.id === openShelfFor);
 
-    if (!select || !position || select.value === position.wall) {
+    const patch = {};
+    if (position && select && select.value !== position.wall) patch.wall = select.value;
+    const code = codeInput?.value.trim();
+    if (position && code && code !== position.code) patch.code = code;
+
+    if (!position || !Object.keys(patch).length) {
       openShelfFor = null;
       drawShelfPlan();
       return;
     }
 
-    const result = await apiSend(`/api/shelf-positions/${position.id}`, "PATCH", {
-      wall: select.value
-    });
+    const result = await apiSend(`/api/shelf-positions/${position.id}`, "PATCH", patch);
 
     if (!result.ok) {
-      showFormError("shelfError", result.error || "Could not move that shelf.");
+      showFormError("shelfError", result.error || "Could not save that shelf.");
       return;
     }
 

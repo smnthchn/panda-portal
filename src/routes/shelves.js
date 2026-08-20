@@ -518,6 +518,20 @@ export async function handleUpdatePosition(request, env, positionId) {
   const values = [];
   let movedSection = false;
 
+  if (body.code !== undefined) {
+    const code = optionalText(body.code);
+    if (!code) throw new BadRequest("Give the position a short name, like E8.");
+
+    const clash = await env.DB.prepare(
+      `SELECT id FROM shelf_positions WHERE convention_id = ? AND code = ? AND id != ?`
+    ).bind(position.convention_id, code, id).first();
+
+    if (clash) return { ok: false, error: `There's already a ${code} in this booth.` };
+
+    updates.push("code = ?");
+    values.push(code);
+  }
+
   if (body.wall !== undefined) {
     if (!WALLS.includes(body.wall)) throw new BadRequest("That isn't one of the booth's sections.");
 
