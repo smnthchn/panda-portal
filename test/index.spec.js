@@ -2,7 +2,7 @@ import { env, createExecutionContext, waitOnExecutionContext } from "cloudflare:
 import { describe, it, expect } from "vitest";
 import worker from "../src";
 import { matchPath, getCookie, optionalText, requiredText, BadRequest } from "../src/lib/http.js";
-import { roleOutranks, isValidRole } from "../src/lib/permissions.js";
+import { roleOutranks, isValidRole, ROLES, ROLE_LABELS } from "../src/lib/permissions.js";
 import { optionalUrl, hiddenFromStaff } from "../src/routes/conventions.js";
 import { pairClockEvents } from "../src/routes/clock.js";
 import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/dashboard.js";
@@ -102,6 +102,28 @@ describe("role ranking", () => {
   it("rejects unknown roles", () => {
     expect(isValidRole("manager")).toBe(false);
     expect(roleOutranks("manager", "staff")).toBe(false);
+  });
+
+  it("knows seasonal staff", () => {
+    expect(isValidRole("seasonal")).toBe(true);
+    expect(ROLES).toContain("seasonal");
+    expect(ROLE_LABELS.seasonal).toBe("Seasonal Staff");
+  });
+
+  it("lets seasonal staff reach everything staff reach", () => {
+    // The point of the role is who's seasonal, not a lower tier of access —
+    // a staff-only checklist or document is theirs to read too.
+    expect(roleOutranks("seasonal", "staff")).toBe(true);
+    expect(roleOutranks("seasonal", "volunteer")).toBe(true);
+    expect(roleOutranks("staff", "seasonal")).toBe(true);
+  });
+
+  it("keeps seasonal staff out of boss-only content", () => {
+    expect(roleOutranks("seasonal", "boss")).toBe(false);
+  });
+
+  it("still ranks volunteers below seasonal staff", () => {
+    expect(roleOutranks("volunteer", "seasonal")).toBe(false);
   });
 });
 

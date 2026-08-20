@@ -185,7 +185,7 @@ function shiftCard(shift, day) {
         <div style="flex:1; min-width:0;">
           <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:13.5px;">
             ${person ? esc(person.name) : "Unassigned"}
-            ${shift.employee_role === "volunteer" ? `<span class="meta"> · volunteer</span>` : ""}
+            ${roleTag(shift.employee_role)}
           </div>
           <div class="meta">${esc(shift.title)}</div>
         </div>

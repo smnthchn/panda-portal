@@ -264,6 +264,22 @@ function initialsOf(fullName) {
  * initials. Same 2px-outlined circle either way, so a team with a mix of
  * both still lines up.
  */
+/**
+ * The little marker after a name on a roster or a shift card. Boss and staff
+ * are the unremarkable case and say nothing; anyone on a different footing is
+ * worth saying out loud, which is the whole reason Seasonal Staff is a role
+ * rather than a note in somebody's file.
+ *
+ * Written by exclusion so a role added later shows up here on its own, instead
+ * of silently reading as staff.
+ */
+const UNREMARKABLE_ROLES = ["boss", "staff"];
+
+function roleTag(role) {
+  if (!role || UNREMARKABLE_ROLES.includes(role)) return "";
+  return `<span class="meta"> · ${esc(role)}</span>`;
+}
+
 function avatarHtml(person, extraClass = "") {
   const name = person?.name || person?.full_name || "";
   const initials = esc(person?.initials || initialsOf(name));

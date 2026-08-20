@@ -469,7 +469,7 @@ function rosterCard(data) {
             <div style="flex:1;">
               <div style="font-size:13px;">
                 ${esc(person.name)}
-                ${person.role === "volunteer" ? `<span class="meta"> · volunteer</span>` : ""}
+                ${roleTag(person.role)}
               </div>
               ${boss ? `<div class="meta">${esc(rosterLine(person))}</div>` : ""}
             </div>
@@ -566,7 +566,12 @@ function wireClockButtons(reload) {
 }
 
 function roleDisplayName(role) {
-  return { boss: "Boss", staff: "Staff", volunteer: "Volunteer" }[role] || role;
+  return {
+    boss: "Boss",
+    staff: "Staff",
+    seasonal: "Seasonal Staff",
+    volunteer: "Volunteer"
+  }[role] || role;
 }
 
 /* ---------- Knowledge Base & My Folder ---------- */

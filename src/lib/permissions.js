@@ -1,14 +1,25 @@
-export const ROLES = ["boss", "staff", "volunteer"];
+export const ROLES = ["boss", "staff", "seasonal", "volunteer"];
 
 export const ROLE_LABELS = {
   boss: "Boss",
   staff: "Staff",
+  seasonal: "Seasonal Staff",
   volunteer: "Volunteer"
 };
 
-/** Higher rank sees everything a lower rank sees. Used for knowledge base gating. */
+/**
+ * Higher rank sees everything a lower rank sees. Used for knowledge base and
+ * checklist gating.
+ *
+ * Seasonal staff sit level with staff on purpose: they're the same job on a
+ * shorter contract, so a staff-only checklist or document is theirs to read
+ * too. The role exists to say who's seasonal on the roster, not to fence them
+ * off. Equal ranks are fine here — nothing is ever gated on "seasonal" itself,
+ * so the comparison is only ever asking whether they reach staff.
+ */
 const ROLE_RANK = {
   volunteer: 0,
+  seasonal: 1,
   staff: 1,
   boss: 2
 };

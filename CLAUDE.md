@@ -167,7 +167,17 @@ verified properly — RS256 signature against Google's JWKS, plus issuer, audien
 and expiry. Sessions expire server-side; `expires_at` is written and compared with
 SQLite `datetime()`, **not** ISO strings (they don't compare correctly).
 
-Roles: `boss`, `staff`, `volunteer`. Access is a role default plus optional
+Roles: `boss`, `staff`, `seasonal`, `volunteer`. **Seasonal Staff ranks level
+with staff** in `ROLE_RANK` — it's the same job on a shorter contract, so
+staff-only documents and checklists are theirs to read; the role exists to say
+who's seasonal on a roster, not to fence them off. Equal ranks are fine there,
+because nothing is ever gated on `seasonal` itself. Its permission defaults are
+copied from staff's *current* rows by migration 0031 rather than typed out, so
+they mirror whatever staff had grown into rather than reinstating the original
+seed. Every (role, permission) pair must exist or a role resolves to no
+permissions at all rather than to its defaults.
+
+Access is a role default plus optional
 per-person overrides:
 
 - `role_permissions` — the default for each (role, permission) pair
