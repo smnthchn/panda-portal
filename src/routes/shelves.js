@@ -803,6 +803,9 @@ export async function handleDeletePosition(request, env, positionId) {
     env.DB.prepare(`DELETE FROM shelf_stage_flags WHERE position_id = ?`).bind(id),
     env.DB.prepare(`DELETE FROM shelf_board_art WHERE position_id = ?`).bind(id),
     env.DB.prepare(`DELETE FROM shelf_photos WHERE position_id = ?`).bind(id),
+    env.DB.prepare(`DELETE FROM shelf_grouping_tiers WHERE position_id = ?`).bind(id),
+    env.DB.prepare(`DELETE FROM shelf_groupings WHERE position_id = ?`).bind(id),
+    env.DB.prepare(`DELETE FROM shelf_tiers WHERE position_id = ?`).bind(id),
     env.DB.prepare(`DELETE FROM shelf_positions WHERE id = ?`).bind(id)
   ]);
 

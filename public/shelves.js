@@ -1683,7 +1683,7 @@ function wireShelfPlan() {
       const id = Number(btn.dataset.deleteShelf);
       const position = shelfData.positions.find(p => p.id === id);
 
-      if (!confirm(`Remove ${position?.code} from the booth? Its ticks, boards and photos go with it.`)) {
+      if (!confirm(`Remove ${position?.code} from the booth? Its ticks, boards, photos and shelf layout go with it.`)) {
         return;
       }
 
