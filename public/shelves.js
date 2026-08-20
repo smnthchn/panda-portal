@@ -985,6 +985,13 @@ function boothMap() {
             Drag a unit, or select one and nudge it with the arrow keys —
             1″ a press, 6″ with Shift.
           </p>
+          <div class="inline-form" style="margin:0 0 10px;">
+            <input type="text" id="mapNewCode" placeholder="S2" maxlength="12" style="width:90px;">
+            <select id="mapNewWall">
+              ${shelfData.walls.map(wall => `<option value="${esc(wall)}">${esc(wall)}</option>`).join("")}
+            </select>
+            <button class="btn-quiet add-shelf" id="mapAddBtn">+ Add a unit</button>
+          </div>
         ` : ""}
 
         <div class="booth-ruler">← ${booth.width} FT →</div>
@@ -1114,6 +1121,11 @@ function selectedPositionCard(position) {
         ${photosBlock(position)}
 
         ${arrangeMode ? `
+          <div class="meta" style="margin-top:10px;">NAME</div>
+          <div class="inline-form" style="margin:2px 0 10px;">
+            <input type="text" id="arrangeCodeInput" value="${esc(position.code)}" maxlength="12" style="width:90px;">
+            <button class="btn-quiet" id="arrangeRenameBtn">Rename</button>
+          </div>
           <div class="nudge-grid">
             <div>
               <div class="meta">FROM LEFT</div>
@@ -1969,6 +1981,42 @@ function wireBoothMap(slug, reload) {
   document.getElementById("resetBlockBtn")?.addEventListener("click", async () => {
     await apiSend(`/api/shelf-positions/${shelfSelected}/geometry`, "PUT", { reset: true });
     await reload();
+  });
+
+  document.getElementById("arrangeRenameBtn")?.addEventListener("click", async () => {
+    const input = document.getElementById("arrangeCodeInput");
+    const position = shelfData.positions.find(p => p.id === shelfSelected);
+    const code = input?.value.trim();
+    if (!position || !code || code === position.code) return;
+
+    const result = await apiSend(`/api/shelf-positions/${position.id}`, "PATCH", { code });
+
+    if (!result.ok) {
+      showFormError("shelfError", result.error || "Could not rename that.");
+      return;
+    }
+
+    await reload();
+  });
+
+  // A new unit lands in the top-left corner, selected, ready to drag home.
+  document.getElementById("mapAddBtn")?.addEventListener("click", async () => {
+    const code = document.getElementById("mapNewCode").value;
+    const wall = document.getElementById("mapNewWall").value;
+    const result = await apiSend(`/api/conventions/${encodeURIComponent(slug)}/shelf-positions`, "POST", { code, wall });
+
+    if (!result.ok) {
+      showFormError("shelfError", result.error || "Could not add that.");
+      return;
+    }
+
+    await reload();
+
+    const added = shelfData.positions.find(p => p.code === code.trim());
+    if (added) {
+      shelfSelected = added.id;
+      drawShelfPlan();
+    }
   });
 
   wireArrowNudging(reload);
