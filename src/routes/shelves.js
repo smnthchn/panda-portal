@@ -174,7 +174,8 @@ async function loadPlan(db, conventionId) {
 
     db.prepare(
       `SELECT sg.position_id, sg.facings, g.id, g.name, g.box_class,
-              g.box_height_in, g.placement, g.sku_count, g.guide_pieces
+              g.box_height_in, g.placement, g.sku_count, g.guide_pieces,
+              g.bring_list_url
        FROM shelf_groupings sg
        JOIN groupings g ON g.id = sg.grouping_id
        JOIN shelf_positions p ON p.id = sg.position_id
@@ -228,6 +229,7 @@ async function loadPlan(db, conventionId) {
       placement: row.placement || "tier",
       sku_count: row.sku_count,
       guide_pieces: row.guide_pieces,
+      bring_list_url: row.bring_list_url,
       facings: row.facings
     });
   }

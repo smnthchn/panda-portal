@@ -47,6 +47,7 @@ export async function loadGroupings(db) {
     shopify_query: row.shopify_query,
     box_class: row.box_class,
     guide_pieces: row.guide_pieces,
+    bring_list_url: row.bring_list_url,
     notes: row.notes,
     shelf_count: row.shelf_count
   }));

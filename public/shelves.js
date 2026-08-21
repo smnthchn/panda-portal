@@ -416,6 +416,27 @@ function groupingChip(grouping, layout = null) {
   `;
 }
 
+/**
+ * Links to each family's tab of the bring-list Google Sheet — the SKU-level
+ * list lives there, not in the portal, so "what goes on this unit" is one tap
+ * from the unit.
+ */
+function bringListLinks(position) {
+  const linked = position.groupings.filter(g => g.bring_list_url);
+  if (!linked.length) return "";
+
+  return `
+    <div class="badge-row" style="margin:8px 0 0;">
+      ${linked.map(g => `
+        <a class="pill pill-paper" href="${esc(g.bring_list_url)}" target="_blank"
+           rel="noopener" style="text-decoration:none;">
+          ${esc(g.name)} list ↗
+        </a>
+      `).join("")}
+    </div>
+  `;
+}
+
 /** Tier 1 is the top one, so a range reads the way the shelf is looked at. */
 function tierRange(tiers) {
   if (!tiers.length) return "not placed";
@@ -483,6 +504,10 @@ function groupingsStrip(position) {
           <button class="board-slot-clear" data-grouping-rename="${g.id}"
                   data-name="${esc(g.name)}"
                   title="Rename this family — everywhere it appears">✎</button>
+          ${g.bring_list_url ? `
+            <a class="board-slot-clear" href="${esc(g.bring_list_url)}" target="_blank"
+               rel="noopener" title="Open ${esc(g.name)} on the bring list sheet">↗</a>
+          ` : ""}
 
           ${offTier ? `
             <span class="tier-note">
@@ -813,6 +838,7 @@ function shelfDetail() {
           ${position.tier_count} tier${position.tier_count === 1 ? "" : "s"}${
           guideTotal ? ` · fits ~${guideTotal} pcs` : ""}
         </div>
+        ${bringListLinks(position)}
       </div>
 
       <div class="strip">WHERE THIS SHELF IS AT</div>
@@ -1228,6 +1254,7 @@ function selectedPositionCard(position) {
                 ? position.groupings.map(g => groupingChip(g, position.layout)).join("")
                 : `<span class="meta">Nothing on this one yet</span>`}
             </div>
+            ${bringListLinks(position)}
           </div>
           ${position.signage.length
             ? `<div class="badge-row" style="margin:0; justify-content:flex-end;">
