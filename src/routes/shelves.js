@@ -134,8 +134,11 @@ export function stageTotals(positions) {
   });
 }
 
+// BOARDS is stage 3 since 0036 moved WRAPPED (né PRODUCT +) to the end.
+const BOARDS_STAGE = 3;
+
 export function stageApplies(position, stage) {
-  if (stage === 4) return signageList(position.signage).length > 0;
+  if (stage === BOARDS_STAGE) return signageList(position.signage).length > 0;
   return true;
 }
 
@@ -445,7 +448,7 @@ export async function handleToggleStage(request, env, positionId) {
 
   if (!position) return { ok: false, error: "That position no longer exists." };
 
-  if (stage === 4 && signageList(position.signage).length === 0) {
+  if (stage === BOARDS_STAGE && signageList(position.signage).length === 0) {
     return { ok: false, error: "This shelf needs no signage, so there are no boards to put up." };
   }
 
@@ -577,8 +580,8 @@ export async function handleUpdatePosition(request, env, positionId) {
     // old tick would otherwise sit there counting toward nothing.
     if (!codes.length) {
       await env.DB.prepare(
-        `DELETE FROM shelf_stage_flags WHERE position_id = ? AND stage = 4`
-      ).bind(id).run();
+        `DELETE FROM shelf_stage_flags WHERE position_id = ? AND stage = ?`
+      ).bind(id, BOARDS_STAGE).run();
     }
   }
 

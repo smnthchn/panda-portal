@@ -240,8 +240,9 @@ function stageBattery({ label, done, total }) {
 }
 
 /** Boards only applies where the shelf actually needs signage. */
+// BOARDS is stage 3; WRAPPED (né PRODUCT +) took the last slot.
 function stageApplies(position, stage) {
-  return stage === 4 ? position.signage.length > 0 : true;
+  return stage === 3 ? position.signage.length > 0 : true;
 }
 
 /* ---------- The grid ---------- */
@@ -890,16 +891,16 @@ function stageNotes(position) {
 
   return [
     position.tier_count ? `built as ${position.tier_count} tiers` : "",
-    families.length
-      ? `${families.map(f => f.name).join(", ")}${guideTotal ? ` — fits ~${guideTotal} pcs` : ""}`
-      : "nothing placed on it yet",
     "",
     "scan at the shelf",
     position.signage.length
       ? position.boards.length
         ? position.boards.map(b => b.name).join(" & ")
         : "no artwork picked yet"
-      : ""
+      : "",
+    families.length
+      ? `${families.map(f => f.name).join(", ")}${guideTotal ? ` — fits ~${guideTotal} pcs` : ""}`
+      : "nothing placed on it yet"
   ];
 }
 

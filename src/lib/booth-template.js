@@ -18,7 +18,7 @@ const MID = 38 / 12;
 
 export const BOOTH_FEET = { width: 16, depth: 30 };
 
-export const STAGES = ["SIZED", "PRODUCT +", "PREPPED", "SCANNED", "BOARDS"];
+export const STAGES = ["SIZED", "PREPPED", "SCANNED", "BOARDS", "WRAPPED"];
 
 export const SIGNAGE = {
   fb: { label: "FULL BOARD", bg: "#F2B53B", fg: "#5C4413" },

@@ -934,17 +934,19 @@ describe("moving a shelf between sections", () => {
 
   // A shelf needing no signage has no boards to put up, so it must not drag
   // the Boards denominator up — it should read 1 / 2, never 1 / 3.
+  // BOARDS sits at stage 3 since WRAPPED took the last slot (migration 0036).
   it("leaves a shelf with no signage out of the Boards count entirely", () => {
     const positions = [
       { signage: "bc", stages: [true, true, true, true, true] },
-      { signage: "fb", stages: [true, true, true, true, false] },
-      { signage: "", stages: [true, true, true, true, false] }
+      { signage: "fb", stages: [true, true, true, false, true] },
+      { signage: "", stages: [true, true, true, false, true] }
     ];
 
     const totals = stageTotals(positions);
     expect(totals[0]).toMatchObject({ label: "SIZED", done: 3, total: 3 });
-    expect(totals[4]).toMatchObject({ label: "BOARDS", done: 1, total: 2 });
-    expect(stageApplies(positions[2], 4)).toBe(false);
+    expect(totals[3]).toMatchObject({ label: "BOARDS", done: 1, total: 2 });
+    expect(totals[4]).toMatchObject({ label: "WRAPPED", done: 3, total: 3 });
+    expect(stageApplies(positions[2], 3)).toBe(false);
     expect(stageApplies(positions[2], 0)).toBe(true);
   });
 });
