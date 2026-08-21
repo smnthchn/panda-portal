@@ -295,9 +295,14 @@ denominator; removing all of it clears any stale tick.
 
 ### Groupings
 
-**A grouping is a product family — what actually goes on a shelf.** One rack
-is HG Universal Century, one is Gundam SEED, one is Girls; the merchandising
-photos are one family per rack, never mixed. The family belongs to the store
+**A grouping is a product family — what actually goes on a shelf.** Gundam
+shelves organize **by grade, never by series**: HG (all series) is one family,
+MG (including MGSD, Full Mechanics, RE/100) another — there is no "SEED stays
+together" rule, and the `(retired)` groupings that encoded one must never be
+assigned to shelves. The authoritative model is
+`../reference/GROUPINGS-SPEC-FE26.md`, beside the repo — read it before
+changing any family definition; earlier definitions in migrations 0022–0023
+were placeholders it explicitly corrects. The family belongs to the store
 and outlives any show, so `groupings` sits store-wide beside Resources. What
 changes per show is which shelf carries it and how deep each SKU is faced,
 which is `shelf_groupings` — a row per (position, grouping), because a wide

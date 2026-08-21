@@ -4,9 +4,11 @@ import { requireUser } from "../lib/auth.js";
 /**
  * Groupings — the product families that go on a shelf.
  *
- * One rack is HG Universal Century, one is Gundam SEED, one is Girls. The
- * family belongs to the store and outlives any show; what changes per show is
- * which shelf carries it and how deep each SKU is faced there.
+ * Gundam families are grades, never series: HG (all series) is one family, MG
+ * is another, and there is no "SEED stays together" — see
+ * reference/GROUPINGS-SPEC-FE26.md beside the repo, which is authoritative.
+ * The family belongs to the store and outlives any show; what changes per
+ * show is which shelf carries it and how deep each SKU is faced there.
  */
 
 /** Two spellings of one family shouldn't become two rows. */
