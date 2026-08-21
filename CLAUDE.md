@@ -304,7 +304,9 @@ which is `shelf_groupings` — a row per (position, grouping), because a wide
 unit can carry two families.
 
 `facings` is the dial between shows: **3 or 4 at Anime North becomes 1 or 2 at
-Fan Expo**, and the tail SKUs (Hexa Gear, MSG parts) drop out entirely. Anime
+Fan Expo**, and the tail SKUs (Hexa Gear, MSG parts) drop out entirely. **On
+screen it's labelled "PER SKU"** — Sam's term (Aug 2026); `facings` survives
+only as the field name in code and the database. Anime
 North is 800 sq ft against Fan Expo's 480, so something has to give.
 
 A grouping carries `shopify_query` rather than a copied list of SKUs — the

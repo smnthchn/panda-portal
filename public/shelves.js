@@ -405,7 +405,7 @@ function groupingChip(grouping, capacity = null) {
 
   return `
     <span class="grouping-chip${unplaced ? " unplaced" : ""}"
-          title="${esc(grouping.name)} · ${grouping.facings} facings${
+          title="${esc(grouping.name)} · ${grouping.facings} per SKU${
             shown && shown.placed
               ? ` · shows ${shown.shows} of ${shown.pool ?? "?"} in stock`
               : unplaced ? " · not on a tier yet" : ""}">
@@ -524,7 +524,7 @@ function groupingsStrip(position) {
             </span>
           ` : `
             <label class="facings">
-              <span class="board-slot-face">FACINGS</span>
+              <span class="board-slot-face">PER SKU</span>
               <input type="number" min="1" max="12" value="${g.facings}"
                      data-facings="${position.id}" data-grouping="${g.id}">
             </label>
@@ -935,8 +935,8 @@ function tierRow(position, tier, canManage) {
           ${tier.families.some(f => f.tooTall)
             ? `${esc(tier.families.find(f => f.tooTall).name)} is taller than this
                tier — it needs one of the deeper ones, or the shelf rebuilt.`
-            : `There isn't room here for one of these at the facings they're set
-               to. Lower the facings, or move one off.`}
+            : `There isn't room here for one of these at the boxes per SKU
+               they're set to. Lower the per-SKU count, or move one off.`}
         </div>
       ` : ""}
 
