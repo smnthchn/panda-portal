@@ -87,7 +87,17 @@ function resourceTile(resource) {
         ${resource.assigned_count
           ? `on ${resource.assigned_count} shel${resource.assigned_count === 1 ? "f" : "ves"}`
           : "not on a shelf yet"}
+        ${!canManage && resource.qty != null ? ` · ${resource.qty} printed` : ""}
       </div>
+
+      ${canManage ? `
+        <label class="meta" style="display:flex; align-items:center; gap:6px; margin-top:6px;"
+               title="How many of the physical board exist — shown beside its name everywhere it hangs">
+          QTY
+          <input type="number" min="0" max="999" placeholder="—" style="width:64px;"
+                 value="${resource.qty ?? ""}" data-resource-qty="${resource.id}">
+        </label>
+      ` : ""}
 
       ${canManage && !renaming ? `
         <div class="button-row" style="margin:8px 0 0;">
@@ -175,6 +185,21 @@ function wireResources() {
 
   document.querySelectorAll("[data-resource-replace]").forEach(btn => {
     btn.onclick = () => openPicker(btn.dataset.resourceReplace);
+  });
+
+  document.querySelectorAll("[data-resource-qty]").forEach(input => {
+    input.onchange = async () => {
+      const result = await apiSend(`/api/resources/${input.dataset.resourceQty}`, "PATCH", {
+        qty: input.value === "" ? null : Number(input.value)
+      });
+
+      if (!result.ok) {
+        showFormError("resourceError", result.error || "Could not save that.");
+        return;
+      }
+
+      await renderResources(false);
+    };
   });
 
   document.querySelectorAll("[data-resource-rename]").forEach(btn => {

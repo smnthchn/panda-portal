@@ -666,7 +666,8 @@ function shelfStrip(position) {
 function boardName(board) {
   return `
     <span class="board-name-cell" data-preview="${esc(board.image_url || "")}"
-          title="${esc(board.face.toUpperCase())}">${esc(board.name)}</span>
+          title="${esc(board.face.toUpperCase())}${board.qty != null ? ` · ${board.qty} printed` : ""}">${esc(board.name)}${
+          board.qty != null ? ` <em class="board-qty">×${board.qty}</em>` : ""}</span>
   `;
 }
 
@@ -731,7 +732,8 @@ function boardsStrip(position) {
             ${board
               ? `<button class="board-slot-name" data-board-pick="${position.id}" data-face="${face}"
                          data-preview="${esc(board.image_url || "")}"
-                         title="Choose a different one">${esc(board.name)}</button>
+                         title="Choose a different one">${esc(board.name)}${
+                         board.qty != null ? ` <em class="board-qty">×${board.qty}</em>` : ""}</button>
                 <button class="board-slot-clear" data-board-clear="${position.id}" data-face="${face}"
                         title="Take it off this face">×</button>`
               : `<button class="cell-add" data-board-pick="${position.id}" data-face="${face}"
@@ -1366,7 +1368,8 @@ function boardsBlock(position) {
         <div class="board-item">
           <div class="board-item-head">
             <span class="pill" style="font-size:10px;">${esc(board.face.toUpperCase())}</span>
-            <span style="font-size:13px;">${esc(board.name)}</span>
+            <span style="font-size:13px;">${esc(board.name)}${
+              board.qty != null ? ` <em class="board-qty">×${board.qty}</em>` : ""}</span>
           </div>
 
           ${board.image_url
@@ -1462,7 +1465,8 @@ function artworkPicker() {
                     <img src="${esc(resource.image_url)}" alt="${esc(resource.name)}"
                          loading="lazy" decoding="async">
                   </div>
-                  <div class="resource-name">${esc(resource.name)}</div>
+                  <div class="resource-name">${esc(resource.name)}${
+                    resource.qty != null ? ` <em class="board-qty">×${resource.qty}</em>` : ""}</div>
                 </button>
               `).join("")}
             </div>`

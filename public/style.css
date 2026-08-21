@@ -3392,6 +3392,33 @@ button.cell-add:hover {
 
 .tier-count-field input { width: 64px; }
 
+/* How many of the physical board exist, riding beside its name. */
+.board-qty {
+  font-style: normal;
+  font-family: Fredoka, sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Full schedule folds by day — a four-day show is a long scroll otherwise. */
+.shift-day {
+  border-bottom: 2px solid var(--track);
+}
+
+.shift-day summary {
+  cursor: pointer;
+  padding: 10px 0;
+  font-family: Fredoka, sans-serif;
+  font-weight: 600;
+  font-size: 13.5px;
+  list-style-position: inside;
+}
+
+.shift-day[open] summary {
+  padding-bottom: 4px;
+}
+
 /* --------------------------------------------------------------------------
    One unit, tier by tier — the phone screen for the store floor
    -------------------------------------------------------------------------- */

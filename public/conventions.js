@@ -377,13 +377,12 @@ function hoursCard() {
               ${esc(shortDayLabel(day.day_date))}
             </span>
             <span style="flex:1; font-family:'Fredoka',sans-serif; font-weight:600; font-size:14px;">
-              ${day.regular_start && day.regular_end
+              ${day.early_start
+                ? `<span style="color:var(--alert);">VIP ${esc(formatTime(day.early_start))}</span> · `
+                : ""}${day.regular_start && day.regular_end
                 ? `${esc(formatTime(day.regular_start))} – ${esc(formatTime(day.regular_end))}`
                 : "—"}
             </span>
-            ${day.early_start
-              ? `<span class="pill pill-warm" style="font-size:10.5px; padding:3px 7px;">VIP ${esc(formatTime(day.early_start))}</span>`
-              : ""}
           </div>
         `).join("")}
       </div>
@@ -727,24 +726,29 @@ function scheduleCard() {
       <div class="card-body">
         ${shifts.length
           ? groupShiftsByDate(shifts).map(([date, dayShifts]) => `
-              <h4 style="margin-top:10px;">${esc(formatDate(date))}</h4>
-              <ul class="shift-list">
-                ${dayShifts.map(s => `
-                  <li class="${s.is_mine ? "shift-mine" : ""}">
-                    <div class="shift-time">${esc(formatTime(s.starts_at))} – ${esc(formatTime(s.ends_at))}</div>
-                    <div style="flex:1;">
-                      <strong style="font-family:'Fredoka',sans-serif; font-size:13px;">${esc(s.title)}</strong>
-                      <span class="meta"> — ${s.employee_name ? esc(s.employee_name) : "Unassigned"}</span>
-                      <div class="meta">
-                        Break ${s.break_allotment_minutes
-                          ? esc(breakBasisText(s.break_allotment_minutes, s.break_count || 1))
-                          : "not set"}
-                        ${canManage ? `· <a href="#" data-shift-break="${s.id}">change</a>` : ""}
+              <details class="shift-day">
+                <summary>
+                  ${esc(formatDate(date))}
+                  <span class="meta">· ${dayShifts.length} shift${dayShifts.length === 1 ? "" : "s"}</span>
+                </summary>
+                <ul class="shift-list">
+                  ${dayShifts.map(s => `
+                    <li class="${s.is_mine ? "shift-mine" : ""}">
+                      <div class="shift-time">${esc(formatTime(s.starts_at))} – ${esc(formatTime(s.ends_at))}</div>
+                      <div style="flex:1;">
+                        <strong style="font-family:'Fredoka',sans-serif; font-size:13px;">${esc(s.title)}</strong>
+                        <span class="meta"> — ${s.employee_name ? esc(s.employee_name) : "Unassigned"}</span>
+                        <div class="meta">
+                          Break ${s.break_allotment_minutes
+                            ? esc(breakBasisText(s.break_allotment_minutes, s.break_count || 1))
+                            : "not set"}
+                          ${canManage ? `· <a href="#" data-shift-break="${s.id}">change</a>` : ""}
+                        </div>
                       </div>
-                    </div>
-                  </li>
-                `).join("")}
-              </ul>
+                    </li>
+                  `).join("")}
+                </ul>
+              </details>
             `).join("")
           : `<p class="empty-state">No shifts scheduled yet.</p>`}
       </div>

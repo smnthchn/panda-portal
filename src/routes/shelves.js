@@ -113,7 +113,7 @@ export function boardFaces(assigned = null) {
     .filter(face => assigned.has(face))
     .map(face => {
       const art = assigned.get(face);
-      return { face, name: art.name, resource_id: art.id, image_url: art.image_url };
+      return { face, name: art.name, qty: art.qty, resource_id: art.id, image_url: art.image_url };
     });
 }
 
@@ -159,7 +159,7 @@ async function loadPlan(db, conventionId) {
     ).bind(conventionId).all(),
 
     db.prepare(
-      `SELECT a.position_id, a.face, r.id, r.name, r.updated_at
+      `SELECT a.position_id, a.face, r.id, r.name, r.qty, r.updated_at
        FROM shelf_board_art a
        JOIN resources r ON r.id = a.resource_id
        JOIN shelf_positions p ON p.id = a.position_id
@@ -217,6 +217,7 @@ async function loadPlan(db, conventionId) {
     artByPosition.get(row.position_id).set(row.face, {
       id: row.id,
       name: row.name,
+      qty: row.qty,
       image_url: resourceUrl(row)
     });
   }

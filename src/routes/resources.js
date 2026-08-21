@@ -25,7 +25,7 @@ export function resourceUrl(row) {
  */
 export async function loadResources(db) {
   const rows = await db.prepare(
-    `SELECT r.id, r.name, r.updated_at, e.full_name AS uploaded_by_name,
+    `SELECT r.id, r.name, r.qty, r.updated_at, e.full_name AS uploaded_by_name,
             (SELECT COUNT(*) FROM shelf_board_art a WHERE a.resource_id = r.id) AS assigned_count
      FROM resources r
      LEFT JOIN employees e ON e.id = r.uploaded_by
@@ -35,6 +35,7 @@ export async function loadResources(db) {
   return (rows.results || []).map(row => ({
     id: row.id,
     name: row.name,
+    qty: row.qty,
     updated_at: row.updated_at,
     uploaded_by_name: row.uploaded_by_name,
     assigned_count: row.assigned_count,
@@ -109,6 +110,14 @@ export async function handleUpdateResource(request, env, resourceId) {
     const { mimeType, base64 } = parseImageDataUri(body.image, MAX_RESOURCE_BYTES);
     updates.push("image = ?");
     values.push(`data:${mimeType};base64,${base64}`);
+  }
+
+  // How many of the physical board exist. 0 is a real answer (reprint due);
+  // blank clears back to "nobody has said".
+  if (body.qty !== undefined) {
+    const qty = Math.round(Number(body.qty));
+    updates.push("qty = ?");
+    values.push(Number.isFinite(qty) && qty >= 0 ? Math.min(qty, 999) : null);
   }
 
   if (!updates.length) return { ok: true };
