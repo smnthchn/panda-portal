@@ -7,7 +7,7 @@
 
 let shelfData = null;
 let shelfView = "grid";        // grid | map
-let shelfFilter = "all";       // all | left
+let stageFocus = null;         // stage index the batteries are filtering by, or null
 let shelfSelected = null;      // position id
 let signsMode = false;
 let arrangeMode = false;
@@ -205,27 +205,33 @@ function shelfHeader() {
         </div>
       </div>
       <div class="button-row" style="margin:0;">
-        <button class="${shelfView === "grid" && shelfFilter === "all" ? "" : "btn-quiet"}" data-shelf-view="grid-all">All shelves</button>
-        <button class="${shelfView === "grid" && shelfFilter === "left" ? "" : "btn-quiet"}" data-shelf-view="grid-left">Still to do</button>
+        <button class="${shelfView === "grid" && stageFocus === null ? "" : "btn-quiet"}" data-shelf-view="grid-all">All shelves</button>
         <button class="${shelfView === "map" ? "" : "btn-quiet"}" data-shelf-view="map">Booth map</button>
       </div>
     </div>
 
     <div class="stage-batteries">
-      ${totals.map(total => stageBattery(total)).join("")}
+      ${totals.map((total, stage) => stageBattery(total, stage)).join("")}
     </div>
 
     <p class="form-error" id="shelfError"></p>
   `;
 }
 
-function stageBattery({ label, done, total }) {
+/**
+ * One stage's bar. Clicking it filters the plan to that stage's shelves,
+ * the ones still to do at the top — which replaced the Still to do button:
+ * "what's left" is always a question about one stage at a time.
+ */
+function stageBattery({ label, done, total }, stage) {
   const colour = total && done === total
     ? "var(--go-text)"
     : done === 0 ? "var(--alert)" : "var(--text)";
 
   return `
-    <div class="stage-battery">
+    <button class="stage-battery${stageFocus === stage ? " on" : ""}"
+            data-stage-focus="${stage}"
+            title="Show every shelf this stage applies to, unticked first">
       <div class="stage-battery-head">
         <span>${esc(label)}</span>
         <span style="color:${colour};">${done} / ${total}</span>
@@ -235,7 +241,7 @@ function stageBattery({ label, done, total }) {
           `<span class="${i < done ? "on" : ""}"></span>`
         ).join("")}
       </div>
-    </div>
+    </button>
   `;
 }
 
@@ -245,25 +251,54 @@ function stageApplies(position, stage) {
   return stage === 3 ? position.signage.length > 0 : true;
 }
 
-/* ---------- The grid ---------- */
+/**
+ * The rows a focused battery shows: every shelf its stage applies to, the
+ * unticked ones first. Both orders inside are plan order, so the list still
+ * walks the booth the way the grid does.
+ */
+function stageFocusRows(positions) {
+  return positions
+    .filter(p => stageApplies(p, stageFocus))
+    .sort((a, b) => Number(a.stages[stageFocus]) - Number(b.stages[stageFocus]));
+}
 
-function shelfGrid() {
-  const { positions, stages, canManage } = shelfData;
+/** A–Z within a section, numerically aware, so E10 follows E9 and a new
+    shelf lands in order rather than at the bottom of its wall. */
+function byCode(a, b) {
+  return a.code.localeCompare(b.code, undefined, { numeric: true });
+}
 
-  const shown = shelfFilter === "left"
-    ? positions.filter(p => p.stages.some((done, stage) => !done && stageApplies(p, stage)))
-    : positions;
-
-  if (!shown.length) {
-    return `<div class="card"><p class="empty-state">Everything is ticked. The booth is ready.</p></div>`;
+/**
+ * The rows grouped for display: wall runs with each run sorted A–Z, or — when
+ * a battery is focused — one group for the whole booth, unticked first, since
+ * the cross-booth sort would make the wall labels lie.
+ */
+function wallGroups(positions, stages) {
+  if (stageFocus !== null) {
+    const shown = stageFocusRows(positions);
+    const left = shown.filter(p => !p.stages[stageFocus]).length;
+    return [{
+      wall: `${stages[stageFocus]} — ${left ? `${left} still to do, at the top` : "all done"}`,
+      note: null,
+      positions: shown
+    }];
   }
 
   const walls = [];
-  for (const position of shown) {
+  for (const position of positions) {
     const last = walls[walls.length - 1];
     if (last && last.wall === position.wall) last.positions.push(position);
     else walls.push({ wall: position.wall, note: position.wall_note, positions: [position] });
   }
+  for (const group of walls) group.positions.sort(byCode);
+  return walls;
+}
+
+/* ---------- The grid ---------- */
+
+function shelfGrid() {
+  const { positions, stages, canManage } = shelfData;
+  const walls = wallGroups(positions, stages);
 
   return `
     <div class="card stripped shelf-grid-card">
@@ -745,21 +780,7 @@ function signageStrip(position) {
  */
 function shelfList() {
   const { positions, stages } = shelfData;
-
-  const shown = shelfFilter === "left"
-    ? positions.filter(p => p.stages.some((done, stage) => !done && stageApplies(p, stage)))
-    : positions;
-
-  if (!shown.length) {
-    return `<div class="card"><p class="empty-state">Everything is ticked. The booth is ready.</p></div>`;
-  }
-
-  const walls = [];
-  for (const position of shown) {
-    const last = walls[walls.length - 1];
-    if (last && last.wall === position.wall) last.positions.push(position);
-    else walls.push({ wall: position.wall, positions: [position] });
-  }
+  const walls = wallGroups(positions, stages);
 
   return walls.map(group => `
     <div class="shelf-list-wall">${esc(group.wall)}</div>
@@ -1628,12 +1649,27 @@ function wireShelfPlan() {
     btn.onclick = () => {
       const value = btn.dataset.shelfView;
       shelfView = value === "map" ? "map" : "grid";
-      if (value === "grid-all") shelfFilter = "all";
-      if (value === "grid-left") shelfFilter = "left";
+      if (value === "grid-all") stageFocus = null;
 
       // Crossing between the plan and the map changes the page, so the URL
       // follows and Back takes you where you came from.
       pushPageState(shelfPlanPage(), { slug });
+      drawShelfPlan();
+    };
+  });
+
+  // A battery filters to its stage; the same battery again lets go. From the
+  // map it jumps back to the plan, since the map has no rows to sort.
+  document.querySelectorAll("[data-stage-focus]").forEach(btn => {
+    btn.onclick = () => {
+      const stage = Number(btn.dataset.stageFocus);
+      stageFocus = stageFocus === stage ? null : stage;
+
+      if (shelfView !== "grid") {
+        shelfView = "grid";
+        pushPageState(shelfPlanPage(), { slug });
+      }
+
       drawShelfPlan();
     };
   });

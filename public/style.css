@@ -2181,6 +2181,31 @@ html.overlay-open {
   margin-bottom: 13px;
 }
 
+/* The battery is a button now — clicking it filters the plan to its stage —
+   but it should keep looking like a battery, not a button. */
+button.stage-battery {
+  --edge: 0px;
+  --depress: 0px;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+}
+
+.stage-battery.on .stage-battery-head span:first-child {
+  background: var(--clock-bg);
+  color: var(--clock-text);
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+
+.stage-battery.on .stage-battery-cells {
+  border-color: var(--brand);
+}
+
 .stage-battery-head {
   display: flex;
   justify-content: space-between;
