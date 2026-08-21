@@ -409,7 +409,7 @@ function groupingChip(grouping, layout = null) {
             shown && shown.placed && shown.guide
               ? ` · fits about ${shown.guide} here (${shown.guidePerTier} a tier)`
               : ""}${
-            shown?.pool ? ` · ${shown.pool} in stock` : ""}${
+            shown?.pool ? ` · ${shown.pool} SKUs on the bring list` : ""}${
             unplaced ? " · not on a tier yet" : ""}">
       ${esc(grouping.name)}${tail}
     </span>
@@ -489,7 +489,7 @@ function groupingsStrip(position) {
               ${offTier.placement === "side"
                 ? "Zip-tied to the side — no tier of its own."
                 : "Goes up top, on the shelves rather than in them."}
-              ${offTier.pool ? `<em>${offTier.pool} in stock</em>` : ""}
+              ${offTier.pool ? `<em>${offTier.pool} on the bring list</em>` : ""}
             </span>
           ` : `
             <label class="facings">
@@ -512,7 +512,7 @@ function groupingsStrip(position) {
             <span class="tier-note">
               ${shown && shown.placed
                 ? shown.guide
-                  ? `Fits about <strong>${shown.guide}</strong> here · ${tierRange(shown.tiers)}${shown.pool ? ` · ${shown.pool} in stock` : ""}`
+                  ? `Fits about <strong>${shown.guide}</strong> here · ${tierRange(shown.tiers)}${shown.pool ? ` · ${shown.pool} on the bring list` : ""}`
                   : `${tierRange(shown.tiers)} — no guide set for this family yet.`
                 : `<span class="unplaced-note">Not on a tier yet.</span>`}
             </span>
@@ -542,7 +542,7 @@ function groupingsStrip(position) {
         <select data-grouping-add="${position.id}">
           <option value="">+ Add a grouping…</option>
           ${shelfData.groupings
-            .filter(g => !onShelf.has(g.id))
+            .filter(g => !onShelf.has(g.id) && !g.name.startsWith("(retired)"))
             .map(g => `<option value="${g.id}">${esc(g.name)}</option>`)
             .join("")}
           <option value="__new">+ New grouping…</option>
@@ -841,7 +841,7 @@ function shelfDetail() {
             ${f.placement === "side"
               ? "zip-tied to the side of this unit, not on a tier"
               : "goes up top, on the shelves rather than in them"}${
-              f.pool ? ` · ${f.pool} in stock` : ""}</div>
+              f.pool ? ` · ${f.pool} on the bring list` : ""}</div>
           `).join("")}
         </div>
       ` : ""}
