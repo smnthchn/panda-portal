@@ -315,14 +315,14 @@ catalogue's tags are structured enough to be the filter on their own
 the moment it's tagged. **Check a query returns something before trusting it**:
 `tag:'Plush'` matches nothing, because the tag is `Plushies`.
 
-`box_class` is how wide one box stands, which is what decides how many face
-out across a 49.5″ tier. It's on the family because it's a property of the
-product, not of the shelf it lands on.
+`box_class` and `box_height_in` are dead — they fed the retired capacity math
+and nothing reads them now. What a family carries instead is `guide_pieces`,
+Sam's hand-set count of how many pieces a 4-tier unit fits.
 
-### Tiers and capacity
+### Tiers and guides
 
-**A grouping says what stands on a unit; the tiers say where, and capacity says
-how many.** `shelf_grouping_tiers` is a row per (position, grouping, tier)
+**A grouping says what stands on a unit; the tiers say where, and the guide
+says how many.** `shelf_grouping_tiers` is a row per (position, grouping, tier)
 rather than a range, because a family skips tiers on purpose: small
 easy-to-pocket stock is kept in the top three or four so nobody is bending over
 an open bag. **Tier 1 is the top tier** — the numbering exists to serve that
@@ -335,15 +335,17 @@ tiers over two taller ones, so two rows describe it. Shelves are adjustable,
 which is what SIZED means, so the tier count is a build decision rather than a
 property of the model of shelf.
 
-`lib/capacity.js` turns that into numbers. Families on a tier split its width
-evenly and each shows as many SKUs as its faced boxes fit into that share, so
-**raising facings lowers the SKU count** — that is the dial between shows.
-Over capacity means a family can't show even one SKU, either because its share
-is too narrow or its box is taller than the tier; it draws amber and says
-which, and **nothing is ever blocked**, the same way `layoutConflicts()`
-reports an overlap rather than refusing the move. Capacity is computed
-server-side in `loadPlan()` for the same reason the roster decides its own
-statuses: the grid, the phone and the map all draw it.
+**Capacity is a hand-set guide, not a computation.** `lib/capacity.js` used to
+derive SKU counts from box widths against tier dimensions; that math never
+matched the floor and was retired in Aug 2026 for `groupings.guide_pieces` —
+Sam's own numbers, written against a 4-tier unit ("Girls fit 20, MG fit 12"),
+edited from the FITS · 4 TIERS box in the grouping strip. `positionLayout()`
+scales a family's guide by the share of tiers it occupies (MG on 2 of 4 tiers
+reads ~6) and that's the whole calculation. Migration 0033 seeded the first
+set. There are no amber over-capacity warnings any more — nothing was ever
+blocked, and now nothing is measured either. Layout is still built server-side
+in `loadPlan()` for the same reason the roster decides its own statuses: the
+grid, the phone and the map all draw it.
 
 **A family's `sku_count` is the pool it is picked from, never a target.** The
 catalogue runs about ten times the booth — ~4,700 in-stock SKUs across the
@@ -362,8 +364,7 @@ rather than a position — which isn't built yet.
 **The phone shelf detail is a state, not a route.** The booth map earned its
 own URL because it is the thing you send someone; a shelf's tiers are a
 drill-down you come back out of, so Back steps out of the unit before it leaves
-the plan. `box_class` and `box_height_in` were inert before capacity existed
-and are now load-bearing — check them before trusting a tier that looks wrong.
+the plan.
 
 ### Resources, board artwork and shelf photos
 

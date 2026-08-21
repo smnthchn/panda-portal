@@ -323,12 +323,12 @@ function shelfRow(position) {
         ${canEdit
           ? `<button class="boards-cell" data-groupings="${position.id}">
               ${position.groupings.length
-                ? position.groupings.map(g => groupingChip(g, position.capacity)).join("")
+                ? position.groupings.map(g => groupingChip(g, position.layout)).join("")
                 : `<span class="cell-add">+</span>`}
             </button>`
           : `<span class="boards-cell static">
               ${position.groupings.length
-                ? position.groupings.map(g => groupingChip(g, position.capacity)).join("")
+                ? position.groupings.map(g => groupingChip(g, position.layout)).join("")
                 : `<span class="meta">—</span>`}
             </span>`}
       </span>
@@ -384,21 +384,21 @@ function shelfRow(position) {
 }
 
 /**
- * A family on a shelf, with how deep each of its SKUs is faced and — once it's
- * standing somewhere — how many SKUs that comes to.
+ * A family on a shelf, with how deep each of its SKUs is faced and — once
+ * it's standing somewhere — the guide for how many pieces it fits here.
  *
- * The SKU count is what the shelf shows, not what the family holds: the
- * catalogue runs about ten times the booth, so "8 of 79" is the honest reading
- * and "79" on its own would be a target nobody could hit.
+ * The guide is Sam's number, written against a 4-tier unit, scaled by the
+ * tiers the family actually has. Nothing is computed from box or shelf sizes
+ * any more — that math never matched the floor.
  */
-function groupingChip(grouping, capacity = null) {
-  const shown = capacity?.families?.find(f => f.id === grouping.id);
-  const offTier = capacity?.offTier?.find(f => f.id === grouping.id);
+function groupingChip(grouping, layout = null) {
+  const shown = layout?.families?.find(f => f.id === grouping.id);
+  const offTier = layout?.offTier?.find(f => f.id === grouping.id);
 
   const tail = offTier
     ? `<em>· ${offTier.placement === "side" ? "on the side" : "up top"}</em>`
-    : shown && shown.placed
-      ? `<em>×${grouping.facings} · ${shown.shows}</em>`
+    : shown && shown.placed && shown.guide
+      ? `<em>×${grouping.facings} · ~${shown.guide}</em>`
       : `<em>×${grouping.facings}</em>`;
 
   const unplaced = shown && !shown.placed;
@@ -406,9 +406,11 @@ function groupingChip(grouping, capacity = null) {
   return `
     <span class="grouping-chip${unplaced ? " unplaced" : ""}"
           title="${esc(grouping.name)} · ${grouping.facings} per SKU${
-            shown && shown.placed
-              ? ` · shows ${shown.shows} of ${shown.pool ?? "?"} in stock`
-              : unplaced ? " · not on a tier yet" : ""}">
+            shown && shown.placed && shown.guide
+              ? ` · fits about ${shown.guide} here (${shown.guideUnit} a 4-tier unit)`
+              : ""}${
+            shown?.pool ? ` · ${shown.pool} in stock` : ""}${
+            unplaced ? " · not on a tier yet" : ""}">
       ${esc(grouping.name)}${tail}
     </span>
   `;
@@ -435,7 +437,7 @@ function tierRange(tiers) {
  */
 function tierToggles(position, grouping) {
   const on = new Set(
-    (position.capacity?.tiers || [])
+    (position.layout?.tiers || [])
       .filter(t => t.families.some(f => f.id === grouping.id))
       .map(t => t.tier)
   );
@@ -457,39 +459,6 @@ function tierToggles(position, grouping) {
 }
 
 /**
- * How full each tier of the unit is.
- *
- * The bar is what's used against the tier's width, so a tier holding one wide
- * box at three facings reads two-thirds full and the wasted third is visible —
- * that gap is the reason to change the facings, and a count alone would hide
- * it. Amber means something on the tier can't show a single SKU.
- */
-function tierBars(position) {
-  const capacity = position.capacity;
-  if (!capacity?.tiers.length) return "";
-
-  return `
-    <div class="tier-bars">
-      ${capacity.tiers.map(tier => `
-        <div class="tier-bar-row${tier.over ? " over" : ""}">
-          <span class="tier-bar-label">T${tier.tier}</span>
-          <span class="tier-bar" title="${Math.round(tier.usedIn)}″ of ${Math.round(tier.widthIn)}″ used">
-            <span class="tier-bar-fill" style="width:${Math.round(tier.fill * 100)}%"></span>
-          </span>
-          <span class="tier-bar-count">
-            ${tier.holds ? `${tier.holds} SKU${tier.holds === 1 ? "" : "s"}` : "—"}
-            <em>${Math.round(tier.heightIn)}″ tall</em>
-          </span>
-          ${tier.over ? `<span class="tier-bar-warn">${
-            tier.families.some(f => f.tooTall) ? "box too tall" : "no room"
-          }</span>` : ""}
-        </div>
-      `).join("")}
-    </div>
-  `;
-}
-
-/**
  * Choosing what stands on a shelf.
  *
  * The families come from the store's library — one rack is HG Universal
@@ -505,8 +474,8 @@ function groupingsStrip(position) {
   return `
     <div class="signage-strip groupings-strip">
       ${position.groupings.map(g => {
-        const offTier = position.capacity?.offTier.find(f => f.id === g.id);
-        const shown = position.capacity?.families.find(f => f.id === g.id);
+        const offTier = position.layout?.offTier.find(f => f.id === g.id);
+        const shown = position.layout?.families.find(f => f.id === g.id);
 
         return `
         <span class="board-slot">
@@ -529,6 +498,12 @@ function groupingsStrip(position) {
                      data-facings="${position.id}" data-grouping="${g.id}">
             </label>
 
+            <label class="facings" title="Sam's guide: pieces a 4-tier unit fits. Changes it for the family everywhere.">
+              <span class="board-slot-face">FITS · 4 TIERS</span>
+              <input type="number" min="1" max="999" value="${g.guide_pieces ?? ""}"
+                     placeholder="—" data-guide="${g.id}">
+            </label>
+
             <span class="tier-pick">
               <span class="board-slot-face">TIERS</span>
               ${tierToggles(position, g)}
@@ -536,7 +511,9 @@ function groupingsStrip(position) {
 
             <span class="tier-note">
               ${shown && shown.placed
-                ? `Shows <strong>${shown.shows}</strong> of ${shown.pool ?? "?"} in stock · ${tierRange(shown.tiers)}`
+                ? shown.guide
+                  ? `Fits about <strong>${shown.guide}</strong> here · ${tierRange(shown.tiers)}${shown.pool ? ` · ${shown.pool} in stock` : ""}`
+                  : `${tierRange(shown.tiers)} — no guide set for this family yet.`
                 : `<span class="unplaced-note">Not on a tier yet.</span>`}
             </span>
           `}
@@ -545,8 +522,6 @@ function groupingsStrip(position) {
                   data-grouping="${g.id}" title="Take it off this shelf">×</button>
         </span>
       `;}).join("")}
-
-      ${tierBars(position)}
 
       <label class="facings tier-count-field">
         <span class="board-slot-face">TIERS ON THIS UNIT</span>
@@ -557,12 +532,10 @@ function groupingsStrip(position) {
       ${newGroupingFor === position.id ? `
         <span class="board-slot">
           <input type="text" id="newGroupingName" placeholder="Family name" style="width:160px;">
-          <select id="newGroupingBox" title="How wide one box stands — it decides how many face out per tier">
-            <option value="small">Small box</option>
-            <option value="medium" selected>Medium box</option>
-            <option value="large">Large box</option>
-            <option value="oversize">Oversize box</option>
-          </select>
+          <label class="facings" title="Optional: pieces a 4-tier unit fits">
+            <span class="board-slot-face">FITS · 4 TIERS</span>
+            <input type="number" id="newGroupingGuide" min="1" max="999" placeholder="—">
+          </label>
           <button class="btn-quiet" id="createGroupingBtn">Add</button>
         </span>
       ` : `
@@ -776,7 +749,7 @@ function shelfList() {
             <div style="flex:1; min-width:0;">
               <div class="shelf-list-groupings">
                 ${position.groupings.length
-                  ? position.groupings.map(g => groupingChip(g, position.capacity)).join("")
+                  ? position.groupings.map(g => groupingChip(g, position.layout)).join("")
                   : `<span class="meta">Nothing on this one yet</span>`}
               </div>
               <div class="meta">${esc(position.unit_type || "")}${
@@ -826,7 +799,8 @@ function shelfDetail() {
   }
 
   const { stages, canManage } = shelfData;
-  const capacity = position.capacity || { tiers: [], families: [], offTier: [], holds: 0 };
+  const layout = position.layout || { tiers: [], families: [], offTier: [] };
+  const guideTotal = layout.families.reduce((sum, f) => sum + (f.placed && f.guide ? f.guide : 0), 0);
   const notes = stageNotes(position);
 
   return `
@@ -836,8 +810,8 @@ function shelfDetail() {
         <div class="shelf-detail-code">${esc(position.code)}</div>
         <div class="shelf-detail-sub">
           ${esc(position.unit_type || "Unit")} ·
-          ${position.tier_count} tier${position.tier_count === 1 ? "" : "s"} ·
-          ${capacity.holds} SKU${capacity.holds === 1 ? "" : "s"} placed
+          ${position.tier_count} tier${position.tier_count === 1 ? "" : "s"}${
+          guideTotal ? ` · fits ~${guideTotal} pcs` : ""}
         </div>
       </div>
 
@@ -860,9 +834,9 @@ function shelfDetail() {
              Boards box to tick — it drops out of the count rather than sitting
              there unticked.</div>`}
 
-      ${capacity.offTier.length ? `
+      ${layout.offTier.length ? `
         <div class="note-card">
-          ${capacity.offTier.map(f => `
+          ${layout.offTier.map(f => `
             <div><strong>${esc(f.name)}</strong> —
             ${f.placement === "side"
               ? "zip-tied to the side of this unit, not on a tier"
@@ -873,8 +847,8 @@ function shelfDetail() {
       ` : ""}
 
       <div class="strip">TIERS</div>
-      ${capacity.tiers.length
-        ? capacity.tiers.map(tier => tierRow(position, tier, canManage)).join("")
+      ${layout.tiers.length
+        ? layout.tiers.map(tier => tierRow(position, tier, canManage)).join("")
         : `<p class="empty-state">This unit has no tiers — it isn't a shelf.</p>`}
     </div>
   `;
@@ -885,13 +859,13 @@ function shelfDetail() {
  * fifth identical checkbox down the card.
  */
 function stageNotes(position) {
-  const capacity = position.capacity;
-  const families = capacity?.families.filter(f => f.placed) || [];
+  const families = position.layout?.families.filter(f => f.placed) || [];
+  const guideTotal = families.reduce((sum, f) => sum + (f.guide || 0), 0);
 
   return [
     position.tier_count ? `built as ${position.tier_count} tiers` : "",
     families.length
-      ? `${families.map(f => f.name).join(", ")} — ${capacity.holds} SKUs`
+      ? `${families.map(f => f.name).join(", ")}${guideTotal ? ` — fits ~${guideTotal} pcs` : ""}`
       : "nothing placed on it yet",
     "",
     "scan at the shelf",
@@ -904,7 +878,7 @@ function stageNotes(position) {
 }
 
 /**
- * One tier: how full it is, and what's on it once opened.
+ * One tier: who stands on it, and the controls once opened.
  *
  * Tapping the row opens it rather than navigating, so the tiers above and
  * below stay on screen — the question being answered is usually "which tier
@@ -916,40 +890,28 @@ function tierRow(position, tier, canManage) {
     (g.placement || "tier") === "tier" && !tier.families.some(f => f.id === g.id));
 
   return `
-    <div class="tier-row${tier.over ? " over" : ""}${open ? " open" : ""}">
+    <div class="tier-row${open ? " open" : ""}">
       <button class="tier-row-head" data-open-tier="${tier.tier}">
         <span class="tier-row-name">T${tier.tier}</span>
-        <span class="tier-cells">
-          ${Array.from({ length: 10 }, (_, i) => `
-            <span class="tier-cell${i < Math.round(tier.fill * 10) ? " on" : ""}"></span>
-          `).join("")}
+        <span class="tier-row-families">
+          ${tier.families.length
+            ? esc(tier.families.map(f => f.name).join(" + "))
+            : `<span class="meta">—</span>`}
         </span>
         <span class="tier-row-count">
-          ${tier.holds} SKU${tier.holds === 1 ? "" : "s"}
           <em>${Math.round(tier.heightIn)}″</em>
         </span>
       </button>
-
-      ${tier.over ? `
-        <div class="tier-row-warn">
-          ${tier.families.some(f => f.tooTall)
-            ? `${esc(tier.families.find(f => f.tooTall).name)} is taller than this
-               tier — it needs one of the deeper ones, or the shelf rebuilt.`
-            : `There isn't room here for one of these at the boxes per SKU
-               they're set to. Lower the per-SKU count, or move one off.`}
-        </div>
-      ` : ""}
 
       ${open ? `
         <div class="tier-open">
           ${tier.families.length
             ? tier.families.map(f => `
-                <span class="grouping-chip on${f.over ? " over" : ""}">
+                <span class="grouping-chip on">
                   ${canManage
                     ? `<button class="chip-name" data-move-grouping="${f.id}"
                                title="Move it to another tier">${esc(f.name)}</button>`
                     : esc(f.name)}
-                  <em>${f.tooTall ? "too tall" : `${f.skus} SKU${f.skus === 1 ? "" : "s"}`}</em>
                   ${canManage ? `
                     <button class="chip-clear" data-off-tier="${f.id}" data-tier="${tier.tier}"
                             title="Take it off this tier">×</button>
@@ -961,7 +923,7 @@ function tierRow(position, tier, canManage) {
           ${canManage && movingGrouping ? `
             <div class="tier-move">
               <span class="board-slot-face">MOVE TO</span>
-              ${position.capacity.tiers
+              ${position.layout.tiers
                 .filter(t => t.tier !== tier.tier)
                 .map(t => `
                   <button class="tier-toggle" data-move-to="${t.tier}">T${t.tier}</button>
@@ -1263,7 +1225,7 @@ function selectedPositionCard(position) {
             <div class="panel-code">${esc(position.code)}</div>
             <div class="shelf-list-groupings">
               ${position.groupings.length
-                ? position.groupings.map(g => groupingChip(g, position.capacity)).join("")
+                ? position.groupings.map(g => groupingChip(g, position.layout)).join("")
                 : `<span class="meta">Nothing on this one yet</span>`}
             </div>
           </div>
@@ -1772,10 +1734,10 @@ function wireShelfPlan() {
   document.getElementById("createGroupingBtn")?.addEventListener("click", async () => {
     const positionId = newGroupingFor;
     const name = document.getElementById("newGroupingName")?.value.trim();
-    const boxClass = document.getElementById("newGroupingBox")?.value;
+    const guide = Number(document.getElementById("newGroupingGuide")?.value) || null;
     if (!name) return;
 
-    const created = await apiSend("/api/groupings", "POST", { name, box_class: boxClass });
+    const created = await apiSend("/api/groupings", "POST", { name, guide_pieces: guide });
 
     if (!created.ok) {
       showFormError("shelfError", created.error || "Could not add that family.");
@@ -1794,6 +1756,23 @@ function wireShelfPlan() {
 
     newGroupingFor = null;
     await reload();
+  });
+
+  // The guide belongs to the family, so typing it on one shelf sets it
+  // everywhere — same as a rename.
+  document.querySelectorAll("[data-guide]").forEach(input => {
+    input.onchange = async () => {
+      const result = await apiSend(`/api/groupings/${input.dataset.guide}`, "PATCH", {
+        guide_pieces: Number(input.value) || null
+      });
+
+      if (!result.ok) {
+        showFormError("shelfError", result.error || "Could not save that guide.");
+        return;
+      }
+
+      await reload();
+    };
   });
 
   document.querySelectorAll("[data-grouping-rename]").forEach(btn => {

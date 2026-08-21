@@ -3,7 +3,7 @@ import { requireUser } from "../lib/auth.js";
 import { parseImageDataUri, imageResponse, imageUrlFor } from "../lib/images.js";
 import { resourceUrl, loadResources } from "./resources.js";
 import { loadGroupings, BOX_CLASSES } from "./groupings.js";
-import { positionCapacity, DEFAULT_USABLE_HEIGHT_IN } from "../lib/capacity.js";
+import { positionLayout, DEFAULT_USABLE_HEIGHT_IN } from "../lib/capacity.js";
 import {
   templatePositions,
   BOOTH_FEET,
@@ -174,7 +174,7 @@ async function loadPlan(db, conventionId) {
 
     db.prepare(
       `SELECT sg.position_id, sg.facings, g.id, g.name, g.box_class,
-              g.box_height_in, g.placement, g.sku_count
+              g.box_height_in, g.placement, g.sku_count, g.guide_pieces
        FROM shelf_groupings sg
        JOIN groupings g ON g.id = sg.grouping_id
        JOIN shelf_positions p ON p.id = sg.position_id
@@ -227,6 +227,7 @@ async function loadPlan(db, conventionId) {
       box_height_in: row.box_height_in,
       placement: row.placement || "tier",
       sku_count: row.sku_count,
+      guide_pieces: row.guide_pieces,
       facings: row.facings
     });
   }
@@ -282,8 +283,8 @@ async function loadPlan(db, conventionId) {
     // Worked out here rather than in the browser, for the same reason the
     // roster decides its own statuses: the grid, the phone card and the map
     // all draw this, and they can't be allowed to disagree about it.
-    position.capacity = positionCapacity(
-      { tier_count: row.tier_count, usable_height_in: row.usable_height_in, ...geometry },
+    position.layout = positionLayout(
+      { tier_count: row.tier_count, usable_height_in: row.usable_height_in },
       groupings,
       tiersByPosition.get(row.id) || [],
       heightsByPosition.get(row.id) || []

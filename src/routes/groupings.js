@@ -14,6 +14,15 @@ export function groupingKey(name) {
   return String(name || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/**
+ * The hand-set guide: how many pieces of the family a 4-tier unit fits.
+ * Sam's numbers, not computed from anything. NULL means no guide yet.
+ */
+function guidePieces(value) {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) && n >= 1 ? Math.min(n, 999) : null;
+}
+
 /** How many of one box stand across a 49.5" tier, by how wide the box is. */
 export const BOX_CLASSES = {
   small: { label: "Small", perTier: 6 },
@@ -35,6 +44,7 @@ export async function loadGroupings(db) {
     name: row.name,
     shopify_query: row.shopify_query,
     box_class: row.box_class,
+    guide_pieces: row.guide_pieces,
     notes: row.notes,
     shelf_count: row.shelf_count
   }));
@@ -69,13 +79,14 @@ export async function handleCreateGrouping(request, env) {
   const last = await env.DB.prepare(`SELECT MAX(sort_order) AS n FROM groupings`).first();
 
   const added = await env.DB.prepare(
-    `INSERT INTO groupings (name, name_key, shopify_query, box_class, notes, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?)`
+    `INSERT INTO groupings (name, name_key, shopify_query, box_class, guide_pieces, notes, sort_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     name,
     key,
     optionalText(body.shopify_query),
     BOX_CLASSES[body.box_class] ? body.box_class : "medium",
+    guidePieces(body.guide_pieces),
     optionalText(body.notes),
     (last?.n ?? -1) + 1
   ).run();
@@ -122,6 +133,11 @@ export async function handleUpdateGrouping(request, env, groupingId) {
     if (!BOX_CLASSES[body.box_class]) throw new BadRequest("Unknown box size.");
     updates.push("box_class = ?");
     values.push(body.box_class);
+  }
+
+  if (body.guide_pieces !== undefined) {
+    updates.push("guide_pieces = ?");
+    values.push(guidePieces(body.guide_pieces));
   }
 
   if (body.notes !== undefined) {

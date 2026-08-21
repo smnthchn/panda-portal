@@ -3365,80 +3365,6 @@ button.cell-add:hover {
 
 .unplaced-note { color: var(--note-text); }
 
-/* One row per tier, top tier first, because that's the order the shelf is
-   looked at. */
-.tier-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  padding: 8px 0 2px;
-}
-
-.tier-bar-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11.5px;
-  color: var(--muted);
-}
-
-.tier-bar-label {
-  font-family: Fredoka, sans-serif;
-  font-weight: 600;
-  font-size: 11px;
-  color: var(--ink);
-  min-width: 24px;
-}
-
-.tier-bar {
-  position: relative;
-  flex: 1;
-  max-width: 220px;
-  height: 12px;
-  border: 2px solid var(--ink);
-  border-radius: 6px;
-  background: var(--track);
-  overflow: hidden;
-}
-
-.tier-bar-fill {
-  display: block;
-  height: 100%;
-  background: var(--go);
-}
-
-/* Amber, not red: something on this tier can't show a single SKU, which is
-   worth saying and isn't worth blocking. */
-.tier-bar-row.over .tier-bar-fill { background: var(--warm); }
-.tier-bar-row.over .tier-bar-count { color: var(--alert); }
-
-.tier-bar-count {
-  font-family: Fredoka, sans-serif;
-  font-weight: 600;
-  font-size: 11px;
-  color: var(--ink);
-  min-width: 96px;
-}
-
-.tier-bar-count em {
-  font-style: normal;
-  font-weight: 500;
-  color: var(--muted);
-  margin-left: 6px;
-}
-
-.tier-bar-warn {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--note-bg);
-  color: var(--note-text);
-  font-family: Fredoka, sans-serif;
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 .tier-count-field input { width: 64px; }
 
 /* --------------------------------------------------------------------------
@@ -3527,29 +3453,17 @@ button.cell-add:hover {
   min-width: 28px;
 }
 
-/* Ten cells, the same battery the dashboard uses, so a tier reads at a glance
-   from the same distance as everything else on the phone. */
-.tier-cells {
-  display: flex;
-  gap: 2px;
+/* Who stands on the tier, right in the row, so the list reads without
+   opening anything. */
+.tier-row-families {
   flex: 1;
-  padding: 3px;
-  border: 2px solid var(--ink);
-  border-radius: 6px;
-  background: var(--surface);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--text);
 }
-
-.tier-cell {
-  flex: 1;
-  height: 9px;
-  border-radius: 2px;
-  background: var(--track);
-}
-
-.tier-cell.on { background: var(--brand); }
-
-.tier-row.over .tier-cell.on { background: var(--warm); }
-.tier-row.over .tier-row-count { color: var(--alert); }
 
 .tier-row-count {
   font-family: Fredoka, sans-serif;
@@ -3574,12 +3488,6 @@ button.cell-add:hover {
   align-items: center;
   gap: 8px;
   padding: 0 16px 14px;
-}
-
-.grouping-chip.over {
-  background: var(--note-bg);
-  border-color: var(--warm);
-  color: var(--note-text);
 }
 
 .chip-name {
@@ -3614,15 +3522,3 @@ button.cell-add:hover {
   width: 100%;
 }
 
-/* An over-capacity tier with nothing on it looks exactly like an empty one —
-   the bar has no fill to turn amber — so it says which of the two it is. */
-.tier-row-warn {
-  margin: -4px 16px 12px;
-  padding: 8px 10px;
-  border: 2px solid var(--warm);
-  border-radius: 12px;
-  background: var(--note-bg);
-  color: var(--note-text);
-  font-size: 12px;
-  line-height: 1.45;
-}

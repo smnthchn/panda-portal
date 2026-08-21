@@ -10,13 +10,7 @@ import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
 import { mergeIntervals, coverageGaps, toMinutes, resolveSpan, rotaWeeks, scheduleDates } from "../src/routes/schedule.js";
 import { ontarioHolidays, holidaysBetween, holidayOn, easterSunday } from "../src/lib/holidays.js";
 import { fullWeek, availabilityConflict } from "../src/routes/availability.js";
-import {
-  tierHeights,
-  tierCapacity,
-  positionCapacity,
-  tierWidthIn,
-  BOX_WIDTH_IN
-} from "../src/lib/capacity.js";
+import { tierHeights, positionLayout, GUIDE_TIERS } from "../src/lib/capacity.js";
 import {
   layoutConflicts,
   effectiveGeometry,
@@ -729,19 +723,13 @@ describe("availability", () => {
   });
 });
 
-describe("shelf capacity", () => {
-  const unit = (over = {}) => ({ tier_count: 4, usable_height_in: 72, w: 50 / 12, h: 20 / 12, ...over });
+describe("shelf layout and guides", () => {
+  const unit = (over = {}) => ({ tier_count: 4, usable_height_in: 72, ...over });
   const family = (over = {}) => ({
-    id: 1, name: "HG Universal Century", box_class: "medium",
-    box_height_in: 12.5, facings: 2, sku_count: 79, placement: "tier", ...over
+    id: 1, name: "MG", guide_pieces: 12, sku_count: 123, placement: "tier", ...over
   });
   const onEveryTier = (id, count) =>
     Array.from({ length: count }, (_, i) => ({ grouping_id: id, tier_index: i + 1 }));
-
-  it("measures a tier across the unit's long side, whichever way it is turned", () => {
-    expect(tierWidthIn({ w: 50 / 12, h: 20 / 12 })).toBeCloseTo(50);
-    expect(tierWidthIn({ w: 20 / 12, h: 50 / 12 })).toBeCloseTo(50);
-  });
 
   it("splits the usable height evenly when nothing says otherwise", () => {
     expect(tierHeights(unit())).toEqual([18, 18, 18, 18]);
@@ -757,88 +745,58 @@ describe("shelf capacity", () => {
     expect(heights.reduce((a, b) => a + b)).toBe(72);
   });
 
-  it("counts how many SKUs face out across a tier at the chosen facings", () => {
-    // 50" tier, medium boxes at 12.375" each, two facings per SKU: two SKUs.
-    const tier = tierCapacity(50, 18, [family()]);
-    expect(tier.families[0].skus).toBe(2);
-    expect(tier.holds).toBe(2);
-    expect(tier.over).toBe(false);
+  it("hands a family with the whole 4-tier unit exactly Sam's number", () => {
+    const plan = positionLayout(unit(), [family()], onEveryTier(1, 4));
+    expect(plan.families[0]).toMatchObject({
+      guide: 12, guideUnit: 12, pool: 123, placed: true, tiers: [1, 2, 3, 4]
+    });
   });
 
-  it("shows fewer SKUs as facings go up, which is the dial between shows", () => {
-    const deep = tierCapacity(50, 18, [family({ facings: 4 })]);
-    const shallow = tierCapacity(50, 18, [family({ facings: 1 })]);
-    expect(deep.families[0].skus).toBe(1);
-    expect(shallow.families[0].skus).toBe(4);
+  it("scales the guide by the share of tiers the family occupies", () => {
+    const plan = positionLayout(unit(), [family()], onEveryTier(1, 2));
+    expect(plan.families[0].guide).toBe(6);
   });
 
-  it("splits a tier evenly between two families sharing it", () => {
-    const tier = tierCapacity(50, 18, [family(), family({ id: 2, name: "Real Grade" })]);
-    expect(tier.families.map(f => f.skus)).toEqual([1, 1]);
+  it("scales past the guide on a unit taller than the guide's 4 tiers", () => {
+    const plan = positionLayout(unit({ tier_count: 6 }), [family({ guide_pieces: 20 })],
+      onEveryTier(1, 6));
+    expect(plan.families[0].guide).toBe(Math.round(20 * 6 / GUIDE_TIERS));
   });
 
-  it("calls a tier over capacity when a family can't show even one SKU", () => {
-    const tier = tierCapacity(50, 18, [
-      family({ box_class: "oversize", facings: 2 }),
-      family({ id: 2, name: "Plush", box_class: "oversize", facings: 2 })
-    ]);
-    expect(tier.over).toBe(true);
-    expect(tier.families.every(f => f.skus === 0)).toBe(true);
+  it("gives no guide to a family that hasn't been given a number", () => {
+    const plan = positionLayout(unit(), [family({ guide_pieces: null })], onEveryTier(1, 4));
+    expect(plan.families[0].guide).toBeNull();
+    expect(plan.families[0].guideUnit).toBeNull();
   });
 
-  it("won't stand a box taller than the tier it's on", () => {
-    const tier = tierCapacity(50, 10, [family({ box_height_in: 16 })]);
-    expect(tier.families[0].tooTall).toBe(true);
-    expect(tier.families[0].skus).toBe(0);
-    expect(tier.over).toBe(true);
-  });
-
-  it("reports what a family shows against the pool it's picked from", () => {
-    const plan = positionCapacity(unit(), [family()], onEveryTier(1, 4));
-    expect(plan.holds).toBe(8);
-    expect(plan.families[0]).toMatchObject({ shows: 8, pool: 79, placed: true, tiers: [1, 2, 3, 4] });
+  it("says a family assigned to the unit but to no tier is unplaced", () => {
+    const plan = positionLayout(unit(), [family()], []);
+    expect(plan.families[0]).toMatchObject({ placed: false, guide: null });
   });
 
   it("lets a family skip the tiers it shouldn't be on", () => {
     // Blind boxes ride the top tiers, out of reach of an open bag.
-    const plan = positionCapacity(
-      unit({ tier_count: 6 }),
-      [family({ box_class: "small", box_height_in: 4, facings: 3 })],
-      [1, 2, 3].map(t => ({ grouping_id: 1, tier_index: t }))
-    );
+    const plan = positionLayout(unit({ tier_count: 6 }), [family()],
+      [1, 2, 3].map(t => ({ grouping_id: 1, tier_index: t })));
     expect(plan.families[0].tiers).toEqual([1, 2, 3]);
-    expect(plan.tiers[3].holds).toBe(0);
-    expect(plan.tiers[3].over).toBe(false);
-  });
-
-  it("says a family assigned to the unit but to no tier is unplaced", () => {
-    const plan = positionCapacity(unit(), [family()], []);
-    expect(plan.families[0]).toMatchObject({ placed: false, shows: 0 });
+    expect(plan.tiers[3].families).toEqual([]);
   });
 
   it("keeps tools and up tops out of the tiers and asks for a number instead", () => {
-    const plan = positionCapacity(unit(), [
+    const plan = positionLayout(unit(), [
       family(),
       family({ id: 2, name: "Tools", placement: "side", sku_count: 176 })
     ], onEveryTier(1, 4));
 
-    expect(plan.families.map(f => f.name)).toEqual(["HG Universal Century"]);
+    expect(plan.families.map(f => f.name)).toEqual(["MG"]);
     expect(plan.offTier).toEqual([
       { id: 2, name: "Tools", placement: "side", pool: 176 }
     ]);
   });
 
-  it("has no capacity at all for a unit that isn't a shelf", () => {
-    const plan = positionCapacity(unit({ tier_count: 0 }), [family()], []);
+  it("has no tiers at all for a unit that isn't a shelf", () => {
+    const plan = positionLayout(unit({ tier_count: 0 }), [family()], []);
     expect(plan.tiers).toEqual([]);
-    expect(plan.holds).toBe(0);
-  });
-
-  it("keeps the box widths a division of the tier they were written against", () => {
-    expect(BOX_WIDTH_IN.small * 6).toBeCloseTo(49.5);
-    expect(BOX_WIDTH_IN.medium * 4).toBeCloseTo(49.5);
-    expect(BOX_WIDTH_IN.large * 3).toBeCloseTo(49.5);
-    expect(BOX_WIDTH_IN.oversize * 2).toBeCloseTo(49.5);
   });
 });
 
