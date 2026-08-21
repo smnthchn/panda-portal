@@ -9,6 +9,7 @@ import {
   handleAssignGrouping,
   handleAssignTier
 } from "./routes/groupings.js";
+import { handleBringItems, handlePickItem } from "./routes/bring.js";
 import {
   handleResources,
   handleGetResourceImage,
@@ -184,6 +185,9 @@ const ROUTES = [
   ["PUT", "/api/shelf-positions/:id/grouping", handleAssignGrouping],
   ["PUT", "/api/shelf-positions/:id/tier", handleAssignTier],
   ["PUT", "/api/shelf-positions/:id/tiers", handleUpdateTiers],
+
+  ["GET", "/api/conventions/:slug/bring-items", handleBringItems],
+  ["POST", "/api/bring-items/:id/pick", handlePickItem],
 
   ["GET", "/api/resources", handleResources],
   ["POST", "/api/resources", handleCreateResource],

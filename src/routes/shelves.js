@@ -4,6 +4,7 @@ import { parseImageDataUri, imageResponse, imageUrlFor } from "../lib/images.js"
 import { resourceUrl, loadResources } from "./resources.js";
 import { loadGroupings, BOX_CLASSES } from "./groupings.js";
 import { positionLayout, DEFAULT_USABLE_HEIGHT_IN } from "../lib/capacity.js";
+import { bringProgress } from "./bring.js";
 import {
   templatePositions,
   BOOTH_FEET,
@@ -340,6 +341,7 @@ export async function handleShelfPlan(request, env, slug) {
     totals: stageTotals(positions),
     conflicts: layoutConflicts(positions),
     copyFrom: others.results || [],
+    bringProgress: await bringProgress(env.DB, convention.id),
 
     // What the artwork and grouping pickers offer. Both libraries are
     // store-wide and small, so they ride along rather than costing a second

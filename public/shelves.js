@@ -15,6 +15,7 @@ let openSignageFor = null;
 let openBoardsFor = null;       // which row's Boards strip is open
 let openShelfFor = null;        // which row's section/remove strip is open
 let newGroupingFor = null;      // which row's strip is showing the new-family form
+let pickingFor = null;          // { groupingId, name, items } — the open pick list
 let personSelected = null;      // which person circle is selected on the map
 let openGroupingsFor = null;    // which row's product strip is open
 let viewingPhoto = null;        // photo id, shown full size
@@ -103,6 +104,7 @@ function drawShelfPlan() {
            accept="image/png,image/jpeg,image/webp" capture="environment">
 
     ${pickingArtFor ? artworkPicker() : ""}
+    ${pickingFor ? pickListBox() : ""}
     ${viewingPhoto ? photoLightbox() : ""}
     ${viewingBoard ? boardLightbox() : ""}
   `;
@@ -114,7 +116,7 @@ function drawShelfPlan() {
   // supposed to be the whole screen.
   document.documentElement.classList.toggle(
     "overlay-open",
-    Boolean(viewingPhoto || viewingBoard || pickingArtFor)
+    Boolean(viewingPhoto || viewingBoard || pickingArtFor || pickingFor)
   );
 
   watchShelfWidth();
@@ -453,22 +455,83 @@ function groupingChip(grouping, layout = null) {
 }
 
 /**
- * Links to each family's tab of the bring-list Google Sheet — the SKU-level
- * list lives there, not in the portal, so "what goes on this unit" is one tap
- * from the unit.
+ * Each family's picking button and its tab of the bring-list Google Sheet.
+ * The pick list is the portal's (ticks record who and when); the sheet stays
+ * the planning surface. Both one tap from the unit.
  */
 function bringListLinks(position) {
-  const linked = position.groupings.filter(g => g.bring_list_url);
-  if (!linked.length) return "";
+  const rows = position.groupings
+    .map(g => ({ g, progress: shelfData.bringProgress?.[g.id] }))
+    .filter(({ g, progress }) => progress || g.bring_list_url);
+
+  if (!rows.length) return "";
 
   return `
     <div class="badge-row" style="margin:8px 0 0;">
-      ${linked.map(g => `
-        <a class="pill pill-paper" href="${esc(g.bring_list_url)}" target="_blank"
-           rel="noopener" style="text-decoration:none;">
-          ${esc(g.name)} list ↗
-        </a>
+      ${rows.map(({ g, progress }) => `
+        ${progress ? `
+          <button class="pill pill-paper pick-open" data-pick-list="${g.id}"
+                  data-name="${esc(g.name)}"
+                  title="Tick off ${esc(g.name)} as it's picked">
+            ${esc(g.name)} · picked ${progress.picked}/${progress.total}
+          </button>
+        ` : ""}
+        ${g.bring_list_url ? `
+          <a class="pill pill-paper" href="${esc(g.bring_list_url)}" target="_blank"
+             rel="noopener" style="text-decoration:none;">
+            ${esc(g.name)} list ↗
+          </a>
+        ` : ""}
       `).join("")}
+    </div>
+  `;
+}
+
+/**
+ * The pick list itself: one family's bring items, grouped by Sam's labels,
+ * a checkbox each. Ticks update in place rather than redrawing, so the list
+ * doesn't jump back to the top under someone's thumb mid-pick.
+ */
+function pickListBox() {
+  const { name, items } = pickingFor;
+  const done = items ? items.filter(i => i.picked_at).length : 0;
+  let lastLabel = null;
+
+  return `
+    <div class="lightbox" id="pickListBox">
+      <div class="lightbox-bar">
+        <span>${esc(name)} — picking
+          <span id="pickCount">${items ? `${done} / ${items.length}` : "…"}</span>
+        </span>
+        <button class="btn-quiet" id="closePickBtn">Close</button>
+      </div>
+
+      <div class="picker-body">
+        <div class="card" style="padding:0; overflow:hidden;">
+          ${!items
+            ? `<p class="empty-state">Loading…</p>`
+            : !items.length
+              ? `<p class="empty-state">Nothing on the bring list for this family.</p>`
+              : items.map(item => {
+                  const heading = item.label !== lastLabel
+                    ? `<div class="shelf-wall-row">${esc(item.label || "—")}</div>`
+                    : "";
+                  lastLabel = item.label;
+
+                  return heading + `
+                    <label class="checkbox-label pick-row${item.picked_at ? " picked" : ""}">
+                      <input type="checkbox" data-pick-item="${item.id}"
+                             ${item.picked_at ? "checked" : ""}>
+                      <span class="pick-title">
+                        ${esc(item.title)}
+                        <em>${esc(item.sku)} · bring ${item.qty}<span class="pick-who">${
+                          item.picked_by_name ? ` · ${esc(item.picked_by_name)}` : ""}</span></em>
+                      </span>
+                    </label>
+                  `;
+                }).join("")}
+        </div>
+      </div>
     </div>
   `;
 }
@@ -578,6 +641,13 @@ function groupingsStrip(position) {
                 : `<span class="unplaced-note">Not on a tier yet.</span>`}
             </span>
           `}
+
+          ${shelfData.bringProgress?.[g.id] ? `
+            <button class="btn-quiet" data-pick-list="${g.id}" data-name="${esc(g.name)}"
+                    style="font-size:11.5px; padding:5px 9px; --depress: 0px;">
+              Picked ${shelfData.bringProgress[g.id].picked}/${shelfData.bringProgress[g.id].total}
+            </button>
+          ` : ""}
 
           <button class="board-slot-clear" data-grouping-remove="${position.id}"
                   data-grouping="${g.id}" title="Take it off this shelf">×</button>
@@ -1853,6 +1923,74 @@ function wireShelfPlan() {
       }
 
       await reload();
+    };
+  });
+
+  document.querySelectorAll("[data-pick-list]").forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      pickingFor = { groupingId: Number(btn.dataset.pickList), name: btn.dataset.name || "Picking", items: null };
+      drawShelfPlan();
+
+      const result = await api(
+        `/api/conventions/${encodeURIComponent(slug)}/bring-items?grouping=${pickingFor.groupingId}`
+      );
+
+      if (!result.ok) {
+        pickingFor = null;
+        drawShelfPlan();
+        showFormError("shelfError", result.error || "Could not load the pick list.");
+        return;
+      }
+
+      if (pickingFor) {
+        pickingFor.items = result.items;
+        drawShelfPlan();
+      }
+    };
+  });
+
+  document.getElementById("closePickBtn")?.addEventListener("click", () => {
+    pickingFor = null;
+    drawShelfPlan();
+  });
+
+  // Ticks update the row and the count in place — a redraw would throw the
+  // list back to the top under someone's thumb mid-pick.
+  document.querySelectorAll("[data-pick-item]").forEach(box => {
+    box.onchange = async () => {
+      const id = Number(box.dataset.pickItem);
+      const item = pickingFor?.items?.find(i => i.id === id);
+      if (!item) return;
+
+      const picked = box.checked;
+      const before = { picked_at: item.picked_at, picked_by_name: item.picked_by_name };
+
+      item.picked_at = picked ? "now" : null;
+      item.picked_by_name = picked ? (state.user?.full_name || "you") : null;
+
+      const row = box.closest(".pick-row");
+      row?.classList.toggle("picked", picked);
+      const who = row?.querySelector(".pick-who");
+      if (who) who.textContent = item.picked_by_name ? ` · ${item.picked_by_name}` : "";
+
+      const progress = shelfData.bringProgress?.[pickingFor.groupingId];
+      if (progress) progress.picked += picked ? 1 : -1;
+      const count = document.getElementById("pickCount");
+      if (count) {
+        count.textContent = `${pickingFor.items.filter(i => i.picked_at).length} / ${pickingFor.items.length}`;
+      }
+
+      const result = await apiSend(`/api/bring-items/${id}/pick`, "POST", { picked });
+
+      if (!result.ok) {
+        item.picked_at = before.picked_at;
+        item.picked_by_name = before.picked_by_name;
+        if (progress) progress.picked += picked ? -1 : 1;
+        box.checked = !picked;
+        row?.classList.toggle("picked", !picked);
+        showFormError("shelfError", result.error || "Could not save that tick.");
+      }
     };
   });
 
