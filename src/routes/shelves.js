@@ -279,6 +279,7 @@ async function loadPlan(db, conventionId) {
       tier_count: row.tier_count,
       usable_height_in: row.usable_height_in,
       kind: row.kind,
+      notes: row.notes || "",
       geometry,
       baseline: { x: row.x, y: row.y, w: row.w, h: row.h },
       moved: row.move_x !== null,
@@ -381,7 +382,7 @@ export async function handleStartShelfPlan(request, env, slug) {
 
     const sourceRows = await env.DB.prepare(
       `SELECT code, wall, wall_note, product, unit_type, signage, board_name, kind,
-              sort_order, x, y, w, h, move_x, move_y, move_w, move_h
+              notes, sort_order, x, y, w, h, move_x, move_y, move_w, move_h
        FROM shelf_positions WHERE convention_id = ? ORDER BY sort_order ASC`
     ).bind(source.id).all();
 
@@ -406,8 +407,8 @@ export async function handleStartShelfPlan(request, env, slug) {
     env.DB.prepare(
       `INSERT INTO shelf_positions
          (convention_id, code, wall, wall_note, product, unit_type, signage,
-          board_name, kind, sort_order, x, y, w, h)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          board_name, kind, notes, sort_order, x, y, w, h)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       convention.id,
       row.code,
@@ -418,6 +419,7 @@ export async function handleStartShelfPlan(request, env, slug) {
       row.signage || "",
       row.board_name || "",
       row.kind || "shelf",
+      row.notes || null,
       row.sort_order,
       row.x, row.y, row.w, row.h
     )
@@ -553,6 +555,11 @@ export async function handleUpdatePosition(request, env, positionId) {
   if (body.product !== undefined) {
     updates.push("product = ?");
     values.push(optionalText(body.product) || "");
+  }
+
+  if (body.notes !== undefined) {
+    updates.push("notes = ?");
+    values.push(optionalText(body.notes));
   }
 
   // "other" is the cream fill on the map — a unit that isn't a selling shelf,

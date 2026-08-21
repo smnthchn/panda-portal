@@ -643,6 +643,13 @@ function shelfStrip(position) {
         Not a selling shelf
       </label>
 
+      <label class="facings" style="flex:1; min-width:200px;"
+             title="Shown on the unit's card everywhere — and carried forward with the plan">
+        <span class="board-slot-face">NOTES</span>
+        <input type="text" data-shelf-notes maxlength="300" placeholder="—"
+               value="${esc(position.notes || "")}" style="width:100%;">
+      </label>
+
       <button class="btn-danger" data-delete-shelf="${position.id}">Remove ${esc(position.code)}</button>
 
       <button class="btn-quiet" id="closeShelfBtn"
@@ -809,6 +816,8 @@ function shelfList() {
             ? `<div class="badge-row" style="margin:8px 0 0;">${position.signage.map(signageTag).join("")}</div>`
             : ""}
 
+          ${position.notes ? `<div class="note-card" style="margin:8px 0 0;">${esc(position.notes)}</div>` : ""}
+
           <div class="shelf-list-stages">
             ${position.stages.map((done, stage) => `
               <div class="shelf-list-stage">
@@ -875,6 +884,8 @@ function shelfDetail() {
           </div>
         `).join("")}
       </div>
+
+      ${position.notes ? `<div class="note-card">${esc(position.notes)}</div>` : ""}
 
       ${position.signage.length
         ? ""
@@ -1293,6 +1304,8 @@ function selectedPositionCard(position) {
             </div>
           `).join("")}
         </div>
+
+        ${position.notes ? `<div class="note-card" style="margin-top:10px;">${esc(position.notes)}</div>` : ""}
 
         ${boardsBlock(position)}
         ${photosBlock(position)}
@@ -1940,6 +1953,7 @@ function wireShelfPlan() {
     const select = document.querySelector("[data-wall]");
     const codeInput = document.querySelector("[data-shelf-code]");
     const kindBox = document.querySelector("[data-shelf-kind]");
+    const notesInput = document.querySelector("[data-shelf-notes]");
     const position = shelfData.positions.find(p => p.id === openShelfFor);
 
     const patch = {};
@@ -1948,6 +1962,8 @@ function wireShelfPlan() {
     if (position && code && code !== position.code) patch.code = code;
     const kind = kindBox?.checked ? "other" : "shelf";
     if (position && kindBox && kind !== position.kind) patch.kind = kind;
+    const notes = notesInput?.value.trim();
+    if (position && notesInput && notes !== (position.notes || "")) patch.notes = notes;
 
     if (!position || !Object.keys(patch).length) {
       openShelfFor = null;
