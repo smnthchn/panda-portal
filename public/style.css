@@ -2838,6 +2838,40 @@ button.cell-add:hover {
   opacity: 0.85;
 }
 
+/* A person on the floor. The clock pair rather than ink-on-paper, so the
+   circle reads over any block in all five palettes. */
+.booth-person {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--clock-bg);
+  color: var(--clock-text);
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  user-select: none;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.booth-person.selected {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 28%, transparent);
+}
+
+.booth-person.draggable {
+  cursor: grab;
+}
+
+.booth-person.dragging {
+  cursor: grabbing;
+  z-index: 5;
+  opacity: 0.85;
+}
+
 .block-head {
   display: flex;
   flex-direction: column;

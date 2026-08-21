@@ -29,7 +29,10 @@ import {
   handleAssignBoardArt,
   handleGetShelfPhoto,
   handleAddShelfPhoto,
-  handleDeleteShelfPhoto
+  handleDeleteShelfPhoto,
+  handleAddBoothPerson,
+  handleUpdateBoothPerson,
+  handleDeleteBoothPerson
 } from "./routes/shelves.js";
 import {
   handleMyAvailability,
@@ -175,6 +178,9 @@ const ROUTES = [
   ["POST", "/api/groupings", handleCreateGrouping],
   ["PATCH", "/api/groupings/:id", handleUpdateGrouping],
   ["DELETE", "/api/groupings/:id", handleDeleteGrouping],
+  ["POST", "/api/conventions/:slug/booth-people", handleAddBoothPerson],
+  ["PUT", "/api/booth-people/:id", handleUpdateBoothPerson],
+  ["DELETE", "/api/booth-people/:id", handleDeleteBoothPerson],
   ["PUT", "/api/shelf-positions/:id/grouping", handleAssignGrouping],
   ["PUT", "/api/shelf-positions/:id/tier", handleAssignTier],
   ["PUT", "/api/shelf-positions/:id/tiers", handleUpdateTiers],

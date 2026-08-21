@@ -15,6 +15,7 @@ let openSignageFor = null;
 let openBoardsFor = null;       // which row's Boards strip is open
 let openShelfFor = null;        // which row's section/remove strip is open
 let newGroupingFor = null;      // which row's strip is showing the new-family form
+let personSelected = null;      // which person circle is selected on the map
 let openGroupingsFor = null;    // which row's product strip is open
 let viewingPhoto = null;        // photo id, shown full size
 let viewingBoard = null;        // { positionId, face }, shown full size
@@ -993,6 +994,7 @@ function tierRow(position, tier, canManage) {
 function boothMap() {
   const { positions, booth, conflicts } = shelfData;
   const selected = positions.find(p => p.id === shelfSelected);
+  const selectedPerson = (shelfData.people || []).find(p => p.id === personSelected);
 
   measureScale();
 
@@ -1017,6 +1019,8 @@ function boothMap() {
               ${shelfData.walls.map(wall => `<option value="${esc(wall)}">${esc(wall)}</option>`).join("")}
             </select>
             <button class="btn-quiet add-shelf" id="mapAddBtn">+ Add a unit</button>
+            <input type="text" id="mapPersonName" placeholder="Entrance" maxlength="24" style="width:110px;">
+            <button class="btn-quiet add-shelf" id="mapAddPersonBtn">+ Add a person</button>
           </div>
         ` : ""}
 
@@ -1028,14 +1032,62 @@ function boothMap() {
           <div class="booth-guide h" style="top:${(booth.depth / 3) * pxPerFoot}px;"></div>
           <div class="booth-guide h" style="top:${(booth.depth * 2 / 3) * pxPerFoot}px;"></div>
           ${positions.map(boothBlock).join("")}
+          ${(shelfData.people || []).map(personDot).join("")}
         </div>
         </div>
       </div>
 
       <div class="booth-panel">
+        ${selectedPerson ? personCard(selectedPerson) : ""}
         ${selected ? selectedPositionCard(selected) : ""}
         ${conflicts.length ? conflictsCard(conflicts) : ""}
         ${signsMode ? signsList() : ""}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * A person on the floor. The five standing spots — entrance, stager, cashier,
+ * aisle coverage — are part of the plan the same way the shelves are, so
+ * they're placed on the same map.
+ */
+function personDot(person) {
+  const size = (shelfData.personFeet || 1.5) * pxPerFoot;
+  const initials = person.label
+    .split(/\s+/)
+    .map(word => word[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  return `
+    <div class="booth-person${person.id === personSelected ? " selected" : ""}${arrangeMode ? " draggable" : ""}"
+         data-person="${person.id}" title="${esc(person.label)}"
+         style="left:${person.x * pxPerFoot}px; top:${person.y * pxPerFoot}px;
+                width:${size}px; height:${size}px;">
+      ${esc(initials)}
+    </div>
+  `;
+}
+
+function personCard(person) {
+  return `
+    <div class="card stripped">
+      <div class="strip brand">ON THE FLOOR</div>
+      <div class="card-body">
+        <div class="panel-code">${esc(person.label)}</div>
+        <div class="meta">
+          ${Math.round(person.x * 12)}″ from the left · ${Math.round(person.y * 12)}″ down
+        </div>
+        ${arrangeMode ? `
+          <div class="inline-form" style="margin-top:10px;">
+            <input type="text" id="personLabelInput" value="${esc(person.label)}" maxlength="24" style="width:140px;">
+            <button class="btn-quiet" id="personRenameBtn">Rename</button>
+            <button class="btn-danger" id="personRemoveBtn">Remove</button>
+          </div>
+        ` : ""}
       </div>
     </div>
   `;
@@ -2028,6 +2080,15 @@ function wireBoothMap(slug, reload) {
   document.querySelectorAll("[data-block]").forEach(block => {
     block.onclick = () => {
       shelfSelected = Number(block.dataset.block);
+      personSelected = null;
+      drawShelfPlan();
+    };
+  });
+
+  document.querySelectorAll("[data-person]").forEach(dot => {
+    dot.onclick = () => {
+      personSelected = Number(dot.dataset.person);
+      shelfSelected = null;
       drawShelfPlan();
     };
   });
@@ -2099,8 +2160,57 @@ function wireBoothMap(slug, reload) {
     const added = shelfData.positions.find(p => p.code === code.trim());
     if (added) {
       shelfSelected = added.id;
+      personSelected = null;
       drawShelfPlan();
     }
+  });
+
+  // A new person lands in the top-left corner too, selected, ready to drag
+  // to their spot.
+  document.getElementById("mapAddPersonBtn")?.addEventListener("click", async () => {
+    const label = document.getElementById("mapPersonName")?.value.trim();
+    if (!label) return;
+
+    const result = await apiSend(`/api/conventions/${encodeURIComponent(slug)}/booth-people`, "POST", { label });
+
+    if (!result.ok) {
+      showFormError("shelfError", result.error || "Could not add them.");
+      return;
+    }
+
+    await reload();
+
+    if (result.id) {
+      personSelected = result.id;
+      shelfSelected = null;
+      drawShelfPlan();
+    }
+  });
+
+  document.getElementById("personRenameBtn")?.addEventListener("click", async () => {
+    const label = document.getElementById("personLabelInput")?.value.trim();
+    if (!label) return;
+
+    const result = await apiSend(`/api/booth-people/${personSelected}`, "PUT", { label });
+
+    if (!result.ok) {
+      showFormError("shelfError", result.error || "Could not rename them.");
+      return;
+    }
+
+    await reload();
+  });
+
+  document.getElementById("personRemoveBtn")?.addEventListener("click", async () => {
+    const result = await apiSend(`/api/booth-people/${personSelected}`, "DELETE");
+
+    if (!result.ok) {
+      showFormError("shelfError", result.error || "Could not remove them.");
+      return;
+    }
+
+    personSelected = null;
+    await reload();
   });
 
   wireArrowNudging(reload);
@@ -2216,6 +2326,54 @@ function wireDragging(reload) {
 
       block.onpointermove = move;
       block.onpointerup = up;
+    };
+  });
+
+  document.querySelectorAll(".booth-person.draggable").forEach(dot => {
+    dot.onpointerdown = (event) => {
+      event.preventDefault();
+      const id = Number(dot.dataset.person);
+      const person = (shelfData.people || []).find(p => p.id === id);
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const origin = { x: person.x, y: person.y };
+
+      dot.setPointerCapture(event.pointerId);
+      dot.classList.add("dragging");
+
+      dot.onpointermove = (e) => {
+        const dx = (e.clientX - startX) / pxPerFoot;
+        const dy = (e.clientY - startY) / pxPerFoot;
+        dot.style.left = `${(origin.x + dx) * pxPerFoot}px`;
+        dot.style.top = `${(origin.y + dy) * pxPerFoot}px`;
+      };
+
+      dot.onpointerup = async (e) => {
+        dot.releasePointerCapture(event.pointerId);
+        dot.classList.remove("dragging");
+        dot.onpointermove = null;
+        dot.onpointerup = null;
+
+        const dx = (e.clientX - startX) / pxPerFoot;
+        const dy = (e.clientY - startY) / pxPerFoot;
+
+        if (Math.abs(dx) < 0.05 && Math.abs(dy) < 0.05) {
+          personSelected = id;
+          shelfSelected = null;
+          drawShelfPlan();
+          return;
+        }
+
+        const result = await apiSend(`/api/booth-people/${id}`, "PUT", {
+          x: origin.x + dx,
+          y: origin.y + dy
+        });
+
+        if (!result.ok) showFormError("shelfError", result.error || "Could not move them.");
+
+        personSelected = id;
+        await reload();
+      };
     };
   });
 }

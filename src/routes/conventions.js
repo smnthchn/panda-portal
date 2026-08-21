@@ -378,6 +378,14 @@ export async function handleDeleteConvention(request, env, conventionId) {
 
   const id = Number(conventionId);
 
+  // The booth plan hangs off the event, and its child tables hang off the
+  // positions — all of it goes, or the position rows' foreign keys refuse the
+  // delete the way an assigned shelf's once did.
+  const positionsOf = (table) => env.DB.prepare(
+    `DELETE FROM ${table} WHERE position_id IN
+       (SELECT id FROM shelf_positions WHERE convention_id = ?)`
+  ).bind(id);
+
   await env.DB.batch([
     env.DB.prepare(
       `DELETE FROM convention_checklist_items
@@ -386,6 +394,14 @@ export async function handleDeleteConvention(request, env, conventionId) {
     env.DB.prepare(`DELETE FROM convention_checklists WHERE convention_id = ?`).bind(id),
     env.DB.prepare(`DELETE FROM convention_shifts WHERE convention_id = ?`).bind(id),
     env.DB.prepare(`DELETE FROM convention_days WHERE convention_id = ?`).bind(id),
+    positionsOf("shelf_stage_flags"),
+    positionsOf("shelf_board_art"),
+    positionsOf("shelf_photos"),
+    positionsOf("shelf_grouping_tiers"),
+    positionsOf("shelf_groupings"),
+    positionsOf("shelf_tiers"),
+    env.DB.prepare(`DELETE FROM shelf_positions WHERE convention_id = ?`).bind(id),
+    env.DB.prepare(`DELETE FROM booth_people WHERE convention_id = ?`).bind(id),
     env.DB.prepare(`DELETE FROM conventions WHERE id = ?`).bind(id)
   ]);
 

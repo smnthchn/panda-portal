@@ -327,6 +327,8 @@ export async function handleShelfPlan(request, env, slug) {
     unitTypes: UNIT_TYPES,
     walls: WALLS,
     positions,
+    people: await loadBoothPeople(env.DB, convention.id),
+    personFeet: PERSON_FEET,
     totals: stageTotals(positions),
     conflicts: layoutConflicts(positions),
     copyFrom: others.results || [],
@@ -829,6 +831,84 @@ export async function handleDeletePosition(request, env, positionId) {
     env.DB.prepare(`DELETE FROM shelf_tiers WHERE position_id = ?`).bind(id),
     env.DB.prepare(`DELETE FROM shelf_positions WHERE id = ?`).bind(id)
   ]);
+
+  return { ok: true };
+}
+
+/* ---------- People on the map ---------- */
+
+/** The circle's diameter in feet — roughly a standing person. */
+export const PERSON_FEET = 1.5;
+
+export async function loadBoothPeople(db, conventionId) {
+  const rows = await db.prepare(
+    `SELECT id, label, x, y FROM booth_people WHERE convention_id = ? ORDER BY id`
+  ).bind(conventionId).all();
+
+  return rows.results || [];
+}
+
+export async function handleAddBoothPerson(request, env, slug) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const convention = await env.DB.prepare(
+    `SELECT id FROM conventions WHERE slug = ?`
+  ).bind(slug).first();
+
+  if (!convention) return { ok: false, error: "Convention not found." };
+
+  const body = await readJsonBody(request);
+  const label = optionalText(body.label);
+
+  if (!label) throw new BadRequest("Give them a name or a job, like Entrance.");
+
+  const added = await env.DB.prepare(
+    `INSERT INTO booth_people (convention_id, label) VALUES (?, ?)`
+  ).bind(convention.id, label).run();
+
+  return { ok: true, id: added.meta?.last_row_id };
+}
+
+export async function handleUpdateBoothPerson(request, env, personId) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const id = Number(personId);
+  const body = await readJsonBody(request);
+
+  const person = await env.DB.prepare(
+    `SELECT id, label, x, y FROM booth_people WHERE id = ?`
+  ).bind(id).first();
+
+  if (!person) return { ok: false, error: "They're no longer on the map." };
+
+  const label = body.label !== undefined ? optionalText(body.label) : person.label;
+  if (!label) throw new BadRequest("Give them a name or a job, like Entrance.");
+
+  // Snapped to the inch and kept on the floor, the same way a unit is.
+  const snap = (feet) => Math.round(feet * 12) / 12;
+  const x = Number.isFinite(Number(body.x))
+    ? Math.min(Math.max(snap(Number(body.x)), 0), BOOTH_FEET.width - PERSON_FEET)
+    : person.x;
+  const y = Number.isFinite(Number(body.y))
+    ? Math.min(Math.max(snap(Number(body.y)), 0), BOOTH_FEET.depth - PERSON_FEET)
+    : person.y;
+
+  await env.DB.prepare(
+    `UPDATE booth_people SET label = ?, x = ?, y = ? WHERE id = ?`
+  ).bind(label, x, y, id).run();
+
+  return { ok: true };
+}
+
+export async function handleDeleteBoothPerson(request, env, personId) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  await env.DB.prepare(
+    `DELETE FROM booth_people WHERE id = ?`
+  ).bind(Number(personId)).run();
 
   return { ok: true };
 }
