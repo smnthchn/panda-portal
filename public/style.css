@@ -238,9 +238,11 @@ button {
 
 /* ---------- Buttons: thick bottom border that depresses on hover ---------- */
 
-/* A button presses down on hover: the bottom edge gives way by --depress, and
-   the button moves down by the same amount. Because it's the same amount, the
-   space the button occupies never changes, so nothing below it moves.
+/* A button presses down while it's actually being clicked: the bottom edge
+   gives way by --depress, and the button moves down by the same amount.
+   Because it's the same amount, the space the button occupies never changes,
+   so nothing below it moves. It used to depress on hover, and the constant
+   2px bobbing under the mouse wore thin — the press now only answers a press.
 
    That balance is the whole point of expressing it this way. It used to be two
    hard-coded 2px values, which only cancelled out for a button whose bottom
@@ -271,7 +273,7 @@ button {
   cursor: pointer;
 }
 
-button:hover:not(:disabled) {
+button:active:not(:disabled) {
   border-bottom-width: var(--edge);
   margin-top: var(--depress);
 }
@@ -2165,7 +2167,7 @@ html.overlay-open {
   cursor: pointer;
 }
 
-.shift-card:hover {
+.shift-card:active {
   box-shadow: 0 2px 0 var(--shadow);
   margin-top: 2px;
 }
@@ -2870,6 +2872,38 @@ button.cell-add:hover {
   cursor: grabbing;
   z-index: 5;
   opacity: 0.85;
+}
+
+/* Gap rulers: the aisle a move is changing, measured while you move it. */
+.gap-ruler {
+  position: absolute;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.gap-ruler.h {
+  height: 0;
+  border-top: 2px dashed var(--brand);
+}
+
+.gap-ruler.v {
+  width: 0;
+  border-left: 2px dashed var(--brand);
+}
+
+.gap-ruler span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Fredoka', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--brand);
+  border-radius: 999px;
+  padding: 1px 6px;
+  white-space: nowrap;
 }
 
 .block-head {

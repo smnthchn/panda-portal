@@ -1013,12 +1013,16 @@ function boothMap() {
             Drag a unit, or select one and nudge it with the arrow keys —
             1″ a press, 6″ with Shift.
           </p>
-          <div class="inline-form" style="margin:0 0 10px;">
+          <div class="inline-form" style="margin:0 0 8px;">
+            <span class="board-slot-face">UNIT</span>
             <input type="text" id="mapNewCode" placeholder="S2" maxlength="12" style="width:90px;">
             <select id="mapNewWall">
               ${shelfData.walls.map(wall => `<option value="${esc(wall)}">${esc(wall)}</option>`).join("")}
             </select>
             <button class="btn-quiet add-shelf" id="mapAddBtn">+ Add a unit</button>
+          </div>
+          <div class="inline-form" style="margin:0 0 10px;">
+            <span class="board-slot-face">PERSON</span>
             <input type="text" id="mapPersonName" placeholder="Entrance" maxlength="24" style="width:110px;">
             <button class="btn-quiet add-shelf" id="mapAddPersonBtn">+ Add a person</button>
           </div>
@@ -1033,6 +1037,7 @@ function boothMap() {
           <div class="booth-guide h" style="top:${(booth.depth * 2 / 3) * pxPerFoot}px;"></div>
           ${positions.map(boothBlock).join("")}
           ${(shelfData.people || []).map(personDot).join("")}
+          ${arrangeMode && selected ? gapRulers(selected.geometry, selected.id) : ""}
         </div>
         </div>
       </div>
@@ -1070,6 +1075,89 @@ function personDot(person) {
       ${esc(initials)}
     </div>
   `;
+}
+
+/**
+ * Gap rulers: from each side of the unit being arranged, a dashed line to the
+ * first thing that side would hit — another unit, or the booth edge — with
+ * the gap in inches on it. The aisles are the checkout flow, so the number a
+ * move is changing is the whole point of the move.
+ */
+function gapRulers(geometry, excludeId) {
+  const booth = shelfData.booth;
+  const g = geometry;
+  const others = shelfData.positions
+    .filter(p => p.id !== excludeId)
+    .map(p => p.geometry);
+
+  const inches = (feet) => `${Math.round(feet * 12)}″`;
+  const out = [];
+
+  // For each direction: every unit whose band overlaps ours, keyed by the
+  // edge facing us and the middle of the shared band, where the line looks
+  // anchored to both. Nearest wins; no unit means the booth edge.
+  const nearest = (hits, start) => {
+    let best = null;
+    for (const hit of hits) {
+      if (hit.near < start - 1 / 24) continue;
+      if (!best || hit.near < best.near) best = hit;
+    }
+    return best;
+  };
+
+  const bandMid = (o, lo, hi, loKey, sizeKey) =>
+    (Math.max(lo, o[loKey]) + Math.min(hi, o[loKey] + o[sizeKey])) / 2;
+
+  const vBand = others.filter(o => Math.min(g.y + g.h, o.y + o.h) - Math.max(g.y, o.y) > 0);
+  const hBand = others.filter(o => Math.min(g.x + g.w, o.x + o.w) - Math.max(g.x, o.x) > 0);
+
+  // A gap that rounds to no inches at all is a unit sitting flush against
+  // its neighbour — visible on its own, so no ruler. This also swallows the
+  // hair-negative distances float rounding gives two touching edges.
+  const worthDrawing = (dist) => Math.round(dist * 12) >= 1;
+
+  // Right
+  let start = g.x + g.w;
+  let best = nearest(vBand.map(o => ({ near: o.x, mid: bandMid(o, g.y, g.y + g.h, "y", "h") })), start);
+  let dist = best ? best.near - start : booth.width - start;
+  if (worthDrawing(dist)) out.push(hRuler(start, best ? best.mid : g.y + g.h / 2, dist, inches(dist)));
+
+  // Left
+  best = nearest(vBand.map(o => ({ near: g.x - (o.x + o.w), mid: bandMid(o, g.y, g.y + g.h, "y", "h") })), 0);
+  dist = best ? best.near : g.x;
+  if (worthDrawing(dist)) out.push(hRuler(g.x - dist, best ? best.mid : g.y + g.h / 2, dist, inches(dist)));
+
+  // Down
+  start = g.y + g.h;
+  best = nearest(hBand.map(o => ({ near: o.y, mid: bandMid(o, g.x, g.x + g.w, "x", "w") })), start);
+  dist = best ? best.near - start : booth.depth - start;
+  if (worthDrawing(dist)) out.push(vRuler(best ? best.mid : g.x + g.w / 2, start, dist, inches(dist)));
+
+  // Up
+  best = nearest(hBand.map(o => ({ near: g.y - (o.y + o.h), mid: bandMid(o, g.x, g.x + g.w, "x", "w") })), 0);
+  dist = best ? best.near : g.y;
+  if (worthDrawing(dist)) out.push(vRuler(best ? best.mid : g.x + g.w / 2, g.y - dist, dist, inches(dist)));
+
+  return out.join("");
+}
+
+function hRuler(xFeet, yFeet, wFeet, text) {
+  return `<div class="gap-ruler h" style="left:${xFeet * pxPerFoot}px; top:${yFeet * pxPerFoot}px;
+               width:${Math.max(wFeet * pxPerFoot, 0)}px;"><span>${text}</span></div>`;
+}
+
+function vRuler(xFeet, yFeet, hFeet, text) {
+  return `<div class="gap-ruler v" style="left:${xFeet * pxPerFoot}px; top:${yFeet * pxPerFoot}px;
+               height:${Math.max(hFeet * pxPerFoot, 0)}px;"><span>${text}</span></div>`;
+}
+
+/** Redraws the rulers alone, so a drag can update them without a full draw. */
+function renderGapRulers(geometry, excludeId) {
+  const frame = document.getElementById("boothFrame");
+  if (!frame) return;
+
+  frame.querySelectorAll(".gap-ruler").forEach(el => el.remove());
+  if (geometry) frame.insertAdjacentHTML("beforeend", gapRulers(geometry, excludeId));
 }
 
 function personCard(person) {
@@ -2169,7 +2257,14 @@ function wireBoothMap(slug, reload) {
   // to their spot.
   document.getElementById("mapAddPersonBtn")?.addEventListener("click", async () => {
     const label = document.getElementById("mapPersonName")?.value.trim();
-    if (!label) return;
+
+    // Saying nothing here read as the button being broken.
+    if (!label) {
+      showFormError("shelfError", "Type a name or a job first — Entrance, Cash, or whoever it is.");
+      return;
+    }
+
+    showFormError("shelfError", "");
 
     const result = await apiSend(`/api/conventions/${encodeURIComponent(slug)}/booth-people`, "POST", { label });
 
@@ -2259,6 +2354,8 @@ function wireArrowNudging(reload) {
       block.style.top = `${position.geometry.y * pxPerFoot}px`;
     }
 
+    renderGapRulers(position.geometry, position.id);
+
     clearTimeout(pendingNudge);
     pendingNudge = setTimeout(async () => {
       const result = await apiSend(
@@ -2297,6 +2394,7 @@ function wireDragging(reload) {
         const dy = (e.clientY - startY) / pxPerFoot;
         block.style.left = `${(origin.x + dx) * pxPerFoot}px`;
         block.style.top = `${(origin.y + dy) * pxPerFoot}px`;
+        renderGapRulers({ ...origin, x: origin.x + dx, y: origin.y + dy }, id);
       };
 
       const up = async (e) => {

@@ -72,9 +72,11 @@ kept outside the repo). The rules that make it cohere:
 - **2px solid ink outlines** on every card, never a 1px hairline.
 - **Chunky radii**: cards 16px, inner blocks 14px, buttons 12px, pills 999px.
 - **Hard offset shadows, no blur**: `0 4px 0 var(--shadow)`.
-- **Buttons depress on hover**, and the depress must not move the page. The
-  bottom edge is `--edge` at rest plus `--depress` of give; hovering takes
-  `--depress` off the edge and adds it above, so the box never changes size.
+- **Buttons depress while clicked (`:active`), not on hover** — they used to
+  depress on hover, and Sam asked for the constant 2px bobbing to go (Aug
+  2026). The depress must not move the page. The bottom edge is `--edge` at
+  rest plus `--depress` of give; pressing takes `--depress` off the edge and
+  adds it above, so the box never changes size.
   **Never set `border-bottom-width` on a button** — that used to be two
   hard-coded 2px values which only cancelled for a full 4px edge, so every
   smaller button grew by 2px on hover and twitched the whole page. A rule using

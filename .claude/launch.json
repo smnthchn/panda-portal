@@ -2,16 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "panda-portal",
+      "name": "portal",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 8787
-    },
-    {
-      "name": "panda-portal-alt",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "8788"],
-      "port": 8788
     }
   ]
 }
