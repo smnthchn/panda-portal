@@ -10,7 +10,7 @@ import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
 import { mergeIntervals, coverageGaps, toMinutes, resolveSpan, rotaWeeks, scheduleDates } from "../src/routes/schedule.js";
 import { ontarioHolidays, holidaysBetween, holidayOn, easterSunday } from "../src/lib/holidays.js";
 import { fullWeek, availabilityConflict } from "../src/routes/availability.js";
-import { tierHeights, positionLayout, GUIDE_TIERS } from "../src/lib/capacity.js";
+import { tierHeights, positionLayout } from "../src/lib/capacity.js";
 import {
   layoutConflicts,
   effectiveGeometry,
@@ -745,28 +745,20 @@ describe("shelf layout and guides", () => {
     expect(heights.reduce((a, b) => a + b)).toBe(72);
   });
 
-  it("hands a family with the whole 4-tier unit exactly Sam's number", () => {
+  it("multiplies the per-tier guide by the tiers the family occupies", () => {
     const plan = positionLayout(unit(), [family()], onEveryTier(1, 4));
     expect(plan.families[0]).toMatchObject({
-      guide: 12, guideUnit: 12, pool: 123, placed: true, tiers: [1, 2, 3, 4]
+      guide: 48, guidePerTier: 12, pool: 123, placed: true, tiers: [1, 2, 3, 4]
     });
-  });
 
-  it("scales the guide by the share of tiers the family occupies", () => {
-    const plan = positionLayout(unit(), [family()], onEveryTier(1, 2));
-    expect(plan.families[0].guide).toBe(6);
-  });
-
-  it("scales past the guide on a unit taller than the guide's 4 tiers", () => {
-    const plan = positionLayout(unit({ tier_count: 6 }), [family({ guide_pieces: 20 })],
-      onEveryTier(1, 6));
-    expect(plan.families[0].guide).toBe(Math.round(20 * 6 / GUIDE_TIERS));
+    const half = positionLayout(unit(), [family()], onEveryTier(1, 2));
+    expect(half.families[0].guide).toBe(24);
   });
 
   it("gives no guide to a family that hasn't been given a number", () => {
     const plan = positionLayout(unit(), [family({ guide_pieces: null })], onEveryTier(1, 4));
     expect(plan.families[0].guide).toBeNull();
-    expect(plan.families[0].guideUnit).toBeNull();
+    expect(plan.families[0].guidePerTier).toBeNull();
   });
 
   it("says a family assigned to the unit but to no tier is unplaced", () => {

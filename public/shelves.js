@@ -387,9 +387,9 @@ function shelfRow(position) {
  * A family on a shelf, with how deep each of its SKUs is faced and — once
  * it's standing somewhere — the guide for how many pieces it fits here.
  *
- * The guide is Sam's number, written against a 4-tier unit, scaled by the
- * tiers the family actually has. Nothing is computed from box or shelf sizes
- * any more — that math never matched the floor.
+ * The guide is Sam's number for what one tier fits, times the tiers the
+ * family actually has. Nothing is computed from box or shelf sizes any more —
+ * that math never matched the floor.
  */
 function groupingChip(grouping, layout = null) {
   const shown = layout?.families?.find(f => f.id === grouping.id);
@@ -407,7 +407,7 @@ function groupingChip(grouping, layout = null) {
     <span class="grouping-chip${unplaced ? " unplaced" : ""}"
           title="${esc(grouping.name)} · ${grouping.facings} per SKU${
             shown && shown.placed && shown.guide
-              ? ` · fits about ${shown.guide} here (${shown.guideUnit} a 4-tier unit)`
+              ? ` · fits about ${shown.guide} here (${shown.guidePerTier} a tier)`
               : ""}${
             shown?.pool ? ` · ${shown.pool} in stock` : ""}${
             unplaced ? " · not on a tier yet" : ""}">
@@ -498,8 +498,8 @@ function groupingsStrip(position) {
                      data-facings="${position.id}" data-grouping="${g.id}">
             </label>
 
-            <label class="facings" title="Sam's guide: pieces a 4-tier unit fits. Changes it for the family everywhere.">
-              <span class="board-slot-face">FITS · 4 TIERS</span>
+            <label class="facings" title="How many pieces one tier fits. Changes it for the family everywhere.">
+              <span class="board-slot-face">PER TIER</span>
               <input type="number" min="1" max="999" value="${g.guide_pieces ?? ""}"
                      placeholder="—" data-guide="${g.id}">
             </label>
@@ -532,8 +532,8 @@ function groupingsStrip(position) {
       ${newGroupingFor === position.id ? `
         <span class="board-slot">
           <input type="text" id="newGroupingName" placeholder="Family name" style="width:160px;">
-          <label class="facings" title="Optional: pieces a 4-tier unit fits">
-            <span class="board-slot-face">FITS · 4 TIERS</span>
+          <label class="facings" title="Optional: pieces one tier fits">
+            <span class="board-slot-face">PER TIER</span>
             <input type="number" id="newGroupingGuide" min="1" max="999" placeholder="—">
           </label>
           <button class="btn-quiet" id="createGroupingBtn">Add</button>

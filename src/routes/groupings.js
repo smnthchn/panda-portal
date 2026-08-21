@@ -15,7 +15,7 @@ export function groupingKey(name) {
 }
 
 /**
- * The hand-set guide: how many pieces of the family a 4-tier unit fits.
+ * The hand-set guide: how many pieces of the family one tier fits.
  * Sam's numbers, not computed from anything. NULL means no guide yet.
  */
 function guidePieces(value) {

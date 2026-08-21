@@ -3,19 +3,14 @@
  *
  * This used to compute capacity from box widths and tier dimensions. That math
  * never matched the floor — the guides Sam actually packs to are per family,
- * written against a 4-tier unit ("Girls fit 20, MG fit 12"), so that's what's
- * stored now (`groupings.guide_pieces`) and everything derived from geometry
- * is gone. A family's guide scales by the share of tiers it occupies: MG on 2
- * tiers of a 4-tier unit reads ~6, and MG with a whole unit reads exactly the
- * number Sam wrote.
+ * per tier ("a tier fits 18 PBandai"), so that's what's stored now
+ * (`groupings.guide_pieces`) and everything derived from geometry is gone.
+ * A unit's number is just tiers occupied × the per-tier guide.
  *
  * The catalogue is still about ten times the booth, so a family's SKU count
  * stays the pool it is picked from, never a target. The picking is a person's
  * job; the guide just says how many winners to pick.
  */
-
-/** The guides are written against a unit this many tiers tall. */
-export const GUIDE_TIERS = 4;
 
 export const DEFAULT_USABLE_HEIGHT_IN = 72;
 
@@ -77,19 +72,17 @@ export function positionLayout(position, groupings = [], placements = [], tierOv
 
   const perFamily = onTiers.map(family => {
     const tiersOn = tiers.filter(t => t.families.some(f => f.id === family.id)).map(t => t.tier);
-    const guideUnit = Number(family.guide_pieces) || null;
+    const guidePerTier = Number(family.guide_pieces) || null;
 
     return {
       id: family.id,
       name: family.name,
       tiers: tiersOn,
       placed: tiersOn.length > 0,
-      // The guide scaled to this unit's share: the raw number is "a 4-tier
-      // unit fits this many", so half the tiers reads as half the pieces.
-      guide: guideUnit && tiersOn.length
-        ? Math.max(1, Math.round(guideUnit * tiersOn.length / GUIDE_TIERS))
-        : null,
-      guideUnit,
+      // The stored number is what one tier fits, so a unit's worth is just
+      // tiers occupied times that.
+      guide: guidePerTier && tiersOn.length ? guidePerTier * tiersOn.length : null,
+      guidePerTier,
       pool: family.sku_count ?? null
     };
   });

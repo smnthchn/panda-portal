@@ -317,7 +317,7 @@ the moment it's tagged. **Check a query returns something before trusting it**:
 
 `box_class` and `box_height_in` are dead — they fed the retired capacity math
 and nothing reads them now. What a family carries instead is `guide_pieces`,
-Sam's hand-set count of how many pieces a 4-tier unit fits.
+Sam's hand-set count of how many pieces one tier fits.
 
 ### Tiers and guides
 
@@ -338,11 +338,12 @@ property of the model of shelf.
 **Capacity is a hand-set guide, not a computation.** `lib/capacity.js` used to
 derive SKU counts from box widths against tier dimensions; that math never
 matched the floor and was retired in Aug 2026 for `groupings.guide_pieces` —
-Sam's own numbers, written against a 4-tier unit ("Girls fit 20, MG fit 12"),
-edited from the FITS · 4 TIERS box in the grouping strip. `positionLayout()`
-scales a family's guide by the share of tiers it occupies (MG on 2 of 4 tiers
-reads ~6) and that's the whole calculation. Migration 0033 seeded the first
-set. There are no amber over-capacity warnings any more — nothing was ever
+Sam's own numbers for **what one tier fits** ("a tier fits 18 PBandai"),
+edited from the PER TIER box in the grouping strip. `positionLayout()`
+multiplies the guide by the tiers the family occupies and that's the whole
+calculation. Migration 0033 seeded the first set as per-unit numbers; 0034
+converted them to per-tier after the box read as per-tier to Sam — which is
+the direction labels bend here. There are no amber over-capacity warnings any more — nothing was ever
 blocked, and now nothing is measured either. Layout is still built server-side
 in `loadPlan()` for the same reason the roster decides its own statuses: the
 grid, the phone and the map all draw it.
