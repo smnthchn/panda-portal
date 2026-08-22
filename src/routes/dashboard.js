@@ -13,8 +13,11 @@ import { avatarUrlFor } from "./staff.js";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Days either side of today that still count as "an event is coming". */
-const NUDGE_WINDOW_DAYS = 3;
+/** Days ahead that still count as "an event is coming". A week, because the
+ *  week before a show is when everyone is in the store picking and packing
+ *  for it, and the band is the quickest way onto the booth plan from a
+ *  phone — three days only caught the people on setup. */
+const NUDGE_WINDOW_DAYS = 7;
 
 function addDays(isoDate, days) {
   const d = new Date(`${isoDate}T00:00:00Z`);

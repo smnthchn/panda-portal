@@ -494,24 +494,27 @@ function rosterCard(data) {
   `;
 }
 
-/** The only forward-looking element on a store day. */
+/** The only forward-looking element on a store day: a band straight to the
+ *  event, up top where the event-day band sits, because the week before a
+ *  show the whole team is in the store working on it. */
 function upcomingNudge(data) {
   const { event } = data;
   if (!event || data.day_type === "event") return "";
 
+  const away = event.days_away;
+  const when = away === 0 ? "TODAY" : away === 1 ? "TOMORROW" : `IN ${away} DAYS`;
+  const shifts = event.my_shift_count
+    ? `You're on ${event.my_shift_count} shift${event.my_shift_count === 1 ? "" : "s"}`
+    : "No shifts for you yet";
+
   return `
-    <div class="card" style="background:var(--note-bg); border-color:var(--ink); display:flex; align-items:center; gap:10px; cursor:pointer;"
-         data-open-event="${esc(event.slug)}">
-      <span style="width:10px; height:10px; border-radius:3px; background:var(--warm); flex:none;"></span>
-      <div style="flex:1; font-size:13px; color:var(--note-text);">
-        ${esc(event.name)} in ${event.days_away} day${event.days_away === 1 ? "" : "s"}
-        <div class="meta" style="color:var(--note-text); opacity:0.8;">
-          ${event.my_shift_count
-            ? `You're on ${event.my_shift_count} shift${event.my_shift_count === 1 ? "" : "s"}`
-            : "No shifts for you yet"}
-        </div>
-      </div>
-      <span style="font-family:'Fredoka',sans-serif; font-size:15px; color:var(--note-text);">›</span>
+    <div class="event-band" data-open-event="${esc(event.slug)}">
+      <span class="pill pill-ink">${when}</span>
+      <span class="band-title">
+        ${esc(event.name)}${event.booth_number ? ` · Booth ${esc(event.booth_number)}` : ""}
+        <div class="meta band-meta">${shifts}</div>
+      </span>
+      <span class="band-arrow">›</span>
     </div>
   `;
 }
@@ -531,12 +534,11 @@ async function renderDashboard(user, pushState = true) {
 
   pageArea().innerHTML = `
     ${dashHeader(data)}
-    ${data.day_type === "event" && data.event ? eventBand(data) : ""}
+    ${data.day_type === "event" && data.event ? eventBand(data) : upcomingNudge(data)}
     ${showClock ? clockCard(data) : ""}
     ${showClock && data.day_type === "event" ? breakBatteryCard(data) : ""}
     ${data.day_type === "event" ? hallHoursCard(data) : myShiftCard(data)}
     ${rosterCard(data)}
-    ${upcomingNudge(data)}
   `;
 
   markActiveNav("dashboard");

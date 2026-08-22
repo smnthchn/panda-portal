@@ -3286,6 +3286,18 @@ button.cell-add:hover {
   flex: 1;
 }
 
+.event-band .band-meta {
+  color: var(--on-warm);
+  opacity: 0.85;
+  font-weight: 500;
+}
+
+.event-band .band-arrow {
+  font-family: "Fredoka", sans-serif;
+  font-size: 18px;
+  color: var(--on-warm);
+}
+
 .roster-row {
   display: flex;
   align-items: center;
