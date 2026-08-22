@@ -176,6 +176,15 @@ function can(permission) {
   return Boolean(state.user?.permissions?.[permission]);
 }
 
+/**
+ * Times are always shown on a 12-hour clock, whatever the device's locale
+ * says. An iPad set to en-CA or a 24-hour region would otherwise render
+ * "14:00" (or en-CA's "2:00 p.m."), and Sam asked for "2:00 PM" everywhere
+ * (Aug 2026).
+ */
+const TIME_LOCALE = "en-US";
+const TIME_12H = { hour: "numeric", minute: "2-digit", hour12: true };
+
 function formatDateTime(dt) {
   if (!dt) return "";
   // SQLite's CURRENT_TIMESTAMP is UTC but has no timezone marker.
@@ -183,7 +192,7 @@ function formatDateTime(dt) {
     ? dt.replace(" ", "T") + "Z"
     : dt;
   const d = new Date(normalized);
-  return isNaN(d) ? dt : d.toLocaleString();
+  return isNaN(d) ? dt : d.toLocaleString(TIME_LOCALE, { ...TIME_12H, month: "short", day: "numeric", year: "numeric" });
 }
 
 /** "2026-09-14" -> "Mon, Sep 14, 2026", without drifting across timezones. */
@@ -206,7 +215,7 @@ function formatTime(hhmm) {
   if (isNaN(h) || isNaN(m)) return hhmm;
   const d = new Date();
   d.setHours(h, m, 0, 0);
-  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return d.toLocaleTimeString(TIME_LOCALE, TIME_12H);
 }
 
 function formatDateRange(startsOn, endsOn) {

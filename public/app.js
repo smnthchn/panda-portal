@@ -708,7 +708,7 @@ function localDateOf(dt) {
 
 function timeOf(dt) {
   return new Date(dt.replace(" ", "T") + "Z")
-    .toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    .toLocaleTimeString(TIME_LOCALE, TIME_12H);
 }
 
 /** Monday of the week containing a local YYYY-MM-DD date. */
