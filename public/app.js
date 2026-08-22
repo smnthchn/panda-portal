@@ -68,11 +68,28 @@ const NAV_ITEMS = [
 /* The phone's four-item bar. Everything else lives behind More, which is the
    only way to reach the sidebar-only screens when the sidebar is hidden. */
 const BOTTOM_NAV = [
-  { label: "Home", view: "dashboard", permission: null },
-  { label: "Clock", bossLabel: "Hours", view: "clock", permission: "clock" },
-  { label: "Events", view: "conventions", permission: "conventions" },
-  { label: "More", view: "more", permission: null }
+  { label: "Home", view: "dashboard", permission: null, icon: "home" },
+  { label: "Clock", bossLabel: "Hours", view: "clock", permission: "clock", icon: "clock" },
+  { label: "Events", view: "conventions", permission: "conventions", icon: "ticket" },
+  { label: "More", view: "more", permission: null, icon: "more" }
 ];
+
+/* Bottom-nav icons: 2px strokes in currentColor, so they outline the way
+   everything else does and take the active tint with the label. A single
+   square dot used to stand in for all four, which read as four of the same
+   thing. */
+const NAV_ICONS = {
+  home: `<path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 10.5V19h11v-8.5"/><path d="M10 19v-5h4v5"/>`,
+  clock: `<circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.5"/>`,
+  ticket: `<path d="M4 8.5V6h16v2.5a2 2 0 0 0 0 4V18H4v-5.5a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/>`,
+  more: `<rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/>`
+};
+
+function navIcon(name) {
+  return `<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               aria-hidden="true">${NAV_ICONS[name] || NAV_ICONS.more}</svg>`;
+}
 
 /* Nav entries for work that isn't built yet — shown greyed so the shape of
    the system is visible without pretending the screens exist. */
@@ -133,7 +150,7 @@ function renderShell(user) {
           .filter(item => !item.permission || can(item.permission))
           .map(item => `
             <a href="#" data-bottom-nav="${esc(item.view)}">
-              <div class="nav-dot"></div>${esc(
+              ${navIcon(item.icon)}${esc(
                 item.bossLabel && can("manage_users") ? item.bossLabel : item.label
               )}
             </a>

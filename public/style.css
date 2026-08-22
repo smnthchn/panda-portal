@@ -42,7 +42,6 @@ body.theme-habbo {
   --clock-text: #E8EDF3;
   --clock-sub: #9BAAC0;
   --nav-bg: #E8E1CB;
-  --nav-dot: #C9C2A6;
   --nav-muted: #8A8468;
 }
 
@@ -81,7 +80,6 @@ body.theme-mario {
   --clock-text: #FFFFFF;
   --clock-sub: #CBE1FB;
   --nav-bg: #DCE9FF;
-  --nav-dot: #B4C8E8;
   --nav-muted: #5C6883;
 }
 
@@ -120,7 +118,6 @@ body.theme-bubble {
   --clock-text: #FDEFF7;
   --clock-sub: #C7B5D8;
   --nav-bg: #FFE5F1;
-  --nav-dot: #F0C6DD;
   --nav-muted: #79596C;
 }
 
@@ -156,7 +153,6 @@ body.theme-sherbet {
   --clock-text: #E9F6F4;
   --clock-sub: #A8D8D2;
   --nav-bg: #FFE2CF;
-  --nav-dot: #E3C6B2;
   --nav-muted: #A8907E;
 }
 
@@ -202,7 +198,6 @@ body.theme-arcade {
   --clock-text: #FBF8FF;
   --clock-sub: #D3C8E7;
   --nav-bg: #211A30;
-  --nav-dot: #4B3D6E;
   --nav-muted: #B7ABD0;
 }
 
@@ -649,12 +644,11 @@ button:disabled {
   text-decoration: none;
 }
 
-.bottom-nav a .nav-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 3px;
-  background: var(--nav-dot);
-  margin: 0 auto 6px;
+.bottom-nav a .nav-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto 3px;
 }
 
 .bottom-nav a.active {
@@ -662,8 +656,8 @@ button:disabled {
   color: var(--brand-text);
 }
 
-.bottom-nav a.active .nav-dot {
-  background: var(--brand);
+.bottom-nav a.active .nav-icon {
+  color: var(--brand);
 }
 
 @media (max-width: 800px) {
