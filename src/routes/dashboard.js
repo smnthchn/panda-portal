@@ -1,4 +1,5 @@
 import { requireUser } from "../lib/auth.js";
+import { parseThemeColors } from "./session.js";
 import { pairClockEvents } from "./clock.js";
 import { avatarUrlFor } from "./staff.js";
 
@@ -316,6 +317,7 @@ export async function handleDashboard(request, env) {
       initials: initialsOf(user.full_name),
       role: user.role,
       theme_id: user.theme_id || "habbo",
+      theme_colors: parseThemeColors(user.theme_colors),
       avatar_url: people.get(user.id)?.has_avatar
         ? avatarUrlFor(user.id, people.get(user.id).updated_at)
         : null

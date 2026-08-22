@@ -25,12 +25,33 @@ export async function handleMe(request, env) {
       email: user.email,
       role: user.role,
       theme_id: user.theme_id || "habbo",
+      theme_colors: parseThemeColors(user.theme_colors),
       permissions: user.permissions
     }
   });
 }
 
-export const THEME_IDS = ["habbo", "mario", "bubble", "sherbet", "arcade"];
+export const THEME_IDS = ["habbo", "mario", "bubble", "sherbet", "arcade", "custom"];
+
+/** The three colours a custom profile is built from. */
+export const THEME_COLOR_KEYS = ["brand", "warm", "paper"];
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/** The stored JSON as {brand, warm, paper}, or null if absent or malformed. */
+export function parseThemeColors(raw) {
+  if (!raw) return null;
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    const colors = {};
+    for (const key of THEME_COLOR_KEYS) {
+      if (!HEX.test(parsed?.[key] || "")) return null;
+      colors[key] = parsed[key].toLowerCase();
+    }
+    return colors;
+  } catch {
+    return null;
+  }
+}
 
 /** Appearance: everyone picks their own, stored on the user not the device. */
 export async function handleSetTheme(request, env) {
@@ -43,11 +64,29 @@ export async function handleSetTheme(request, env) {
     return { ok: false, error: "That isn't one of the themes." };
   }
 
-  await env.DB.prepare(
-    `UPDATE employees SET theme_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-  ).bind(body.theme_id, user.id).run();
+  // The custom profile's colours ride along when it's being edited; picking
+  // it with none saved yet is refused so the screen can't go blank.
+  let colors = null;
+  if (body.theme_colors !== undefined) {
+    colors = parseThemeColors(body.theme_colors);
+    if (!colors) return { ok: false, error: "Colours need to be six-digit hex, like #17879b." };
+  }
 
-  return { ok: true, theme_id: body.theme_id };
+  if (body.theme_id === "custom" && !colors && !parseThemeColors(user.theme_colors)) {
+    return { ok: false, error: "Pick your three colours first." };
+  }
+
+  if (colors) {
+    await env.DB.prepare(
+      `UPDATE employees SET theme_id = ?, theme_colors = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).bind(body.theme_id, JSON.stringify(colors), user.id).run();
+  } else {
+    await env.DB.prepare(
+      `UPDATE employees SET theme_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).bind(body.theme_id, user.id).run();
+  }
+
+  return { ok: true, theme_id: body.theme_id, theme_colors: colors || parseThemeColors(user.theme_colors) };
 }
 
 export async function handleLogin(request, env) {

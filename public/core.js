@@ -247,18 +247,106 @@ const PAGE_URLS = {
   doc: (d) => `/doc/${encodeURIComponent(d.id)}`
 };
 
-/** The five palettes. Applied as a class on <body> from the user's record. */
+/** The five palettes, plus the person's own. Applied as a class on <body>
+ *  from the user's record; the custom one also writes its tokens inline. */
 const THEMES = [
   { id: "habbo", name: "Panda", blurb: "Teal and cream · the default", swatches: ["#17879B", "#F2B53B", "#5FD1A0"], ink: "#23324A" },
   { id: "mario", name: "Mushroom Kingdom", blurb: "Logo red, coin yellow, sky blue", swatches: ["#D8231C", "#FBD000", "#049CD8"], ink: "#17203B" },
   { id: "bubble", name: "Bubblegum", blurb: "Candy pink, periwinkle, mint", swatches: ["#F7A8CD", "#BBB0F0", "#A9E7CE"], ink: "#56406E" },
   { id: "sherbet", name: "Sherbet", blurb: "Coral and turquoise", swatches: ["#FF7A59", "#2FB6A8", "#FFC94D"], ink: "#33261F" },
-  { id: "arcade", name: "Arcade night", blurb: "Dark · easier in a dim hall", swatches: ["#2E2540", "#FF5C8A", "#5FE3C0"], ink: "#241C2E" }
+  { id: "arcade", name: "Arcade night", blurb: "Dark · easier in a dim hall", swatches: ["#2E2540", "#FF5C8A", "#5FE3C0"], ink: "#241C2E" },
+  { id: "custom", name: "Your own", blurb: "Three colours you pick · the rest follows", swatches: null, ink: null }
 ];
 
-function applyTheme(themeId) {
+/** What a custom profile starts from, before anyone has touched a picker. */
+const CUSTOM_THEME_DEFAULTS = { brand: "#7c4dff", warm: "#ffb300", paper: "#f5f2ff" };
+
+/* ---- Colour arithmetic for the custom theme ---- */
+
+function hexToRgb(hex) {
+  const n = parseInt(String(hex).replace("#", ""), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function rgbToHex([r, g, b]) {
+  return "#" + [r, g, b].map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
+}
+
+/** `amount` of the way from a to b, the way color-mix() in srgb does it. */
+function mix(a, b, amount) {
+  const x = hexToRgb(a), y = hexToRgb(b);
+  return rgbToHex(x.map((v, i) => v + (y[i] - v) * amount));
+}
+
+/** Relative luminance, 0 black to 1 white. */
+function luminance(hex) {
+  const [r, g, b] = hexToRgb(hex).map(v => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** Text to sit on a fill: the given dark if the fill is light, else white-ish. */
+function onColor(fill, dark) {
+  return luminance(fill) > 0.4 ? dark : "#ffffff";
+}
+
+/**
+ * Every token the stylesheet reads, derived from three colours. The
+ * relationships mirror the shipped palettes: ink is a deep shade of the
+ * main colour so outlines belong to it, chip sits just off paper, surface
+ * just above it. A dark background flips the text the way arcade does.
+ * Green and red are fixed — they mean on-the-clock and needs-attention in
+ * every theme, and a profile doesn't get to change what those mean.
+ */
+function customTokens(colors) {
+  const c = { ...CUSTOM_THEME_DEFAULTS, ...(colors || {}) };
+  const dark = luminance(c.paper) < 0.3;
+  const ink = dark ? mix(c.paper, "#000000", 0.45) : mix(c.brand, "#000000", 0.62);
+  const text = dark ? mix(c.paper, "#ffffff", 0.92) : ink;
+  const surface = dark ? mix(c.paper, "#ffffff", 0.18) : "#ffffff";
+  const chip = dark ? mix(c.paper, "#ffffff", 0.08) : mix(c.paper, ink, 0.06);
+  const muted = dark ? mix(c.paper, "#ffffff", 0.7) : mix(ink, c.paper, 0.5);
+  const brandText = dark
+    ? mix(c.brand, "#ffffff", 0.35)
+    : luminance(c.brand) > 0.4 ? mix(c.brand, "#000000", 0.45) : c.brand;
+  const clockBg = dark ? surface : ink;
+  const clockText = dark ? text : c.paper;
+  const coolText = dark ? mix(c.brand, "#ffffff", 0.6) : mix(c.brand, ink, 0.3);
+
+  return {
+    ink, paper: c.paper, surface, chip, field: surface, text, muted,
+    shadow: dark ? mix(c.paper, "#000000", 0.5) : mix(c.paper, ink, 0.18),
+    track: chip,
+    brand: c.brand, "on-brand": onColor(c.brand, ink), "brand-text": brandText,
+    warm: c.warm, "on-warm": onColor(c.warm, mix(c.warm, "#000000", 0.7)),
+    cool: c.brand, "on-cool": onColor(c.brand, ink),
+    "cool-bg": mix(c.paper, c.brand, 0.15), "cool-text": coolText,
+    "cool-muted": mix(coolText, c.paper, 0.5),
+    "note-bg": mix(c.paper, c.warm, 0.18), "note-border": mix(c.paper, c.warm, 0.4),
+    "note-text": dark ? mix(c.warm, "#ffffff", 0.6) : mix(c.warm, "#000000", 0.55),
+    go: dark ? "#5fe3c0" : "#5fd1a0", "go-text": dark ? "#8cf5da" : "#1e8f68",
+    "on-go": dark ? "#0f3a30" : ink,
+    alert: dark ? "#ff9bbb" : "#c6412f",
+    "clock-bg": clockBg, "clock-shadow": mix(clockBg, "#000000", 0.3),
+    "clock-text": clockText, "clock-sub": mix(clockText, clockBg, 0.4),
+    "nav-bg": dark ? mix(c.paper, "#000000", 0.2) : mix(c.paper, ink, 0.08),
+    "nav-muted": muted
+  };
+}
+
+function applyTheme(themeId, colors) {
   const id = THEMES.some(t => t.id === themeId) ? themeId : "habbo";
   document.body.className = `theme-${id}`;
+
+  // Inline tokens belong to the custom theme only; a palette must not
+  // inherit the last custom colours somebody tried.
+  const tokens = customTokens(id === "custom" ? colors : CUSTOM_THEME_DEFAULTS);
+  for (const name of Object.keys(tokens)) {
+    if (id === "custom") document.body.style.setProperty(`--${name}`, tokens[name]);
+    else document.body.style.removeProperty(`--${name}`);
+  }
 }
 
 /** "MK" from "Marcus Kwan" — used on avatars. */

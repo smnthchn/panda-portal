@@ -22,6 +22,7 @@ import {
 } from "../src/routes/shelves.js";
 import { templatePositions, BOOTH_FEET } from "../src/lib/booth-template.js";
 import { parseImageDataUri, imageUrlFor } from "../src/lib/images.js";
+import { parseThemeColors, THEME_IDS } from "../src/routes/session.js";
 
 function request(path, method = "GET", headers = {}) {
   return new Request(`http://example.com${path}`, { method, headers });
@@ -1139,5 +1140,31 @@ describe("authentication gate", () => {
 
     expect(response.status).toBe(401);
     expect((await response.json()).ok).toBe(false);
+  });
+});
+
+describe("custom theme colours", () => {
+  it("reads a stored profile back as three lowercase hex colours", () => {
+    expect(parseThemeColors('{"brand":"#7C4DFF","warm":"#ffb300","paper":"#F5F2FF"}'))
+      .toEqual({ brand: "#7c4dff", warm: "#ffb300", paper: "#f5f2ff" });
+  });
+
+  it("accepts an object straight from a request body", () => {
+    expect(parseThemeColors({ brand: "#000000", warm: "#ffffff", paper: "#123456" }))
+      .toEqual({ brand: "#000000", warm: "#ffffff", paper: "#123456" });
+  });
+
+  it("refuses anything that isn't six-digit hex, so nothing odd lands in a style attribute", () => {
+    expect(parseThemeColors({ brand: "red", warm: "#ffb300", paper: "#f5f2ff" })).toBeNull();
+    expect(parseThemeColors({ brand: "#fff", warm: "#ffb300", paper: "#f5f2ff" })).toBeNull();
+    expect(parseThemeColors({ brand: "#7c4dff;x", warm: "#ffb300", paper: "#f5f2ff" })).toBeNull();
+    expect(parseThemeColors({ brand: "#7c4dff", warm: "#ffb300" })).toBeNull();
+    expect(parseThemeColors("not json")).toBeNull();
+    expect(parseThemeColors(null)).toBeNull();
+  });
+
+  it("lists custom beside the shipped palettes", () => {
+    expect(THEME_IDS).toContain("custom");
+    expect(THEME_IDS).toContain("habbo");
   });
 });

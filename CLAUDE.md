@@ -111,6 +111,17 @@ Appearance. It's stored in `employees.theme_id`, so it follows a person to the
 shared iPad. `arcade` is dark: pills over a coloured band use `.pill-paper`
 (paper fill, ink border), and inputs read `--field`, which is dark there.
 
+A sixth choice, **Your own** (`theme_id = 'custom'`), is one profile per
+person: three colours — main, accent, background — in `employees.theme_colors`
+as JSON, and `customTokens()` in `core.js` derives every other token from them
+so the outlines, chips and nav can't drift from the cards. `applyTheme()`
+writes those tokens inline on `<body>` for the custom theme and removes them
+for any palette. A dark background flips text light, the way arcade does.
+**Go-green and alert-red are not pickable** — they mean on-the-clock and
+needs-attention in every theme. Any new token added to the palettes must be
+added to `customTokens()` too, or the custom theme falls through to habbo's
+value for it.
+
 The desktop sidebar is kept for the boss's longer screens; below 800px it's
 replaced by the four-item bottom nav (Home / Clock / Events / More). **More is
 load-bearing, not a nicety** — the sidebar is hidden on a phone, so it's the

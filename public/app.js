@@ -112,7 +112,7 @@ function goToView(view) {
 
 function renderShell(user) {
   state.user = user;
-  applyTheme(user.theme_id);
+  applyTheme(user.theme_id, user.theme_colors);
 
   const items = visibleNavItems();
   const groups = [];
@@ -1116,6 +1116,13 @@ async function renderAppearance(pushState = true) {
   if (pushState) pushPageState("appearance");
 
   const current = state.user.theme_id || "habbo";
+  const custom = { ...CUSTOM_THEME_DEFAULTS, ...(state.user.theme_colors || {}) };
+
+  const PICKERS = [
+    { key: "brand", label: "Main", hint: "Buttons, links, the tab you're on" },
+    { key: "warm", label: "Accent", hint: "Event bands and notes" },
+    { key: "paper", label: "Background", hint: "Dark works too" }
+  ];
 
   pageArea().innerHTML = `
     <div class="page-header">
@@ -1123,11 +1130,14 @@ async function renderAppearance(pushState = true) {
       <p>Just for you — nobody else sees your pick</p>
     </div>
 
-    ${THEMES.map(theme => `
+    ${THEMES.map(theme => {
+      const swatches = theme.swatches || [custom.brand, custom.warm, custom.paper];
+      const ink = theme.ink || customTokens(custom).ink;
+      return `
       <div class="theme-row" data-theme="${esc(theme.id)}">
         <div class="swatches">
-          ${theme.swatches.map(color =>
-            `<span class="swatch" style="background:${esc(color)}; border-color:${esc(theme.ink)};"></span>`
+          ${swatches.map(color =>
+            `<span class="swatch" style="background:${esc(color)}; border-color:${esc(ink)};"></span>`
           ).join("")}
         </div>
         <div style="flex:1;">
@@ -1136,7 +1146,25 @@ async function renderAppearance(pushState = true) {
         </div>
         <span class="picked${theme.id === current ? " on" : ""}">${theme.id === current ? "✓" : ""}</span>
       </div>
-    `).join("")}
+      ${theme.id === "custom" && current === "custom" ? `
+        <div class="card stripped custom-colors">
+          <div class="strip">YOUR COLOURS</div>
+          <div>
+            ${PICKERS.map(p => `
+              <label class="color-pick">
+                <input type="color" data-color="${p.key}" value="${esc(custom[p.key])}">
+                <span class="color-pick-text">
+                  <strong>${p.label}</strong>
+                  <span class="meta">${p.hint}</span>
+                </span>
+                <code data-color-hex="${p.key}">${esc(custom[p.key])}</code>
+              </label>
+            `).join("")}
+          </div>
+        </div>
+      ` : ""}
+    `;
+    }).join("")}
 
     <div class="card cool">
       <h3>One thing stays fixed</h3>
@@ -1152,14 +1180,41 @@ async function renderAppearance(pushState = true) {
   document.querySelectorAll("[data-theme]").forEach(row => {
     row.onclick = async () => {
       const themeId = row.dataset.theme;
+      const body = { theme_id: themeId };
+      // Picking "Your own" for the first time saves the starting colours
+      // with it, so the server has something to select.
+      if (themeId === "custom" && !state.user.theme_colors) body.theme_colors = custom;
 
       // Repaint immediately; the save is a formality that follows.
-      applyTheme(themeId);
+      applyTheme(themeId, custom);
       state.user.theme_id = themeId;
+      if (body.theme_colors) state.user.theme_colors = { ...custom };
       renderAppearance(false);
 
-      const result = await apiSend("/api/theme", "PUT", { theme_id: themeId });
+      const result = await apiSend("/api/theme", "PUT", body);
       if (!result.ok) alert(result.error || "Could not save that theme.");
+    };
+  });
+
+  // The pickers repaint on every drag and save once the hand comes off —
+  // a write per frame of a colour wheel would be silly.
+  let saveTimer = null;
+  document.querySelectorAll("[data-color]").forEach(input => {
+    input.oninput = () => {
+      custom[input.dataset.color] = input.value;
+      state.user.theme_colors = { ...custom };
+      applyTheme("custom", custom);
+      document.querySelector(`[data-color-hex="${input.dataset.color}"]`).textContent = input.value;
+      const ink = customTokens(custom).ink;
+      document.querySelectorAll(`[data-theme="custom"] .swatch`).forEach((sw, i) => {
+        sw.style.background = [custom.brand, custom.warm, custom.paper][i];
+        sw.style.borderColor = ink;
+      });
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        const result = await apiSend("/api/theme", "PUT", { theme_id: "custom", theme_colors: custom });
+        if (!result.ok) alert(result.error || "Could not save those colours.");
+      }, 500);
     };
   });
 }
