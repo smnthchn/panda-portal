@@ -7,8 +7,9 @@
 -- there's no Shopify query that would find it. The sheet is the list.
 --
 -- Where a prize is also on another shelf's bring list and the store doesn't
--- hold enough to feed both, it stays on the shelf and comes off the gacha
--- list (Sam, 22 Aug 2026) — 14 rows were cut that way on the first load.
+-- hold enough to feed both, the gacha wins: the row moves off the shelf's
+-- list onto this one (Sam, 22 Aug 2026) — 14 rows moved that way on the
+-- first load, from Up Top, Pokemon, Blind box and Plushies.
 INSERT OR IGNORE INTO groupings (name, name_key, placement, sort_order, notes, bring_list_url)
 VALUES (
   'Gacha', 'gacha', 'tier', 90,
