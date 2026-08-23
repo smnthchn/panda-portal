@@ -2137,6 +2137,49 @@ html.overlay-open {
   color: var(--muted);
 }
 
+/* Apply to: a week of toggles on the shift form. Lit means "this shift on
+   that day too"; the day being edited is lit and fixed. Selected is the
+   clock pair, never ink/paper — those vanish into each other in arcade. */
+.apply-to {
+  margin-top: 12px;
+}
+
+.apply-to-label {
+  display: block;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 12.5px;
+  margin-bottom: 6px;
+}
+
+.day-toggles {
+  display: flex;
+  gap: 5px;
+}
+
+.day-toggle {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  font-size: 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--brand-text);
+  border-color: var(--brand);
+  --depress: 0px;
+}
+
+.day-toggle.on {
+  background: var(--clock-bg);
+  color: var(--clock-text);
+  border-color: var(--clock-bg);
+}
+
+.day-toggle.fixed:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
 /* A day nobody is on yet is the one that needs you. */
 .day-tab.empty {
   background: var(--note-bg);

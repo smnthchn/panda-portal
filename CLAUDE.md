@@ -534,6 +534,15 @@ against still apply. Event shifts are left where they are — a show doesn't
 recur a week later. The card only appears on a week nobody is on yet, which is
 the only week where filling is what you meant.
 
+**Apply to** is a Mon–Sun row of toggles on the store shift form (Aug 2026,
+modelled on Homebase's). The day being edited is lit and fixed; every other
+lit day gets the same shift for the same person on save, as its own POST so
+one overlap refusal doesn't take the rest down — the days that failed are
+named in the error and the rest are on the board. **Copy** on an open shift
+starts a new one with the hours, breaks and title filled in and *Who* left
+blank, for three people on the same shift. Both are store-schedule only; the
+event builder has Copy this day.
+
 A new store shift defaults to **half an hour either side of the door** — someone
 opens the till before the first customer and cashes out after the last. It's
 derived from that day's hours rather than typed in (`SHIFT_PAD_MINUTES` in

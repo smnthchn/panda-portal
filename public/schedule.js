@@ -228,7 +228,7 @@ function shiftEditor(shift, day) {
             ${staff.map(person => {
               const clash = day.unavailable?.[person.id];
               return `
-                <option value="${person.id}" ${shift?.employee_id === person.id ? "selected" : ""}>
+                <option value="${person.id}" ${fill?.employee_id === person.id ? "selected" : ""}>
                   ${esc(person.full_name)}${clash ? ` — ${esc(clash.reason)}` : ""}
                 </option>
               `;
@@ -384,6 +384,9 @@ let storeWeek = null;
 let storeDay = null;
 let editingStoreShift = null;
 let addingStoreShift = false;
+/* A shift being copied: the new-shift form opens filled from it, minus the
+   person, so three people on the same hours is one entry and two copies. */
+let storeShiftDraft = null;
 let editingStoreHours = false;
 let editingHoliday = null;
 // Open/Closed is a pair of buttons rather than a checkbox, so the choice has to
@@ -820,16 +823,49 @@ function shiftTime(hhmm, pad) {
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
+/** The Monday-to-Sunday dates around a date, for the Apply to row. */
+function weekDatesOf(isoDate) {
+  const d = new Date(`${isoDate}T00:00:00`);
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = new Date(monday);
+    day.setDate(monday.getDate() + i);
+    const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+    return { date: iso, label: day.toLocaleDateString(undefined, { weekday: "short" }) };
+  });
+}
+
+/**
+ * Apply to: the week's days as toggles. The day being edited is lit and
+ * fixed; every other lit day gets the same shift for the same person on
+ * save. One entry for a Tuesday that's really Tue–Fri.
+ */
+function applyToRow(day) {
+  return `
+    <div class="apply-to">
+      <span class="apply-to-label">Apply to</span>
+      <div class="day-toggles">
+        ${weekDatesOf(day.date).map(d => d.date === day.date
+          ? `<button type="button" class="day-toggle on fixed" disabled>${esc(d.label)}</button>`
+          : `<button type="button" class="day-toggle" data-apply-day="${esc(d.date)}">${esc(d.label)}</button>`
+        ).join("")}
+      </div>
+    </div>
+  `;
+}
+
 function storeShiftEditor(shift, day) {
   const { staff } = storeData;
-  const minutes = shift ? shift.break_allotment_minutes : 30;
-  const count = shift ? shift.break_count : 1;
+  const fill = shift || storeShiftDraft;
+  const minutes = fill ? fill.break_allotment_minutes : 30;
+  const count = fill ? fill.break_count : 1;
   const defaultFrom = shiftTime(day.hours?.opens_at, -SHIFT_PAD_MINUTES) || "11:30";
   const defaultTo = shiftTime(day.hours?.closes_at, SHIFT_PAD_MINUTES) || "19:30";
 
   return `
     <div class="card" style="border-style:dashed;">
-      <h3>${shift ? "Edit shift" : "New shift"}</h3>
+      <h3>${shift ? "Edit shift" : storeShiftDraft ? "New shift — a copy" : "New shift"}</h3>
 
       <div class="form-grid" style="margin:0;">
         <label>Who
@@ -838,7 +874,7 @@ function storeShiftEditor(shift, day) {
             ${staff.map(person => {
               const clash = day.unavailable?.[person.id];
               return `
-                <option value="${person.id}" ${shift?.employee_id === person.id ? "selected" : ""}>
+                <option value="${person.id}" ${fill?.employee_id === person.id ? "selected" : ""}>
                   ${esc(person.full_name)}${clash ? ` — ${esc(clash.reason)}` : ""}
                 </option>
               `;
@@ -846,13 +882,13 @@ function storeShiftEditor(shift, day) {
           </select>
         </label>
         <label>What
-          <input type="text" id="storeWhat" value="${esc(shift?.title || "Store floor")}" placeholder="Store floor">
+          <input type="text" id="storeWhat" value="${esc(fill?.title || "Store floor")}" placeholder="Store floor">
         </label>
         <label>Start
-          ${timeSelect('id="storeFrom"', shift?.starts_at || defaultFrom)}
+          ${timeSelect('id="storeFrom"', fill?.starts_at || defaultFrom)}
         </label>
         <label>End
-          ${timeSelect('id="storeTo"', shift?.ends_at || defaultTo)}
+          ${timeSelect('id="storeTo"', fill?.ends_at || defaultTo)}
         </label>
         <label>Break minutes
           <input type="number" id="storeBreakMins" value="${minutes}" min="0" max="240">
@@ -865,8 +901,11 @@ function storeShiftEditor(shift, day) {
         </label>
       </div>
 
+      ${applyToRow(day)}
+
       <div class="button-row">
         <button id="saveStoreShiftBtn" style="flex:1;">${shift ? "Save shift" : "Add shift"}</button>
+        ${shift ? `<button class="btn-quiet" id="copyStoreShiftBtn" title="Start a new shift with these details">Copy</button>` : ""}
         <button class="btn-quiet" id="cancelStoreShiftBtn">Cancel</button>
         ${shift ? `<button class="btn-danger" id="deleteStoreShiftBtn">Remove</button>` : ""}
       </div>
@@ -1015,6 +1054,7 @@ function wireStoreSchedule() {
     addBtn.onclick = () => {
       addingStoreShift = true;
       editingStoreShift = null;
+      storeShiftDraft = null;
       drawStoreSchedule();
     };
   }
@@ -1024,9 +1064,29 @@ function wireStoreSchedule() {
     cancelBtn.onclick = () => {
       editingStoreShift = null;
       addingStoreShift = false;
+      storeShiftDraft = null;
       drawStoreSchedule();
     };
   }
+
+  // Copy: the same hours, breaks and title, with Who left to be chosen.
+  const copyShiftBtn = document.getElementById("copyStoreShiftBtn");
+  if (copyShiftBtn) {
+    copyShiftBtn.onclick = () => {
+      const source = storeData.days.find(d => d.date === storeDay)?.shifts
+        .find(sh => sh.id === editingStoreShift);
+      if (!source) return;
+      storeShiftDraft = { ...source, employee_id: null };
+      editingStoreShift = null;
+      addingStoreShift = true;
+      drawStoreSchedule();
+      document.getElementById("storeWho")?.focus();
+    };
+  }
+
+  document.querySelectorAll("[data-apply-day]").forEach(toggle => {
+    toggle.onclick = () => toggle.classList.toggle("on");
+  });
 
   const saveBtn = document.getElementById("saveStoreShiftBtn");
   if (saveBtn) {
@@ -1047,16 +1107,29 @@ function wireStoreSchedule() {
         ? await apiSend(`/api/convention-shifts/${editingStoreShift}`, "PATCH", payload)
         : await apiSend("/api/shifts", "POST", payload);
 
-      saveBtn.disabled = false;
-
       if (!result.ok) {
+        saveBtn.disabled = false;
         showFormError("storeError", result.error || "Could not save that shift.");
         return;
       }
 
+      // Apply to: the same shift on every other lit day. Each is its own
+      // write so one refusal (an overlap, say) doesn't take the rest down —
+      // the ones that failed are named, and the rest are on the board.
+      const extraDays = [...document.querySelectorAll("[data-apply-day].on")].map(t => t.dataset.applyDay);
+      const failed = [];
+      for (const date of extraDays) {
+        const copy = await apiSend("/api/shifts", "POST", { ...payload, shift_date: date });
+        if (!copy.ok) failed.push(`${formatDate(date).replace(/, \d{4}$/, "")}: ${copy.error || "not saved"}`);
+      }
+
+      saveBtn.disabled = false;
       editingStoreShift = null;
       addingStoreShift = false;
+      storeShiftDraft = null;
       await reload();
+
+      if (failed.length) showFormError("storeError", `Saved, but not on ${failed.join("; ")}`);
     };
   }
 
