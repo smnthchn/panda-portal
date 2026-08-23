@@ -3238,48 +3238,101 @@ button.cell-add:hover {
   color: var(--on-brand);
 }
 
-/* The custom profile's three pickers. The native colour input is the one
-   control here that isn't ours to restyle much; it's boxed in the usual
-   2px outline so at least the frame belongs. */
+/* The custom profile's wheel. Three tabs say which colour is being edited;
+   the wheel is a canvas with a DOM thumb over it so the thumb carries the
+   2px outline; the slider underneath is brightness. */
 .custom-colors {
   margin-top: -6px;
 }
 
-.color-pick {
+.color-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.color-tab {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 9px 0;
-  border-bottom: 2px solid var(--track);
-  cursor: pointer;
-}
-
-.color-pick:last-child {
-  border-bottom: 0;
-}
-
-.color-pick input[type="color"] {
-  width: 44px;
-  height: 34px;
-  padding: 2px;
-  border: 2px solid var(--ink);
-  border-radius: 10px;
+  gap: 10px;
+  text-align: left;
+  padding: 7px 10px;
   background: var(--surface);
-  flex: none;
-  cursor: pointer;
+  color: var(--text);
+  border-color: var(--track);
+  --depress: 0px;
 }
 
-.color-pick-text {
-  flex: 1;
+.color-tab.on {
+  border-color: var(--ink);
+  background: var(--chip);
+}
+
+.color-tab > span:last-child {
   display: flex;
   flex-direction: column;
   font-family: "Fredoka", sans-serif;
   font-size: 14px;
+  line-height: 1.2;
 }
 
-.color-pick code {
+.color-tab-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid var(--ink);
+  flex: none;
+}
+
+.wheel-wrap {
+  position: relative;
+  width: min(240px, 100%);
+  aspect-ratio: 1;
+  margin: 0 auto 10px;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.wheel-wrap .wheel {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px var(--ink), 0 4px 0 2px var(--shadow);
+}
+
+.wheel-thumb {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 0 2px #ffffff;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.wheel-bright {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wheel-bright input[type="range"] {
+  flex: 1;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--brand);
+}
+
+.wheel-hex {
+  display: block;
+  text-align: center;
   font-size: 12px;
   color: var(--muted);
+  margin-top: 6px;
 }
 
 /* ---------- Dashboard bits ---------- */

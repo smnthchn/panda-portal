@@ -278,6 +278,28 @@ function mix(a, b, amount) {
   return rgbToHex(x.map((v, i) => v + (y[i] - v) * amount));
 }
 
+/** Hex <-> HSV, for the colour wheel. h in degrees, s and v 0..1. */
+function hexToHsv(hex) {
+  const [r, g, b] = hexToRgb(hex).map(v => v / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  let h = 0;
+  if (d) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+  }
+  return { h, s: max ? d / max : 0, v: max };
+}
+
+function hsvToHex({ h, s, v }) {
+  const f = n => {
+    const k = (n + h / 60) % 6;
+    return v - v * s * Math.max(0, Math.min(k, 4 - k, 1));
+  };
+  return rgbToHex([f(5) * 255, f(3) * 255, f(1) * 255]);
+}
+
 /** Relative luminance, 0 black to 1 white. */
 function luminance(hex) {
   const [r, g, b] = hexToRgb(hex).map(v => {

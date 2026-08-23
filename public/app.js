@@ -1150,16 +1150,27 @@ async function renderAppearance(pushState = true) {
         <div class="card stripped custom-colors">
           <div class="strip">YOUR COLOURS</div>
           <div>
-            ${PICKERS.map(p => `
-              <label class="color-pick">
-                <input type="color" data-color="${p.key}" value="${esc(custom[p.key])}">
-                <span class="color-pick-text">
-                  <strong>${p.label}</strong>
-                  <span class="meta">${p.hint}</span>
-                </span>
-                <code data-color-hex="${p.key}">${esc(custom[p.key])}</code>
-              </label>
-            `).join("")}
+            <div class="color-tabs">
+              ${PICKERS.map((p, i) => `
+                <button type="button" class="color-tab${i === 0 ? " on" : ""}" data-color-tab="${p.key}">
+                  <span class="color-tab-dot" style="background:${esc(custom[p.key])};"></span>
+                  <span>
+                    <strong>${p.label}</strong>
+                    <span class="meta">${p.hint}</span>
+                  </span>
+                </button>
+              `).join("")}
+            </div>
+            <div class="wheel-wrap">
+              <canvas class="wheel" width="480" height="480"></canvas>
+              <div class="wheel-thumb"></div>
+            </div>
+            <label class="wheel-bright">
+              <span class="meta">Darker</span>
+              <input type="range" class="wheel-v" min="0" max="100" value="100">
+              <span class="meta">Brighter</span>
+            </label>
+            <code class="wheel-hex"></code>
           </div>
         </div>
       ` : ""}
@@ -1196,27 +1207,126 @@ async function renderAppearance(pushState = true) {
     };
   });
 
-  // The pickers repaint on every drag and save once the hand comes off —
+  const wheelEl = document.querySelector(".wheel");
+  if (!wheelEl) return;
+
+  // The wheel repaints on every move and saves once the finger lifts —
   // a write per frame of a colour wheel would be silly.
   let saveTimer = null;
-  document.querySelectorAll("[data-color]").forEach(input => {
-    input.oninput = () => {
-      custom[input.dataset.color] = input.value;
-      state.user.theme_colors = { ...custom };
-      applyTheme("custom", custom);
-      document.querySelector(`[data-color-hex="${input.dataset.color}"]`).textContent = input.value;
-      const ink = customTokens(custom).ink;
-      document.querySelectorAll(`[data-theme="custom"] .swatch`).forEach((sw, i) => {
-        sw.style.background = [custom.brand, custom.warm, custom.paper][i];
-        sw.style.borderColor = ink;
-      });
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(async () => {
-        const result = await apiSend("/api/theme", "PUT", { theme_id: "custom", theme_colors: custom });
-        if (!result.ok) alert(result.error || "Could not save those colours.");
-      }, 500);
+  let editing = "brand";
+
+  const setColor = (hex) => {
+    custom[editing] = hex;
+    state.user.theme_colors = { ...custom };
+    applyTheme("custom", custom);
+    document.querySelector(".wheel-hex").textContent = hex;
+    document.querySelector(`[data-color-tab="${editing}"] .color-tab-dot`).style.background = hex;
+    const ink = customTokens(custom).ink;
+    document.querySelectorAll(`[data-theme="custom"] .swatch`).forEach((sw, i) => {
+      sw.style.background = [custom.brand, custom.warm, custom.paper][i];
+      sw.style.borderColor = ink;
+    });
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      const result = await apiSend("/api/theme", "PUT", { theme_id: "custom", theme_colors: custom });
+      if (!result.ok) alert(result.error || "Could not save those colours.");
+    }, 500);
+  };
+
+  const wheel = colorWheel(document.querySelector(".wheel-wrap"), document.querySelector(".wheel-v"), setColor);
+  wheel.set(custom[editing]);
+  document.querySelector(".wheel-hex").textContent = custom[editing];
+
+  document.querySelectorAll("[data-color-tab]").forEach(tab => {
+    tab.onclick = () => {
+      editing = tab.dataset.colorTab;
+      document.querySelectorAll("[data-color-tab]").forEach(t => t.classList.toggle("on", t === tab));
+      wheel.set(custom[editing]);
+      document.querySelector(".wheel-hex").textContent = custom[editing];
     };
   });
+}
+
+/**
+ * A hue/saturation wheel with a brightness slider: hue runs round the
+ * ring, saturation fades to white at the centre, and the slider darkens
+ * the whole disc. The wheel is drawn once per brightness at 2x for a
+ * crisp edge on a phone; the thumb is a DOM element placed over it so it
+ * can carry the 2px outline without redrawing the canvas.
+ */
+function colorWheel(wrap, slider, onChange) {
+  const canvas = wrap.querySelector("canvas");
+  const thumb = wrap.querySelector(".wheel-thumb");
+  const ctx = canvas.getContext("2d");
+  const size = canvas.width, r = size / 2;
+  const hsv = { h: 0, s: 0, v: 1 };
+
+  function draw() {
+    const img = ctx.createImageData(size, size);
+    const d = img.data;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const dx = x - r, dy = y - r;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const i = (y * size + x) * 4;
+        if (dist > r) { d[i + 3] = 0; continue; }
+        const h = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+        const [rr, gg, bb] = hexToRgb(hsvToHex({ h, s: Math.min(1, dist / r), v: hsv.v }));
+        d[i] = rr; d[i + 1] = gg; d[i + 2] = bb;
+        d[i + 3] = dist > r - 1.5 ? Math.max(0, (r - dist) / 1.5) * 255 : 255; // soft rim
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function placeThumb() {
+    const box = wrap.getBoundingClientRect();
+    const scale = box.width / size;
+    const a = hsv.h * Math.PI / 180;
+    const x = (r + Math.cos(a) * hsv.s * r) * scale;
+    const y = (r + Math.sin(a) * hsv.s * r) * scale;
+    thumb.style.left = `${x}px`;
+    thumb.style.top = `${y}px`;
+    thumb.style.background = hsvToHex(hsv);
+  }
+
+  function fromPointer(e) {
+    const box = wrap.getBoundingClientRect();
+    const dx = e.clientX - (box.left + box.width / 2);
+    const dy = e.clientY - (box.top + box.height / 2);
+    hsv.h = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+    hsv.s = Math.min(1, Math.sqrt(dx * dx + dy * dy) / (box.width / 2));
+    placeThumb();
+    onChange(hsvToHex(hsv));
+  }
+
+  let dragging = false;
+  wrap.addEventListener("pointerdown", e => {
+    dragging = true;
+    wrap.setPointerCapture(e.pointerId);
+    fromPointer(e);
+    e.preventDefault();
+  });
+  wrap.addEventListener("pointermove", e => { if (dragging) fromPointer(e); });
+  wrap.addEventListener("pointerup", () => { dragging = false; });
+  wrap.addEventListener("pointercancel", () => { dragging = false; });
+
+  slider.oninput = () => {
+    hsv.v = slider.value / 100;
+    draw();
+    placeThumb();
+    onChange(hsvToHex(hsv));
+  };
+
+  draw();
+  return {
+    set(hex) {
+      Object.assign(hsv, hexToHsv(hex));
+      slider.value = Math.round(hsv.v * 100);
+      draw();
+      placeThumb();
+    }
+  };
 }
 
 /* ---------- Login & boot ---------- */
