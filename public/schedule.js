@@ -228,7 +228,7 @@ function shiftEditor(shift, day) {
             ${staff.map(person => {
               const clash = day.unavailable?.[person.id];
               return `
-                <option value="${person.id}" ${fill?.employee_id === person.id ? "selected" : ""}>
+                <option value="${person.id}" ${shift?.employee_id === person.id ? "selected" : ""}>
                   ${esc(person.full_name)}${clash ? ` — ${esc(clash.reason)}` : ""}
                 </option>
               `;
