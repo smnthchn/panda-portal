@@ -21,8 +21,17 @@ export async function handleBringItems(request, env, slug) {
 
   const grouping = Number(new URL(request.url).searchParams.get("grouping")) || null;
 
+  // What number sits under each title. A shelf's bring quantity is usually
+  // "all of it", so the useful figure at the bins is how many there are to
+  // find; gacha's prizes are a slice of a bigger stock, so it keeps the
+  // bring quantity.
+  const family = grouping
+    ? await env.DB.prepare(`SELECT name_key FROM groupings WHERE id = ?`).bind(grouping).first()
+    : null;
+  const countLabel = family?.name_key === "gacha" ? "bring" : "stock";
+
   const rows = await env.DB.prepare(
-    `SELECT b.id, b.label, b.sku, b.title, b.qty, b.picked_at,
+    `SELECT b.id, b.label, b.sku, b.title, b.qty, b.stock, b.picked_at,
             e.full_name AS picked_by_name
      FROM bring_items b
      LEFT JOIN employees e ON e.id = b.picked_by
@@ -31,7 +40,7 @@ export async function handleBringItems(request, env, slug) {
      ORDER BY b.label COLLATE NOCASE ASC, b.title COLLATE NOCASE ASC`
   ).bind(...(grouping ? [convention.id, grouping] : [convention.id])).all();
 
-  return { ok: true, items: rows.results || [] };
+  return { ok: true, items: rows.results || [], count_label: countLabel };
 }
 
 export async function handlePickItem(request, env, itemId) {

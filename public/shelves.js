@@ -492,8 +492,14 @@ function bringListLinks(position) {
  * a checkbox each. Ticks update in place rather than redrawing, so the list
  * doesn't jump back to the top under someone's thumb mid-pick.
  */
+/** "stock 11" on a shelf, "bring 4" on gacha; a dash where the sheet had no number. */
+function pickCount(item, label) {
+  if (label === "bring") return `bring ${item.qty}`;
+  return item.stock == null ? "stock —" : `stock ${item.stock}`;
+}
+
 function pickListBox() {
-  const { name, items } = pickingFor;
+  const { name, items, countLabel } = pickingFor;
   const done = items ? items.filter(i => i.picked_at).length : 0;
   let lastLabel = null;
 
@@ -524,7 +530,7 @@ function pickListBox() {
                              ${item.picked_at ? "checked" : ""}>
                       <span class="pick-title">
                         ${esc(item.title)}
-                        <em>${esc(item.sku)} · bring ${item.qty}<span class="pick-who">${
+                        <em>${esc(item.sku)} · ${pickCount(item, countLabel)}<span class="pick-who">${
                           item.picked_by_name ? ` · ${esc(item.picked_by_name)}` : ""}</span></em>
                       </span>
                     </label>
@@ -1945,6 +1951,7 @@ function wireShelfPlan() {
 
       if (pickingFor) {
         pickingFor.items = result.items;
+        pickingFor.countLabel = result.count_label;
         drawShelfPlan();
       }
     };
