@@ -250,7 +250,10 @@ which is the one naming seam in the project.
 Three surfaces, chosen by who's looking and on what:
 
 - **Grid** (desktop, boss) — every field edits in place, no edit mode, no modal.
-- **List** (phone) — a card per unit with its five boxes spelled out. The grid
+- **List** (phone) — a card per unit with its tick boxes spelled out.
+  (SCANNED is hidden everywhere this show — `HIDDEN_STAGES` in
+  `public/shelves.js` — but never removed from `STAGES`: ticks are stored
+  by stage index, so removing a stage would shift the others' history.) The grid
   is 900px of columns; dragging that sideways on a phone is not a tool. The two
   swap on a `matchMedia` breakpoint listener, so rotating a phone redraws.
 - **Booth map** — its own page (`/conventions/:slug/booth-map`), not a tab

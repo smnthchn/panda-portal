@@ -2282,7 +2282,8 @@ button.stage-battery {
 .shelf-grid-head,
 .shelf-row {
   display: grid;
-  grid-template-columns: 56px minmax(130px, 1fr) 78px 150px minmax(140px, 1fr) repeat(5, 62px);
+  /* --stage-cols is set by shelfGrid(): the stage list minus hidden stages. */
+  grid-template-columns: 56px minmax(130px, 1fr) 78px 150px minmax(140px, 1fr) repeat(var(--stage-cols, 5), 62px);
   gap: 8px;
   align-items: center;
   min-width: 900px;

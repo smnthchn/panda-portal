@@ -213,7 +213,7 @@ function shelfHeader() {
     </div>
 
     <div class="stage-batteries">
-      ${totals.map((total, stage) => stageBattery(total, stage)).join("")}
+      ${totals.map((total, stage) => stageShown(stage) ? stageBattery(total, stage) : "").join("")}
     </div>
 
     <p class="form-error" id="shelfError"></p>
@@ -247,9 +247,26 @@ function stageBattery({ label, done, total }, stage) {
   `;
 }
 
+/**
+ * Stages the plan shows. SCANNED is hidden this show — nobody scanned — but
+ * it stays in the stage list rather than being removed: ticks are stored by
+ * stage index, so dropping it would land BOARDS and WRAPPED on other stages'
+ * history. Take it out of this set to bring the column back, ticks intact.
+ */
+const HIDDEN_STAGES = new Set(["SCANNED"]);
+
+function stageShown(stage) {
+  return !HIDDEN_STAGES.has(shelfData.stages[stage]);
+}
+
+function shownStageCount() {
+  return shelfData.stages.filter((_, stage) => stageShown(stage)).length;
+}
+
 /** Boards only applies where the shelf actually needs signage. */
 // BOARDS is stage 3; WRAPPED (né PRODUCT +) took the last slot.
 function stageApplies(position, stage) {
+  if (!stageShown(stage)) return false;
   return stage === 3 ? position.signage.length > 0 : true;
 }
 
@@ -303,16 +320,16 @@ function shelfGrid() {
   const walls = wallGroups(positions, stages);
 
   return `
-    <div class="card stripped shelf-grid-card">
+    <div class="card stripped shelf-grid-card" style="--stage-cols:${shownStageCount()};">
       <div class="shelf-grid-head">
         <span class="col-shelf">SHELF</span>
         <span class="col-product">PRODUCT</span>
         <span class="col-type">TYPE</span>
         <span class="col-signage">SIGNAGE NEEDED</span>
         <span class="col-board">BOARDS</span>
-        ${shelfData.totals.map(t => `
+        ${shelfData.totals.map(t => stageShown(t.stage) ? `
           <span class="col-stage">${esc(t.label)}<em>${t.done} / ${t.total}</em></span>
-        `).join("")}
+        ` : "").join("")}
       </div>
 
       ${walls.map(group => `
@@ -409,9 +426,9 @@ function shelfRow(position) {
             </span>`}
       </span>
 
-      ${position.stages.map((done, stage) => `
+      ${position.stages.map((done, stage) => stageShown(stage) ? `
         <span class="col-stage">${stageBox(position, stage, done)}</span>
-      `).join("")}
+      ` : "").join("")}
     </div>
 
     ${openSignageFor === position.id ? signageStrip(position) : ""}
@@ -859,7 +876,7 @@ function signageStrip(position) {
 }
 
 /**
- * The phone surface: one card per unit with its five boxes spelled out.
+ * The phone surface: one card per unit with its tick boxes spelled out.
  * This is what someone standing at the booth actually needs — the grid's
  * columns only make sense when you can see all of them at once.
  */
@@ -897,12 +914,12 @@ function shelfList() {
           ${position.notes ? `<div class="note-card" style="margin:8px 0 0;">${esc(position.notes)}</div>` : ""}
 
           <div class="shelf-list-stages">
-            ${position.stages.map((done, stage) => `
+            ${position.stages.map((done, stage) => stageShown(stage) ? `
               <div class="shelf-list-stage">
                 ${stageBox(position, stage, done)}
                 <span>${esc(stages[stage])}</span>
               </div>
-            `).join("")}
+            ` : "").join("")}
           </div>
 
           ${photosBlock(position)}
@@ -952,7 +969,7 @@ function shelfDetail() {
 
       <div class="strip">WHERE THIS SHELF IS AT</div>
       <div class="shelf-detail-stages">
-        ${position.stages.map((done, stage) => `
+        ${position.stages.map((done, stage) => stageShown(stage) ? `
           <div class="shelf-detail-stage">
             ${stageBox(position, stage, done)}
             <div>
@@ -960,7 +977,7 @@ function shelfDetail() {
               ${notes[stage] ? `<div class="meta">${esc(notes[stage])}</div>` : ""}
             </div>
           </div>
-        `).join("")}
+        ` : "").join("")}
       </div>
 
       ${position.notes ? `<div class="note-card">${esc(position.notes)}</div>` : ""}
@@ -1299,9 +1316,9 @@ function boothBlock(position) {
         <span class="block-id">${esc(position.code)}</span>
         ${signsMode ? "" : `
           <span class="block-dots">
-            ${position.stages.map((done, stage) => `
+            ${position.stages.map((done, stage) => stageShown(stage) ? `
               <span class="${!stageApplies(position, stage) ? "na" : done ? "on" : ""}"></span>
-            `).join("")}
+            ` : "").join("")}
           </span>
         `}
       </div>
@@ -1375,12 +1392,12 @@ function selectedPositionCard(position) {
         </div>
 
         <div class="panel-stages">
-          ${position.stages.map((done, stage) => `
+          ${position.stages.map((done, stage) => stageShown(stage) ? `
             <div class="panel-stage">
               ${stageBox(position, stage, done)}
               <span class="meta">${esc(shelfData.stages[stage])}</span>
             </div>
-          `).join("")}
+          ` : "").join("")}
         </div>
 
         ${position.notes ? `<div class="note-card" style="margin-top:10px;">${esc(position.notes)}</div>` : ""}
