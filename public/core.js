@@ -177,6 +177,22 @@ function can(permission) {
 }
 
 /**
+ * One link for anything a Drive listing can hold. A Google Doc opens in the
+ * portal's own viewer; everything else — PDFs, sheets, whole folders — only
+ * Drive can show, so those go straight there, marked with ↗ so the tap's
+ * destination isn't a surprise. The wiring for data-doc-id stays with each
+ * screen; a Drive link is a plain anchor and needs none.
+ */
+function driveFileLink(file, attrs = "") {
+  if (file.mimeType === "application/vnd.google-apps.document") {
+    return `<a href="#" data-doc-id="${esc(file.id)}" data-doc-name="${esc(file.name)}"${attrs ? ` ${attrs}` : ""}>${esc(file.name)}</a>`;
+  }
+
+  return `<a href="${esc(file.webViewLink || `https://drive.google.com/file/d/${encodeURIComponent(file.id)}/view`)}"
+             target="_blank" rel="noopener noreferrer">${esc(file.name)} ↗</a>`;
+}
+
+/**
  * Times are always shown on a 12-hour clock, whatever the device's locale
  * says. An iPad set to en-CA or a 24-hour region would otherwise render
  * "14:00" (or en-CA's "2:00 p.m."), and Sam asked for "2:00 PM" everywhere

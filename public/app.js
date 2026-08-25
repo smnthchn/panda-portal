@@ -619,10 +619,7 @@ async function renderKnowledgeBase(pushState = true) {
               ${section.files.length
                 ? `<ul class="file-list">
                     ${section.files.map(file => `
-                      <li>
-                        <a href="#" data-doc-id="${esc(file.id)}" data-doc-name="${esc(file.name)}"
-                           data-section="${esc(section.name)}">${esc(file.name)}</a>
-                      </li>
+                      <li>${driveFileLink(file, `data-section="${esc(section.name)}"`)}</li>
                     `).join("")}
                   </ul>`
                 : `<p class="empty-state">No files in this section yet.</p>`}
@@ -666,7 +663,7 @@ async function renderMyFolder(pushState = true) {
       ${data.files.length
         ? `<ul class="file-list">
             ${data.files.map(file => `
-              <li><a href="#" data-doc-id="${esc(file.id)}" data-doc-name="${esc(file.name)}">${esc(file.name)}</a></li>
+              <li>${driveFileLink(file)}</li>
             `).join("")}
           </ul>`
         : `<p class="empty-state">No files in your folder yet.</p>`}

@@ -132,9 +132,6 @@ async function openConvention(slug, pushState = true) {
   drawConvention();
 }
 
-/** Which plan the floor-plan card is showing. Client-side only. */
-let activePlan = "venue";
-
 /**
  * The hero band. Its fill and copy are the phase: counting down (amber),
  * live (brand), or wrapped (amber, centered and celebratory).
@@ -202,7 +199,7 @@ function heroBand() {
   `;
 }
 
-/** Floorplan / Booth / Maps. The first two switch the plan card below. */
+/** Booth Plan / Booth map / Venue map / Maps. */
 function pillRow() {
   const { convention } = detailData;
   const mapHref = addressHref(convention);
@@ -214,11 +211,10 @@ function pillRow() {
     `<button class="btn-pill off" id="boothMapPill">Booth map</button>`
   ];
 
+  // The venue map opens in Drive rather than embedding — a hall floorplan is
+  // a thing you zoom around, which Drive's viewer does and an iframe doesn't.
   if (convention.venue_map_file_id) {
-    buttons.push(`<button class="btn-pill ${activePlan === "venue" ? "on" : "off"}" data-plan="venue">Floorplan</button>`);
-  }
-  if (convention.booth_layout_file_id) {
-    buttons.push(`<button class="btn-pill ${activePlan === "booth" ? "on" : "off"}" data-plan="booth">Booth</button>`);
+    buttons.push(`<button class="btn-pill off" data-maps="https://drive.google.com/file/d/${encodeURIComponent(convention.venue_map_file_id)}/view">Venue map</button>`);
   }
   if (mapHref) {
     buttons.push(`<button class="btn-pill off" data-maps="${esc(mapHref)}">Maps</button>`);
@@ -472,12 +468,10 @@ function doorsCountdown(day) {
   return "Open now";
 }
 
-/** The one plan image at a time, switched by the pill row. */
+/** The booth table plan, when one's been linked. The venue map is a pill. */
 function planCard() {
   const { convention } = detailData;
-  const fileId = activePlan === "booth"
-    ? convention.booth_layout_file_id
-    : convention.venue_map_file_id;
+  const fileId = convention.booth_layout_file_id;
 
   if (!fileId) return "";
 
@@ -486,7 +480,7 @@ function planCard() {
   return `
     <div class="card stripped">
       <div class="strip">
-        ${activePlan === "booth" ? "BOOTH LAYOUT" : "VENUE FLOORPLAN"}
+        BOOTH LAYOUT
         ${convention.booth_number
           ? `<span class="strip-side" style="color:var(--brand-text);">Booth ${esc(convention.booth_number)}</span>`
           : ""}
@@ -496,9 +490,7 @@ function planCard() {
           <iframe src="https://drive.google.com/file/d/${id}/preview" title="Plan" allow="autoplay"></iframe>
         </div>
         <p class="meta" style="margin:8px 0 0;">
-          ${activePlan === "booth"
-            ? "Table plan — where singles, sealed and the till go."
-            : "Hall level, our booth marked."}
+          Table plan — where singles, sealed and the till go.
           Can't see it?
           <a href="https://drive.google.com/file/d/${id}/view" target="_blank" rel="noopener noreferrer">open it directly</a>.
         </p>
@@ -841,7 +833,7 @@ function documentsCard() {
           : documents.length
             ? `<ul class="file-list">
                 ${documents.map(file => `
-                  <li><a href="#" data-doc-id="${esc(file.id)}" data-doc-name="${esc(file.name)}">${esc(file.name)}</a></li>
+                  <li>${driveFileLink(file)}</li>
                 `).join("")}
               </ul>`
             : `<p class="empty-state">No documents in this folder yet.</p>`}
@@ -869,14 +861,7 @@ function wireConventionDetail() {
   const boothMap = document.getElementById("boothMapPill");
   if (boothMap) boothMap.onclick = () => renderShelfPlan(detailData.convention.slug, true, "map");
 
-  // Floorplan / Booth switch the one plan card; Maps opens the address.
-  document.querySelectorAll("[data-plan]").forEach(btn => {
-    btn.onclick = () => {
-      activePlan = btn.dataset.plan;
-      drawConvention();
-    };
-  });
-
+  // Maps opens the address; Venue map opens its Drive file the same way.
   document.querySelectorAll("[data-maps]").forEach(btn => {
     btn.onclick = () => window.open(btn.dataset.maps, "_blank", "noopener");
   });
