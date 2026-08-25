@@ -1590,6 +1590,9 @@ function conflictsCard(conflicts) {
 
 function signsList() {
   const withBoards = shelfData.positions.filter(p => p.boards.length);
+  // Looked up by name, not position — a hard-coded index here once read
+  // WRAPPED as "up" and said signs were done on units nobody had boarded.
+  const boardsStage = shelfData.stages.indexOf("BOARDS");
 
   return `
     <div class="card stripped">
@@ -1605,7 +1608,7 @@ function signsList() {
               ${esc(boardNameList(position))}
               <div class="meta">${position.boards.map(b => b.face.toUpperCase()).join(" + ")}</div>
             </span>
-            ${position.stages[4]
+            ${position.stages[boardsStage]
               ? `<span style="color:var(--go-text); font-weight:600; font-size:12px;">✓ up</span>`
               : ""}
           </div>
