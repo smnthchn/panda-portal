@@ -6,6 +6,9 @@ let scheduleData = null;
 let scheduleDay = null;
 let editingShiftId = null;
 let addingShift = false;
+// Copy on an open shift carries its details into a fresh one, Who left
+// blank — the same pattern as storeShiftDraft on the store schedule.
+let shiftDraft = null;
 
 async function renderSchedule(slug, pushState = true) {
   if (pushState) pushPageState("convention-schedule", { slug });
@@ -214,12 +217,13 @@ function shiftCard(shift, day) {
 /** The inline editor. A null shift means we're adding a new one. */
 function shiftEditor(shift, day) {
   const { staff } = scheduleData;
-  const minutes = shift ? shift.break_allotment_minutes : 30;
-  const count = shift ? shift.break_count : 1;
+  const fill = shift || shiftDraft;
+  const minutes = fill ? fill.break_allotment_minutes : 30;
+  const count = fill ? fill.break_count : 1;
 
   return `
     <div class="card" style="border-style:dashed;">
-      <h3>${shift ? "Edit shift" : "New shift"}</h3>
+      <h3>${shift ? "Edit shift" : shiftDraft ? "New shift — a copy" : "New shift"}</h3>
 
       <div class="form-grid" style="margin:0;">
         <label>Who
@@ -228,7 +232,7 @@ function shiftEditor(shift, day) {
             ${staff.map(person => {
               const clash = day.unavailable?.[person.id];
               return `
-                <option value="${person.id}" ${shift?.employee_id === person.id ? "selected" : ""}>
+                <option value="${person.id}" ${fill?.employee_id === person.id ? "selected" : ""}>
                   ${esc(person.full_name)}${clash ? ` — ${esc(clash.reason)}` : ""}
                 </option>
               `;
@@ -236,10 +240,10 @@ function shiftEditor(shift, day) {
           </select>
         </label>
         <label>What
-          <input type="text" id="shiftWhat" value="${esc(shift?.title || "Booth")}" placeholder="Booth">
+          <input type="text" id="shiftWhat" value="${esc(fill?.title || "Booth")}" placeholder="Booth">
         </label>
-        <label>Start ${timeSelect('id="shiftFrom"', shift?.starts_at || suggestedStart())}</label>
-        <label>End ${timeSelect('id="shiftTo"', shift?.ends_at || suggestedEnd())}</label>
+        <label>Start ${timeSelect('id="shiftFrom"', fill?.starts_at || suggestedStart())}</label>
+        <label>End ${timeSelect('id="shiftTo"', fill?.ends_at || suggestedEnd())}</label>
         <label>Break minutes
           <input type="number" id="shiftBreakMins" value="${minutes}" min="0" max="240">
         </label>
@@ -253,6 +257,7 @@ function shiftEditor(shift, day) {
 
       <div class="button-row">
         <button id="saveShiftBtn" style="flex:1;">${shift ? "Save shift" : "Add shift"}</button>
+        ${shift ? `<button class="btn-quiet" id="copyShiftBtn" title="Start a new shift with these details">Copy</button>` : ""}
         <button class="btn-quiet" id="cancelShiftBtn">Cancel</button>
         ${shift ? `<button class="btn-danger" id="deleteShiftBtn">Remove</button>` : ""}
       </div>
@@ -282,6 +287,7 @@ function wireSchedule() {
       scheduleDay = tab.dataset.day;
       editingShiftId = null;
       addingShift = false;
+      shiftDraft = null;
       drawSchedule();
     };
   });
@@ -290,6 +296,7 @@ function wireSchedule() {
     card.onclick = () => {
       editingShiftId = Number(card.dataset.editShift);
       addingShift = false;
+      shiftDraft = null;
       drawSchedule();
     };
   });
@@ -299,6 +306,7 @@ function wireSchedule() {
     addBtn.onclick = () => {
       addingShift = true;
       editingShiftId = null;
+      shiftDraft = null;
       drawSchedule();
     };
   }
@@ -308,7 +316,23 @@ function wireSchedule() {
     cancelBtn.onclick = () => {
       editingShiftId = null;
       addingShift = false;
+      shiftDraft = null;
       drawSchedule();
+    };
+  }
+
+  // Copy: the same hours, breaks and title, with Who left to be chosen.
+  const copyShiftBtn = document.getElementById("copyShiftBtn");
+  if (copyShiftBtn) {
+    copyShiftBtn.onclick = () => {
+      const source = scheduleData.days.find(d => d.date === scheduleDay)?.shifts
+        .find(sh => sh.id === editingShiftId);
+      if (!source) return;
+      shiftDraft = { ...source, employee_id: null };
+      editingShiftId = null;
+      addingShift = true;
+      drawSchedule();
+      document.getElementById("shiftWho")?.focus();
     };
   }
 
@@ -340,6 +364,7 @@ function wireSchedule() {
 
       editingShiftId = null;
       addingShift = false;
+      shiftDraft = null;
       await reload();
     };
   }

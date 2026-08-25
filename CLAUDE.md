@@ -545,8 +545,9 @@ lit day gets the same shift for the same person on save, as its own POST so
 one overlap refusal doesn't take the rest down — the days that failed are
 named in the error and the rest are on the board. **Copy** on an open shift
 starts a new one with the hours, breaks and title filled in and *Who* left
-blank, for three people on the same shift. Both are store-schedule only; the
-event builder has Copy this day.
+blank, for three people on the same shift — on the store schedule and the
+event builder alike (same draft pattern in both). Apply to is store-only; the
+event builder has Copy this day instead.
 
 A new store shift defaults to **half an hour either side of the door** — someone
 opens the till before the first customer and cashes out after the last. It's
