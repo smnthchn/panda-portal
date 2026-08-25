@@ -3218,6 +3218,16 @@ button.cell-add:hover {
   text-decoration: underline;
 }
 
+/* Pictures come from Google at whatever size they were pasted; the card,
+   not the doc, decides the width. */
+.doc-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin: 0.6em 0;
+}
+
 .doc-table {
   width: 100%;
   border-collapse: collapse;

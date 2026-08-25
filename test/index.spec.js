@@ -23,6 +23,7 @@ import {
 import { templatePositions, BOOTH_FEET } from "../src/lib/booth-template.js";
 import { parseImageDataUri, imageUrlFor } from "../src/lib/images.js";
 import { parseThemeColors, THEME_IDS } from "../src/routes/session.js";
+import { renderGoogleDocToHtml } from "../src/lib/google.js";
 
 function request(path, method = "GET", headers = {}) {
   return new Request(`http://example.com${path}`, { method, headers });
@@ -1166,5 +1167,82 @@ describe("custom theme colours", () => {
   it("lists custom beside the shipped palettes", () => {
     expect(THEME_IDS).toContain("custom");
     expect(THEME_IDS).toContain("habbo");
+  });
+});
+
+describe("Google Doc rendering", () => {
+  const paragraphWith = (...elements) => ({ paragraph: { elements } });
+
+  it("renders an inline image from the doc's object map", () => {
+    const html = renderGoogleDocToHtml({
+      body: { content: [
+        paragraphWith(
+          { textRun: { content: "Park here: " } },
+          { inlineObjectElement: { inlineObjectId: "kix.img1" } }
+        )
+      ] },
+      inlineObjects: {
+        "kix.img1": { inlineObjectProperties: { embeddedObject: {
+          title: "loading dock",
+          imageProperties: { contentUri: "https://lh3.googleusercontent.com/abc" }
+        } } }
+      }
+    });
+
+    expect(html).toContain('<img class="doc-img" src="https://lh3.googleusercontent.com/abc"');
+    expect(html).toContain('alt="loading dock"');
+  });
+
+  it("keeps a paragraph that is only an image", () => {
+    const html = renderGoogleDocToHtml({
+      body: { content: [
+        paragraphWith({ inlineObjectElement: { inlineObjectId: "kix.img1" } })
+      ] },
+      inlineObjects: {
+        "kix.img1": { inlineObjectProperties: { embeddedObject: {
+          imageProperties: { contentUri: "https://lh3.googleusercontent.com/only" }
+        } } }
+      }
+    });
+
+    expect(html).toContain("googleusercontent.com/only");
+  });
+
+  it("renders a positioned image ahead of its paragraph", () => {
+    const html = renderGoogleDocToHtml({
+      body: { content: [
+        { paragraph: {
+          positionedObjectIds: ["kix.pos1"],
+          elements: [{ textRun: { content: "The booth from the aisle" } }]
+        } }
+      ] },
+      positionedObjects: {
+        "kix.pos1": { positionedObjectProperties: { embeddedObject: {
+          imageProperties: { contentUri: "https://lh3.googleusercontent.com/pos" }
+        } } }
+      }
+    });
+
+    expect(html.indexOf("googleusercontent.com/pos"))
+      .toBeLessThan(html.indexOf("The booth from the aisle"));
+  });
+
+  it("drops a non-https contentUri rather than putting it in an img src", () => {
+    const html = renderGoogleDocToHtml({
+      body: { content: [
+        paragraphWith(
+          { textRun: { content: "text stays" } },
+          { inlineObjectElement: { inlineObjectId: "kix.bad" } }
+        )
+      ] },
+      inlineObjects: {
+        "kix.bad": { inlineObjectProperties: { embeddedObject: {
+          imageProperties: { contentUri: "javascript:alert(1)" }
+        } } }
+      }
+    });
+
+    expect(html).not.toContain("<img");
+    expect(html).toContain("text stays");
   });
 });

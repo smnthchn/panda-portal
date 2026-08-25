@@ -150,23 +150,67 @@ export async function fetchGoogleDoc(docId, env) {
 }
 
 export function renderGoogleDocToHtml(doc) {
+  const images = collectImages(doc);
   const content = doc.body?.content || [];
   let html = "";
 
   for (const block of content) {
     if (block.paragraph) {
-      html += renderParagraph(block.paragraph);
+      html += renderParagraph(block.paragraph, images);
     } else if (block.table) {
-      html += renderTable(block.table);
+      html += renderTable(block.table, images);
     }
   }
 
   return html || "<p>No content</p>";
 }
 
-function renderParagraph(paragraph) {
+/**
+ * A doc's pictures, keyed by object id. Inline and positioned objects both
+ * resolve to a contentUri — a link Google signs for about half an hour,
+ * which outlives any read of a screen that fetches the doc fresh per open.
+ * Only https survives the filter, since the URI lands in an <img src>.
+ */
+function collectImages(doc) {
+  const images = new Map();
+
+  for (const [id, obj] of [
+    ...Object.entries(doc.inlineObjects || {}),
+    ...Object.entries(doc.positionedObjects || {})
+  ]) {
+    const embedded = obj.inlineObjectProperties?.embeddedObject
+      || obj.positionedObjectProperties?.embeddedObject;
+    const uri = embedded?.imageProperties?.contentUri;
+
+    if (uri && uri.startsWith("https://")) {
+      images.set(id, { uri, alt: embedded.title || "" });
+    }
+  }
+
+  return images;
+}
+
+function imageTag(image) {
+  return `<img class="doc-img" src="${escapeHtml(image.uri)}" alt="${escapeHtml(image.alt)}" loading="lazy" decoding="async">`;
+}
+
+function renderParagraph(paragraph, images) {
+  // Positioned objects hang off the paragraph rather than sitting in its
+  // element run; the exact wrap position isn't in the API, so they lead.
+  let pictures = "";
+  for (const id of paragraph.positionedObjectIds || []) {
+    const image = images.get(id);
+    if (image) pictures += imageTag(image);
+  }
+
   const text = (paragraph.elements || [])
     .map(el => {
+      const inlineId = el.inlineObjectElement?.inlineObjectId;
+      if (inlineId) {
+        const image = images.get(inlineId);
+        return image ? imageTag(image) : "";
+      }
+
       const tr = el.textRun;
       if (!tr?.content) return "";
 
@@ -185,20 +229,20 @@ function renderParagraph(paragraph) {
     .join("")
     .trim();
 
-  if (!text) return "";
+  if (!text) return pictures;
 
   const named = paragraph.paragraphStyle?.namedStyleType || "";
 
-  if (named === "TITLE") return `<h1>${text}</h1>`;
-  if (named === "SUBTITLE") return `<h2>${text}</h2>`;
-  if (named === "HEADING_1") return `<h2>${text}</h2>`;
-  if (named === "HEADING_2") return `<h3>${text}</h3>`;
-  if (named === "HEADING_3") return `<h4>${text}</h4>`;
+  if (named === "TITLE") return `${pictures}<h1>${text}</h1>`;
+  if (named === "SUBTITLE") return `${pictures}<h2>${text}</h2>`;
+  if (named === "HEADING_1") return `${pictures}<h2>${text}</h2>`;
+  if (named === "HEADING_2") return `${pictures}<h3>${text}</h3>`;
+  if (named === "HEADING_3") return `${pictures}<h4>${text}</h4>`;
 
-  return `<p>${text}</p>`;
+  return `${pictures}<p>${text}</p>`;
 }
 
-function renderTable(table) {
+function renderTable(table, images) {
   let html = '<table class="doc-table">';
 
   for (const row of table.tableRows || []) {
@@ -206,7 +250,7 @@ function renderTable(table) {
     for (const cell of row.tableCells || []) {
       let cellHtml = "";
       for (const item of cell.content || []) {
-        if (item.paragraph) cellHtml += renderParagraph(item.paragraph);
+        if (item.paragraph) cellHtml += renderParagraph(item.paragraph, images);
       }
       html += `<td>${cellHtml || ""}</td>`;
     }
