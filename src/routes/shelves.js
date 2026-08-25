@@ -143,7 +143,7 @@ export function stageApplies(position, stage) {
   return true;
 }
 
-async function loadPlan(db, conventionId) {
+async function loadPlan(db, conventionId, viewerId = null) {
   const [positionRows, flagRows, artRows, photoRows, groupingRows, tierRows, heightRows] =
     await Promise.all([
     db.prepare(
@@ -168,7 +168,7 @@ async function loadPlan(db, conventionId) {
     ).bind(conventionId).all(),
 
     db.prepare(
-      `SELECT ph.id, ph.position_id, ph.created_at, e.full_name AS taken_by_name
+      `SELECT ph.id, ph.position_id, ph.created_at, ph.taken_by, e.full_name AS taken_by_name
        FROM shelf_photos ph
        LEFT JOIN employees e ON e.id = ph.taken_by
        JOIN shelf_positions p ON p.id = ph.position_id
@@ -258,6 +258,7 @@ async function loadPlan(db, conventionId) {
       id: row.id,
       created_at: row.created_at,
       taken_by_name: row.taken_by_name,
+      is_mine: row.taken_by !== null && row.taken_by === viewerId,
       image_url: imageUrlFor(`/api/shelf-photo/${row.id}`, row.created_at)
     });
   }
@@ -312,7 +313,7 @@ export async function handleShelfPlan(request, env, slug) {
 
   if (!convention) return { ok: false, error: "Convention not found." };
 
-  const positions = await loadPlan(env.DB, convention.id);
+  const positions = await loadPlan(env.DB, convention.id, auth.user.id);
 
   // Where a plan could be copied from, newest first.
   const others = await env.DB.prepare(
@@ -797,7 +798,8 @@ export async function handleGetShelfPhoto(request, env, photoId) {
  *
  * Anyone who can see the plan can add one — merchandising and packing is the
  * floor's job, and a photo nobody could take until the boss was free would
- * not get taken. Deleting stays with the boss.
+ * not get taken. Deleting your own follows for the same reason: a blurry
+ * retake shouldn't need the boss. Other people's stay boss-only.
  */
 export async function handleAddShelfPhoto(request, env, positionId) {
   const auth = await requireUser(request, env, "conventions");
@@ -822,12 +824,24 @@ export async function handleAddShelfPhoto(request, env, positionId) {
 }
 
 export async function handleDeleteShelfPhoto(request, env, photoId) {
-  const auth = await requireUser(request, env, "manage_conventions");
+  const auth = await requireUser(request, env, "conventions");
   if (!auth.ok) return auth;
+
+  const id = Number(photoId);
+  const photo = await env.DB.prepare(
+    `SELECT taken_by FROM shelf_photos WHERE id = ?`
+  ).bind(id).first();
+
+  // Already gone is the outcome the caller wanted.
+  if (!photo) return { ok: true };
+
+  if (!auth.user.permissions.manage_conventions && photo.taken_by !== auth.user.id) {
+    return { ok: false, error: "Only your own photos can be deleted." };
+  }
 
   await env.DB.prepare(
     `DELETE FROM shelf_photos WHERE id = ?`
-  ).bind(Number(photoId)).run();
+  ).bind(id).run();
 
   return { ok: true };
 }

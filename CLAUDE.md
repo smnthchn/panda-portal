@@ -439,10 +439,12 @@ indeterminate while the browser shrinks the picture and again while the row is
 written, and shows real bytes-sent percentage in between; a fill frozen at 100%
 would say the wrong thing about both ends.
 
-**Anyone who can see the plan can add a shelf photo.** Merchandising and packing
-is the floor's job, and a photo that had to wait for the boss wouldn't get
-taken. Deleting stays with `manage_conventions`, as does everything else on the
-plan.
+**Anyone who can see the plan can add a shelf photo, and delete their own.**
+Merchandising and packing is the floor's job, and a photo that had to wait for
+the boss wouldn't get taken — nor should a blurry retake. Deleting someone
+else's photo stays with `manage_conventions`, as does everything else on the
+plan; photos carry `is_mine` (server-decided) so the lightbox knows whose
+Delete to show.
 
 `src/lib/images.js` holds the rules shared with avatars — `parseImageDataUri()`
 refuses anything that isn't base64 PNG/JPEG/WebP, **SVG especially**, since the

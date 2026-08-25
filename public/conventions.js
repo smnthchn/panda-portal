@@ -1482,7 +1482,9 @@ function formBlock(key, title, bodyHtml, hiddenCount = 0) {
 }
 
 function renderConventionForm(convention) {
-  const editing = Boolean(convention);
+  // Keyed on the id, not the object: toggling a block mid-create re-renders
+  // with the draft wrapped in an object, which is not the same as editing.
+  const editing = Boolean(convention?.id);
   const field = (id, label, type, value, placeholder = "") => `
     <label>${esc(label)}
       <input type="${type}" id="${id}" value="${esc(value || "")}" placeholder="${esc(placeholder)}">
@@ -1611,7 +1613,14 @@ function renderConventionForm(convention) {
   saveBtn.onclick = async () => {
     saveBtn.disabled = true;
 
+    // A folded block's inputs aren't in the DOM, and the server writes every
+    // column whether or not the field arrived — a missing one lands as NULL.
+    // Fill the gaps from the draft, or saving with LINKS & DRIVE FILES folded
+    // (its resting state) wipes the Drive folder and every link on the event.
     const payload = readConventionForm();
+    for (const field of Object.keys(CONVENTION_FIELD_IDS)) {
+      if (!(field in payload)) payload[field] = convention?.[field] ?? null;
+    }
     const result = editing
       ? await apiSend(`/api/conventions/${convention.id}`, "PATCH", payload)
       : await apiSend("/api/conventions", "POST", payload);

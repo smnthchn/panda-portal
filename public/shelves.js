@@ -1568,7 +1568,7 @@ function photoLightbox() {
   return `
     <div class="lightbox" id="photoLightbox">
       <div class="lightbox-controls">
-        ${shelfData.canManage
+        ${shelfData.canManage || photo.is_mine
           ? `<button class="btn-danger" data-photo-delete="${photo.id}">Delete</button>`
           : ""}
         <button class="lightbox-close" id="closeLightboxBtn" aria-label="Close"
