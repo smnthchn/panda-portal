@@ -1,0 +1,76 @@
+# Deploys on every push to master, in the three-step order CLAUDE.md
+# requires: apply migrations (tolerating wrangler's spurious 7403), prove
+# they actually landed, then deploy the worker. The proof step is the gate —
+# if the schema can't be confirmed current, old code keeps running against
+# the old schema rather than new code against an unknown one.
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+
+# One deploy at a time, in order; a second push waits rather than racing the
+# first through the migrate/deploy steps.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests
+        run: npm test -- --run
+
+      - name: Apply migrations
+        run: |
+          npm run migrate:remote || echo "::warning::migrate:remote exited non-zero — often the spurious 7403 wrangler prints after the migrations have applied. The next step decides whether that was real."
+
+      - name: Confirm the schema is current
+        run: |
+          set +e
+          out=$(npm run migrate:check 2>&1)
+          status=$?
+          set -e
+          echo "$out"
+          if [ "$status" -eq 0 ]; then
+            if echo "$out" | grep -q "No migrations to apply"; then
+              echo "Schema confirmed current."
+              exit 0
+            fi
+            echo "::error::Migrations are still pending after the apply step."
+            exit 1
+          fi
+          # migrate:check can throw the same spurious 7403 on its own — a
+          # plain read says nothing about the schema, so ask the database
+          # directly, the way CLAUDE.md prescribes.
+          echo "migrate:check failed — asking d1_migrations directly."
+          applied=$(npx wrangler d1 execute panda_portal_db --remote --json --command "SELECT name FROM d1_migrations")
+          missing=0
+          for f in migrations/*.sql; do
+            name=$(basename "$f")
+            if ! echo "$applied" | grep -qF "\"$name\""; then
+              echo "::error::Migration $name has not been applied."
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 0 ]; then
+            echo "Schema confirmed current (every local migration is in d1_migrations)."
+          fi
+          exit $missing
+
+      - name: Deploy
+        run: npm run deploy
