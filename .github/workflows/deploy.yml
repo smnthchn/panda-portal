@@ -9,6 +9,10 @@ on:
   workflow_dispatch:
   push:
     branches: [master]
+    # A workflow-only change is not a release; without this it would still
+    # cut a new Cloudflare version and muddy the rollback history.
+    paths-ignore:
+      - ".github/**"
 
 # One deploy at a time, in order; a second push waits rather than racing the
 # first through the migrate/deploy steps.
