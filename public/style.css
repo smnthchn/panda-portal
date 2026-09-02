@@ -1428,9 +1428,13 @@ textarea::placeholder {
   white-space: nowrap;
 }
 
-.hours-table .fix-cell {
-  text-align: right;
-  width: 1%;
+/* A team-report shift opens its punches for editing when tapped. */
+.hours-table tr.row-fix {
+  cursor: pointer;
+}
+
+.hours-table tr.row-fix:hover td {
+  background: var(--chip);
 }
 
 .shift-incomplete td {

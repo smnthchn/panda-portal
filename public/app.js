@@ -735,29 +735,26 @@ function weekStartOf(isoDate) {
 }
 
 /**
- * One table row. fixIndex: undefined = no fix column at all (own hours),
- * null = fix column but no button (someone working right now), a number =
- * a Fix button wired to teamFixList[fixIndex].
+ * One table row. fixIndex: undefined = own hours, not editable; null = team
+ * report but someone working right now, not editable; a number = the row
+ * itself opens the fix editor for teamFixList[fixIndex] when tapped.
  */
 function shiftRow(shift, fixIndex) {
   const date = formatDate(localDateOf(shift.in_at));
-  const fixCell = fixIndex === undefined
-    ? ""
-    : `<td class="fix-cell">${fixIndex === null
-        ? ""
-        : `<button class="btn-quiet" data-fix="${fixIndex}">Fix</button>`}</td>`;
+  const fixable = fixIndex !== undefined && fixIndex !== null;
+  const fixAttr = fixable ? ` data-fix="${fixIndex}"` : "";
+  const fixClass = fixable ? " row-fix" : "";
 
   // No clock-out: today it means they're working right now; any earlier day
   // means someone forgot. Neither counts toward a total.
   if (!shift.out_at) {
     const working = localDateOf(shift.in_at) === todayLocal();
     return `
-      <tr class="${working ? "" : "shift-incomplete"}">
+      <tr class="${working ? "" : "shift-incomplete"}${fixClass}"${fixAttr}>
         <td>${esc(date)}</td>
         <td>${esc(timeOf(shift.in_at))} –</td>
         <td></td>
         <td class="net-cell">${working ? "Still clocked in" : "No clock-out recorded"}</td>
-        ${fixCell}
       </tr>
     `;
   }
@@ -766,12 +763,11 @@ function shiftRow(shift, fixIndex) {
   const long = shift.net_minutes >= 960;
 
   return `
-    <tr class="${long ? "shift-long" : ""}">
+    <tr class="${long ? "shift-long" : ""}${fixClass}"${fixAttr}>
       <td>${esc(date)}</td>
       <td>${esc(timeOf(shift.in_at))} – ${esc(timeOf(shift.out_at))}</td>
       <td>${shift.break_minutes ? `${esc(formatMinutes(shift.break_minutes))} break` : ""}</td>
       <td class="net-cell">${esc(formatMinutes(shift.net_minutes))}${long ? " — check this" : ""}</td>
-      ${fixCell}
     </tr>
   `;
 }
@@ -829,8 +825,9 @@ function teamHoursCard() {
         <p class="form-error" id="reportError"></p>
         <div id="reportArea"><p class="meta">Loading…</p></div>
         <p class="meta">
-          Fix any punch — clock-in, breaks, clock-out — with a row's Fix button.
-          The correction is stamped with your name in the punch log.
+          Tap a shift to fix its punches — clock-in, breaks, clock-out — or to
+          add a missed break. Corrections are stamped with your name in the
+          punch log.
         </p>
       </div>
     </div>
@@ -885,8 +882,17 @@ async function loadTeamHours() {
     ? `<div class="people-grid">${blocks.join("")}</div>`
     : `<p class="empty-state">No clock activity between those dates.</p>`;
 
-  document.querySelectorAll("[data-fix]").forEach(btn => {
-    btn.onclick = () => openFixEditor(btn.closest("tr"), teamFixList[Number(btn.dataset.fix)]);
+  // The row is the control: tapping a shift opens its punches for editing,
+  // tapping it again closes them.
+  document.querySelectorAll("tr[data-fix]").forEach(tr => {
+    tr.onclick = () => {
+      const editor = document.getElementById("fixEditorRow");
+      if (editor && editor.previousElementSibling === tr) {
+        editor.remove();
+        return;
+      }
+      openFixEditor(tr, teamFixList[Number(tr.dataset.fix)]);
+    };
   });
 }
 
@@ -905,75 +911,114 @@ function openFixEditor(row, shift) {
 
   // Every punch is editable; the recorded times prefill. Guesses only stand
   // in for a punch that was never made: a missing clock-out gets in + 8h, a
-  // break that never ended gets start + 30m.
+  // break that never ended gets start + 30m, and an added break lands as a
+  // half hour in the middle of the shift.
   const outInitial = shift.out_at
     ? toLocalInput(asDate(shift.out_at))
     : toLocalInput(new Date(asDate(shift.in_at).getTime() + 8 * 3600 * 1000));
 
-  const breaks = shift.breaks || [];
-  const breakFields = breaks.map((b, i) => {
-    const n = breaks.length > 1 ? ` ${i + 1}` : "";
-    const endInitial = b.end_at
+  // datetime-local values, edited in place; Add break appends a pair.
+  const breakList = (shift.breaks || []).map(b => ({
+    start: toLocalInput(asDate(b.start_at)),
+    end: b.end_at
       ? toLocalInput(asDate(b.end_at))
-      : toLocalInput(new Date(asDate(b.start_at).getTime() + 30 * 60000));
-    return `
-      <label>Break${n} start <input type="datetime-local" data-fix-break-start="${i}" value="${esc(toLocalInput(asDate(b.start_at)))}"></label>
-      <label>Break${n} end <input type="datetime-local" data-fix-break-end="${i}" value="${esc(endInitial)}"></label>
-    `;
-  }).join("");
+      : toLocalInput(new Date(asDate(b.start_at).getTime() + 30 * 60000))
+  }));
 
   const editor = document.createElement("tr");
   editor.id = "fixEditorRow";
-  editor.innerHTML = `
-    <td colspan="5">
-      <div class="inline-form">
-        <label>Clock-in <input type="datetime-local" id="fixInInput" value="${esc(toLocalInput(asDate(shift.in_at)))}"></label>
-        ${breakFields}
-        <label>Clock-out <input type="datetime-local" id="fixOutInput" value="${esc(outInitial)}"></label>
-        <button id="fixSaveBtn">Save</button>
-        <button class="btn-quiet" id="fixCancelBtn">Cancel</button>
-      </div>
-      <p class="form-error" id="fixError"></p>
-    </td>
-  `;
   row.after(editor);
-
-  document.getElementById("fixCancelBtn").onclick = () => editor.remove();
 
   const toStamp = (value) => new Date(value).toISOString().slice(0, 19).replace("T", " ");
 
-  document.getElementById("fixSaveBtn").onclick = async () => {
-    const inValue = document.getElementById("fixInInput").value;
-    const outValue = document.getElementById("fixOutInput").value;
-    const breakValues = breaks.map((b, i) => ({
+  const readInputs = () => ({
+    inValue: document.getElementById("fixInInput").value,
+    outValue: document.getElementById("fixOutInput").value,
+    breakValues: breakList.map((b, i) => ({
       start: editor.querySelector(`[data-fix-break-start="${i}"]`).value,
       end: editor.querySelector(`[data-fix-break-end="${i}"]`).value
-    }));
+    }))
+  });
 
-    if (!inValue || !outValue || breakValues.some(b => !b.start || !b.end)) {
-      showFormError("fixError", "Every punch needs a time.");
-      return;
-    }
-
-    const saveBtn = document.getElementById("fixSaveBtn");
-    saveBtn.disabled = true;
-
-    const result = await apiSend("/api/admin/clock-fix", "POST", {
-      employee_id: shift.employee_id,
-      in_at: shift.in_at,
-      new_in_at: toStamp(inValue),
-      out_at: toStamp(outValue),
-      breaks: breakValues.map(b => ({ start_at: toStamp(b.start), end_at: toStamp(b.end) }))
-    });
-
-    if (!result.ok) {
-      saveBtn.disabled = false;
-      showFormError("fixError", result.error || "Could not save that fix.");
-      return;
-    }
-
-    await loadTeamHours();
+  const render = (inValue, outValue) => {
+    editor.innerHTML = `
+      <td colspan="4">
+        <div class="inline-form">
+          <label>Clock-in <input type="datetime-local" id="fixInInput" value="${esc(inValue)}"></label>
+          ${breakList.map((b, i) => {
+            const n = breakList.length > 1 ? ` ${i + 1}` : "";
+            return `
+              <label>Break${n} start <input type="datetime-local" data-fix-break-start="${i}" value="${esc(b.start)}"></label>
+              <label>Break${n} end <input type="datetime-local" data-fix-break-end="${i}" value="${esc(b.end)}"></label>
+            `;
+          }).join("")}
+          <label>Clock-out <input type="datetime-local" id="fixOutInput" value="${esc(outValue)}"></label>
+          <button class="btn-quiet" id="fixAddBreakBtn">Add break</button>
+          <button id="fixSaveBtn">Save</button>
+          <button class="btn-quiet" id="fixCancelBtn">Cancel</button>
+        </div>
+        <p class="form-error" id="fixError"></p>
+      </td>
+    `;
+    wire();
   };
+
+  const wire = () => {
+    document.getElementById("fixCancelBtn").onclick = () => editor.remove();
+
+    document.getElementById("fixAddBreakBtn").onclick = () => {
+      const { inValue, outValue, breakValues } = readInputs();
+      breakValues.forEach((b, i) => { breakList[i] = b; });
+
+      const inMs = new Date(inValue).getTime();
+      const outMs = new Date(outValue).getTime();
+      const mid = Number.isFinite(inMs) && Number.isFinite(outMs) && outMs > inMs
+        ? inMs + Math.floor((outMs - inMs) / 2) - 15 * 60000
+        : inMs + 3 * 3600 * 1000;
+      breakList.push({
+        start: toLocalInput(new Date(mid)),
+        end: toLocalInput(new Date(mid + 30 * 60000))
+      });
+
+      render(inValue, outValue);
+    };
+
+    document.getElementById("fixSaveBtn").onclick = async () => {
+      const { inValue, outValue, breakValues } = readInputs();
+
+      if (!inValue || !outValue || breakValues.some(b => !b.start || !b.end)) {
+        showFormError("fixError", "Every punch needs a time.");
+        return;
+      }
+
+      const saveBtn = document.getElementById("fixSaveBtn");
+      saveBtn.disabled = true;
+
+      // An added break may sit earlier in the day than a recorded one; the
+      // server reads the pairs as one timeline, so send them in order.
+      const breakStamps = breakValues
+        .map(b => ({ start_at: toStamp(b.start), end_at: toStamp(b.end) }))
+        .sort((a, b) => a.start_at.localeCompare(b.start_at));
+
+      const result = await apiSend("/api/admin/clock-fix", "POST", {
+        employee_id: shift.employee_id,
+        in_at: shift.in_at,
+        new_in_at: toStamp(inValue),
+        out_at: toStamp(outValue),
+        breaks: breakStamps
+      });
+
+      if (!result.ok) {
+        saveBtn.disabled = false;
+        showFormError("fixError", result.error || "Could not save that fix.");
+        return;
+      }
+
+      await loadTeamHours();
+    };
+  };
+
+  render(toLocalInput(asDate(shift.in_at)), outInitial);
 }
 
 /**

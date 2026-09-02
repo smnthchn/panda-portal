@@ -198,10 +198,11 @@ const UTC_STAMP = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
  * Boss-only repair of a shift's punches: clock-in, every break, and clock-out
  * move together in one save. The shift is identified by its recorded clock-in
  * stamp (`in_at`); `new_in_at`, `breaks` and `out_at` are where its punches
- * should be. Breaks are corrected, never added or removed — the body must
- * carry exactly the pairs the shift already has, in order. Each correction is
- * an update to the punch's own row (a missing clock-out or break-end is
- * inserted), stamped with who fixed it, so the punch log stays the story.
+ * should be. Breaks can be corrected or added, never removed — the body
+ * carries at least the pairs the shift already has, in order; extras become
+ * new punch rows. Each correction is an update to the punch's own row (a
+ * missing clock-out or break-end is inserted), stamped with who fixed it, so
+ * the punch log stays the story.
  */
 export async function handleClockFix(request, env) {
   const auth = await requireUser(request, env, "manage_users");
@@ -290,7 +291,8 @@ export async function handleClockFix(request, env) {
   }
   if (openStart) recordedPairs.push({ start: openStart, end: null });
 
-  if (recordedPairs.length !== breaks.length) {
+  // A break can be corrected or added, never removed from here.
+  if (breaks.length < recordedPairs.length) {
     return { ok: false, error: "This shift's breaks changed under you. Reload and try again." };
   }
 
@@ -306,15 +308,28 @@ export async function handleClockFix(request, env) {
   };
 
   moveRow({ id: clockIn.id, created_at: inAt }, newInAt);
-  recordedPairs.forEach((pair, i) => {
-    moveRow(pair.start, String(breaks[i].start_at));
+  breaks.forEach((sent, i) => {
+    const pair = recordedPairs[i];
+    if (!pair) {
+      // An added break: both punches are new rows.
+      statements.push(env.DB.prepare(
+        `INSERT INTO clock_events (employee_id, event_type, created_at, notes)
+         VALUES (?, 'break_start', ?, ?)`
+      ).bind(employeeId, String(sent.start_at), note));
+      statements.push(env.DB.prepare(
+        `INSERT INTO clock_events (employee_id, event_type, created_at, notes)
+         VALUES (?, 'break_end', ?, ?)`
+      ).bind(employeeId, String(sent.end_at), note));
+      return;
+    }
+    moveRow(pair.start, String(sent.start_at));
     if (pair.end) {
-      moveRow(pair.end, String(breaks[i].end_at));
+      moveRow(pair.end, String(sent.end_at));
     } else {
       statements.push(env.DB.prepare(
         `INSERT INTO clock_events (employee_id, event_type, created_at, notes)
          VALUES (?, 'break_end', ?, ?)`
-      ).bind(employeeId, String(breaks[i].end_at), note));
+      ).bind(employeeId, String(sent.end_at), note));
     }
   });
 
