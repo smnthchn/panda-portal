@@ -1851,9 +1851,8 @@ function moverMinutes(entry) {
   return Math.max(0, Math.round((end - start) / 60000));
 }
 
-function boothLineTotal(kind) {
-  const r = budgetData.booth[kind] || { qty: 0, price_cents: 0, discount_cents: 0 };
-  return (kind === "electricity" ? r.price_cents : r.qty * r.price_cents) - r.discount_cents;
+function boothLineTotal(line) {
+  return line.qty * line.price_cents - line.discount_cents;
 }
 
 /** Every card's total, in cents, from one place — the cards and the band at
@@ -1869,7 +1868,7 @@ function budgetTotals() {
     movers: Math.round(moverMins * (convention.mover_rate_cents || 0) / 60),
     labour: labour.reduce((sum, r) => sum + Math.round(r.minutes * (r.rate_cents || 0) / 60), 0),
     meals: expenseTotal("meal"),
-    booth: ["regular", "corner", "electricity"].reduce((sum, k) => sum + boothLineTotal(k), 0),
+    booth: budgetData.booth.reduce((sum, line) => sum + boothLineTotal(line), 0),
     transport: expenseTotal("transport")
   };
 }
@@ -2001,38 +2000,38 @@ function labourCard() {
 
 function boothCostCard() {
   const { booth } = budgetData;
-  const row = (kind) => booth[kind] || { qty: 0, price_cents: 0, discount_cents: 0 };
-  const lineTotal = boothLineTotal;
 
-  const moneyInput = (kind, field) => {
-    const cents = row(kind)[field];
-    return `<input class="budget-money" inputmode="decimal" placeholder="0.00"
-                   data-booth="${kind}" data-field="${field}"
-                   value="${cents ? esc((cents / 100).toFixed(2)) : ""}">`;
-  };
+  const moneyInput = (line, field) => `
+    <input class="budget-money" inputmode="decimal" placeholder="0.00"
+           data-booth-row="${line.id}" data-field="${field}"
+           value="${line[field] ? esc((line[field] / 100).toFixed(2)) : ""}">`;
 
-  const boothLine = (kind, label) => `
+  // Lines are free-form — "Regular", "Corner 10×10", "Electricity" — because
+  // Fan Expo charged two booths of the same shape differently, so a shape
+  // can't be the key. Every line is count × price − discount; a flat fee is
+  // a count of 1.
+  const lines = booth.map(line => `
     <div class="budget-row">
-      <span class="budget-label" style="flex:1;">${esc(label)}</span>
+      <input class="budget-label" style="flex:1; min-width:90px;" maxlength="120"
+             data-booth-row="${line.id}" data-field="label" value="${esc(line.label)}">
       <span class="meta">×</span><input class="budget-qty" inputmode="numeric"
-             data-booth="${kind}" data-field="qty" value="${row(kind).qty || ""}" placeholder="0">
-      <span class="meta">$</span>${moneyInput(kind, "price_cents")}
-      <span class="meta">− $</span>${moneyInput(kind, "discount_cents")}
-      <span class="budget-cost">${esc(money(lineTotal(kind)))}</span>
+             data-booth-row="${line.id}" data-field="qty" value="${line.qty}" placeholder="1">
+      <span class="meta">$</span>${moneyInput(line, "price_cents")}
+      <span class="meta">− $</span>${moneyInput(line, "discount_cents")}
+      <span class="budget-cost">${esc(money(boothLineTotal(line)))}</span>
+      <button class="btn-quiet budget-x" data-del-booth="${line.id}" title="Remove">×</button>
     </div>
-  `;
+  `).join("");
 
   return `
     <div class="card stripped">
       <div class="strip">BOOTH</div>
       <div class="card-body">
-        ${boothLine("regular", "Regular")}
-        ${boothLine("corner", "Corner")}
-        <div class="budget-row">
-          <span class="budget-label" style="flex:1;">Electricity</span>
-          <span class="meta">$</span>${moneyInput("electricity", "price_cents")}
-          <span class="meta">− $</span>${moneyInput("electricity", "discount_cents")}
-          <span class="budget-cost">${esc(money(lineTotal("electricity")))}</span>
+        ${lines}
+        <div class="inline-form">
+          <input style="flex:1; min-width:120px;" placeholder="Regular, Corner, Electricity…"
+                 id="newBoothLabel" maxlength="120">
+          <button id="addBoothBtn">Add</button>
         </div>
         <div class="budget-row budget-total">
           <span style="flex:1;">TOTAL</span>
@@ -2193,23 +2192,57 @@ function wireBudget() {
     };
   });
 
-  document.querySelectorAll("[data-booth]").forEach(input => {
+  document.querySelectorAll("[data-booth-row]").forEach(input => {
     input.onchange = async () => {
-      const kind = input.dataset.booth;
-      const field = (name) => document.querySelector(`[data-booth="${kind}"][data-field="${name}"]`);
+      const id = Number(input.dataset.boothRow);
+      const field = (name) => document.querySelector(`[data-booth-row="${id}"][data-field="${name}"]`);
 
-      const qtyEl = field("qty"); // electricity has no qty input
       const saved = {
-        kind,
-        qty: qtyEl ? Math.max(0, Math.round(Number(qtyEl.value) || 0)) : 0,
+        label: field("label").value.trim(),
+        qty: Math.max(0, Math.round(Number(field("qty").value) || 0)),
         price_cents: centsOf(field("price_cents").value),
         discount_cents: centsOf(field("discount_cents").value)
       };
 
-      const result = await apiSend(`/api/conventions/${encodeURIComponent(budgetSlug)}/budget-booth`, "PUT", saved);
+      if (!saved.label) {
+        showFormError("budgetError", "A booth line needs a name.");
+        return;
+      }
+
+      const result = await apiSend(`/api/booth-costs/${id}`, "PUT", saved);
       if (!result.ok) return saveFailed(result);
 
-      budgetData.booth[kind] = saved;
+      Object.assign(budgetData.booth.find(l => l.id === id), saved);
+      drawBudget();
+    };
+  });
+
+  const addBooth = document.getElementById("addBoothBtn");
+  if (addBooth) addBooth.onclick = async () => {
+    const labelInput = document.getElementById("newBoothLabel");
+    const label = labelInput.value.trim();
+
+    if (!label) {
+      showFormError("budgetError", "Give the booth line a name.");
+      return;
+    }
+
+    addBooth.disabled = true;
+    const line = { label, qty: 1, price_cents: 0, discount_cents: 0 };
+    const result = await apiSend(`/api/conventions/${encodeURIComponent(budgetSlug)}/booth-costs`, "POST", line);
+    if (!result.ok) return saveFailed(result);
+
+    budgetData.booth.push({ id: result.id, ...line });
+    drawBudget();
+  };
+
+  document.querySelectorAll("[data-del-booth]").forEach(btn => {
+    btn.onclick = async () => {
+      const id = Number(btn.dataset.delBooth);
+      const result = await apiSend(`/api/booth-costs/${id}`, "DELETE");
+      if (!result.ok) return saveFailed(result);
+
+      budgetData.booth = budgetData.booth.filter(l => l.id !== id);
       drawBudget();
     };
   });

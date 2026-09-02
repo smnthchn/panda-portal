@@ -271,9 +271,10 @@ band and the cards can't disagree. Five cards, top to bottom:
   tested.
 - **Meals** / **Transportation** — free-form expense lines
   (`convention_expenses`, category `meal` / `transport`).
-- **Booth** — three fixed rows in `convention_booth_costs` (`regular`,
-  `corner`, `electricity`): count × price − discount, electricity without
-  the count.
+- **Booth** — free-form lines in `convention_booth_costs`, each a name the
+  boss types (count × price − discount; a flat fee is a count of 1). They
+  started as three fixed kinds, rebuilt by migration 0045 when Fan Expo
+  charged two booths of the same shape differently.
 
 Rates and booth numbers save on change; expense and mover writes redraw
 from the server. The narrow-input widths need `input.budget-*` selectors —

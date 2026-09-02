@@ -3,7 +3,6 @@ import { readJsonBody } from "../lib/http.js";
 
 /* ---------- The event budget: labour, booth, expenses, movers ---------- */
 
-const BOOTH_KINDS = ["regular", "corner", "electricity"];
 const EXPENSE_CATEGORIES = ["meal", "transport"];
 
 // Staff and Seasonal are the two subtotals the boss reads; everyone else with
@@ -80,8 +79,8 @@ export async function handleBudget(request, env, slug) {
       `SELECT employee_id, rate_cents FROM convention_pay_rates WHERE convention_id = ?`
     ).bind(convention.id).all(),
     env.DB.prepare(
-      `SELECT kind, qty, price_cents, discount_cents
-       FROM convention_booth_costs WHERE convention_id = ?`
+      `SELECT id, label, qty, price_cents, discount_cents
+       FROM convention_booth_costs WHERE convention_id = ? ORDER BY id`
     ).bind(convention.id).all(),
     env.DB.prepare(
       `SELECT id, category, label, amount_cents
@@ -99,14 +98,11 @@ export async function handleBudget(request, env, slug) {
     rate_cents: row.employee_id ? (rates.get(row.employee_id) || 0) : null
   }));
 
-  const booth = {};
-  for (const row of boothRows.results || []) booth[row.kind] = row;
-
   return {
     ok: true,
     convention,
     labour,
-    booth,
+    booth: boothRows.results || [],
     expenses: expenseRows.results || [],
     movers: moverRows.results || []
   };
@@ -157,31 +153,60 @@ export async function handleSetMoverRate(request, env, slug) {
   return { ok: true };
 }
 
-export async function handleSaveBoothCost(request, env, slug) {
+/** Shared validation for a booth line's fields. Returns the clean values or null. */
+function boothLineFields(body) {
+  const label = String(body.label || "").trim();
+  const qty = Number(body.qty);
+  const price = Number(body.price_cents);
+  const discount = Number(body.discount_cents);
+
+  const numbersOk = [qty, price, discount].every(n => Number.isInteger(n) && n >= 0 && n <= 100000000);
+  if (!label || label.length > 120 || !numbersOk) return null;
+
+  return { label, qty, price, discount };
+}
+
+export async function handleAddBoothCost(request, env, slug) {
   const auth = await requireUser(request, env, "manage_conventions");
   if (!auth.ok) return auth;
 
   const conventionId = await conventionIdBySlug(env, slug);
   if (!conventionId) return { ok: false, error: "Convention not found." };
 
-  const body = await readJsonBody(request);
-  const kind = String(body.kind || "");
-  const qty = Number(body.qty) || 0;
-  const price = Number(body.price_cents) || 0;
-  const discount = Number(body.discount_cents) || 0;
+  const fields = boothLineFields(await readJsonBody(request));
+  if (!fields) return { ok: false, error: "A booth line needs a name, and numbers that add up." };
 
-  const numbersOk = [qty, price, discount].every(n => Number.isInteger(n) && n >= 0 && n <= 100000000);
-  if (!BOOTH_KINDS.includes(kind) || !numbersOk) {
-    return { ok: false, error: "Those booth numbers didn't look right." };
-  }
+  const result = await env.DB.prepare(
+    `INSERT INTO convention_booth_costs (convention_id, label, qty, price_cents, discount_cents)
+     VALUES (?, ?, ?, ?, ?)`
+  ).bind(conventionId, fields.label, fields.qty, fields.price, fields.discount).run();
+
+  return { ok: true, id: result.meta.last_row_id };
+}
+
+export async function handleUpdateBoothCost(request, env, id) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const fields = boothLineFields(await readJsonBody(request));
+  if (!fields) return { ok: false, error: "A booth line needs a name, and numbers that add up." };
 
   await env.DB.prepare(
-    `INSERT INTO convention_booth_costs (convention_id, kind, qty, price_cents, discount_cents)
-     VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT (convention_id, kind) DO UPDATE
-       SET qty = excluded.qty, price_cents = excluded.price_cents,
-           discount_cents = excluded.discount_cents`
-  ).bind(conventionId, kind, qty, price, discount).run();
+    `UPDATE convention_booth_costs
+     SET label = ?, qty = ?, price_cents = ?, discount_cents = ?
+     WHERE id = ?`
+  ).bind(fields.label, fields.qty, fields.price, fields.discount, Number(id)).run();
+
+  return { ok: true };
+}
+
+export async function handleDeleteBoothCost(request, env, id) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  await env.DB.prepare(
+    `DELETE FROM convention_booth_costs WHERE id = ?`
+  ).bind(Number(id)).run();
 
   return { ok: true };
 }
