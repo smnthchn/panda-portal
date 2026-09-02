@@ -616,6 +616,9 @@ function drawConvention() {
   const isPast = convention.phase === "past";
   const dayIndex = eventDayIndex(convention);
 
+  // A finished show wraps up for staff, but stays a working record for whoever
+  // ran it: the hours, the full schedule and the booth plan are what next
+  // year's event is built from, so canManage keeps the live view's cards.
   pageArea().innerHTML = `
     <div class="title-row">
       <button class="back-tile" id="backToEvents">‹</button>
@@ -629,11 +632,19 @@ function drawConvention() {
 
     ${heroBand()}
 
-    ${isPast ? `
+    ${isPast ? (canManage ? `
+      ${pillRow()}
+      ${hoursCard()}
+      ${planCard()}
+      ${scheduleCard()}
+      ${checklistsSection()}
+      ${documentsCard()}
+      ${gettingThereCard()}
+    ` : `
       ${afterCards()}
       ${checklistsSection()}
       ${documentsCard()}
-    ` : `
+    `) : `
       ${pillRow()}
       ${myShiftsCard()}
       ${hoursCard()}

@@ -788,9 +788,9 @@ function myHoursCard(shifts) {
     `;
   }
 
-  // Newest week first, newest shift first inside it.
+  // Newest week first; the days inside run in calendar order.
   const weeks = new Map();
-  for (const shift of [...shifts].reverse()) {
+  for (const shift of shifts) {
     const week = weekStartOf(localDateOf(shift.in_at));
     if (!weeks.has(week)) weeks.set(week, []);
     weeks.get(week).push(shift);
@@ -800,7 +800,7 @@ function myHoursCard(shifts) {
     <div class="card stripped">
       <div class="strip">YOUR HOURS<span class="strip-side">Last nine weeks</span></div>
       <div class="card-body">
-        ${[...weeks.entries()].map(([week, rows]) => {
+        ${[...weeks.entries()].reverse().map(([week, rows]) => {
           const total = rows.reduce((sum, s) => sum + (s.net_minutes || 0), 0);
           return `
             <h4>Week of ${esc(formatDate(week))} <span class="meta">· ${esc(formatMinutes(total))}</span></h4>
@@ -864,7 +864,7 @@ async function loadTeamHours() {
     if (!shifts.length) return "";
 
     const total = shifts.reduce((sum, s) => sum + (s.net_minutes || 0), 0);
-    const rows = [...shifts].reverse().map(shift => {
+    const rows = shifts.map(shift => {
       // Someone working right now isn't a mistake to fix.
       const working = !shift.out_at && localDateOf(shift.in_at) === todayLocal();
       if (working) return shiftRow(shift, null);
