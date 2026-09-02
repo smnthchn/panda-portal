@@ -264,7 +264,12 @@ band and the cards can't disagree. Five cards, top to bottom:
   folds whose summary is the subtotal, so a collapsed group still says
   what it costs — Staff and Seasonal Staff are the two that matter. Fold
   state lives in `budgetClosedRoles`, or the redraw every rate change
-  triggers would spring shut groups open. Pay rates are
+  triggers would spring shut groups open. A group can be **left out of
+  the money** (`conventions.budget_excluded_roles`, JSON role list) —
+  regular wages are paid show or no show, so leaving Staff out reads the
+  budget as what the event added; the struck-through subtotal keeps the
+  decision on the page. The toggle sits inside the `<summary>`, so its
+  click handler must preventDefault or it also folds the group. Pay rates are
   per (convention, employee) in `convention_pay_rates`, so next year's
   raise doesn't rewrite what last year's show cost. Unassigned shifts show
   as one unpaid line rather than vanishing. `labourRows()` is exported and

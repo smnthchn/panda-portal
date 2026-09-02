@@ -1864,9 +1864,12 @@ function budgetTotals() {
   const expenseTotal = (cat) =>
     expenses.filter(e => e.category === cat).reduce((sum, e) => sum + e.amount_cents, 0);
 
+  const excluded = new Set(convention.budget_excluded_roles || []);
+
   return {
     movers: Math.round(moverMins * (convention.mover_rate_cents || 0) / 60),
-    labour: labour.reduce((sum, r) => sum + Math.round(r.minutes * (r.rate_cents || 0) / 60), 0),
+    labour: labour.reduce((sum, r) =>
+      excluded.has(r.role) ? sum : sum + Math.round(r.minutes * (r.rate_cents || 0) / 60), 0),
     meals: expenseTotal("meal"),
     booth: budgetData.booth.reduce((sum, line) => sum + boothLineTotal(line), 0),
     transport: expenseTotal("transport")
@@ -1947,21 +1950,27 @@ function labourCard() {
   }
 
   const cost = (row) => Math.round(row.minutes * (row.rate_cents || 0) / 60);
+  const excluded = new Set(budgetData.convention.budget_excluded_roles || []);
 
   // Each role folds shut once its rates are in — the summary carries the
-  // subtotal, so a collapsed group still says what it costs.
+  // subtotal, so a collapsed group still says what it costs. A group can be
+  // left out of the money (regular wages are paid show or no show); its
+  // subtotal stays visible, struck through, so the decision is on the page.
   const groups = Object.keys(BUDGET_ROLE_LABELS).map(role => {
     const rows = labour.filter(r => r.employee_id && r.role === role);
     if (!rows.length) return "";
 
     const subtotal = rows.reduce((sum, r) => sum + cost(r), 0);
     const subMinutes = rows.reduce((sum, r) => sum + r.minutes, 0);
+    const out = excluded.has(role);
 
     return `
       <details class="budget-fold" data-fold-role="${esc(role)}" ${budgetClosedRoles.has(role) ? "" : "open"}>
         <summary>
           <span style="flex:1;">${esc(BUDGET_ROLE_LABELS[role].toUpperCase())} · ${esc(formatMinutes(subMinutes))}</span>
-          <span class="budget-cost">${esc(money(subtotal))}</span>
+          <button class="btn-quiet" style="font-size:10.5px; padding:3px 8px; --depress: 0px;"
+                  data-count-role="${esc(role)}">${out ? "Left out" : "Counted ✓"}</button>
+          <span class="budget-cost" style="${out ? "text-decoration:line-through; opacity:0.55;" : ""}">${esc(money(subtotal))}</span>
         </summary>
         ${rows.map(r => `
           <div class="budget-row">
@@ -2173,6 +2182,26 @@ function wireBudget() {
     fold.ontoggle = () => {
       if (fold.open) budgetClosedRoles.delete(fold.dataset.foldRole);
       else budgetClosedRoles.add(fold.dataset.foldRole);
+    };
+  });
+
+  // Lives inside the <summary>, so the click must not also fold the group —
+  // preventDefault stops the details toggle, which is the click's default
+  // action there.
+  document.querySelectorAll("[data-count-role]").forEach(btn => {
+    btn.onclick = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const role = btn.dataset.countRole;
+      const current = budgetData.convention.budget_excluded_roles || [];
+      const roles = current.includes(role) ? current.filter(r => r !== role) : [...current, role];
+
+      const result = await apiSend(`/api/conventions/${encodeURIComponent(budgetSlug)}/budget-excluded-roles`, "PUT", { roles });
+      if (!result.ok) return saveFailed(result);
+
+      budgetData.convention.budget_excluded_roles = roles;
+      drawBudget();
     };
   });
 

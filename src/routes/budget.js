@@ -62,7 +62,8 @@ export async function handleBudget(request, env, slug) {
   if (!auth.ok) return auth;
 
   const convention = await env.DB.prepare(
-    `SELECT id, name, slug, mover_rate_cents FROM conventions WHERE slug = ?`
+    `SELECT id, name, slug, mover_rate_cents, budget_excluded_roles
+     FROM conventions WHERE slug = ?`
   ).bind(slug).first();
 
   if (!convention) return { ok: false, error: "Convention not found." };
@@ -98,9 +99,12 @@ export async function handleBudget(request, env, slug) {
     rate_cents: row.employee_id ? (rates.get(row.employee_id) || 0) : null
   }));
 
+  let excludedRoles = [];
+  try { excludedRoles = JSON.parse(convention.budget_excluded_roles) || []; } catch {}
+
   return {
     ok: true,
-    convention,
+    convention: { ...convention, budget_excluded_roles: excludedRoles },
     labour,
     booth: boothRows.results || [],
     expenses: expenseRows.results || [],
@@ -128,6 +132,32 @@ export async function handleSetPayRate(request, env, slug) {
      VALUES (?, ?, ?)
      ON CONFLICT (convention_id, employee_id) DO UPDATE SET rate_cents = excluded.rate_cents`
   ).bind(conventionId, employeeId, rate).run();
+
+  return { ok: true };
+}
+
+/**
+ * Which labour groups the budget leaves out of the money — regular wages are
+ * paid show or no show, so leaving Staff out reads the budget as what the
+ * event added. Hours still show; only the costs drop out.
+ */
+export async function handleSetExcludedRoles(request, env, slug) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const conventionId = await conventionIdBySlug(env, slug);
+  if (!conventionId) return { ok: false, error: "Convention not found." };
+
+  const body = await readJsonBody(request);
+  const roles = Array.isArray(body.roles) ? body.roles : null;
+
+  if (!roles || !roles.every(r => ROLE_ORDER.includes(r))) {
+    return { ok: false, error: "Those roles didn't look right. Reload and try again." };
+  }
+
+  await env.DB.prepare(
+    `UPDATE conventions SET budget_excluded_roles = ? WHERE id = ?`
+  ).bind(JSON.stringify([...new Set(roles)]), conventionId).run();
 
   return { ok: true };
 }
