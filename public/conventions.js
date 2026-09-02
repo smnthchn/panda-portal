@@ -1871,7 +1871,7 @@ function moversCard() {
     const started = budgetStamp(m.started_at);
     const ended = m.ended_at ? budgetStamp(m.ended_at) : null;
     return `
-      <div class="budget-row">
+      <div class="budget-row row-edit" data-mover-edit="${m.id}">
         <span class="meta" style="width:52px; flex:none;">${esc(started.date)}</span>
         <span style="flex:1;">
           ${esc(started.time)} – ${ended ? esc(ended.time) : `<span style="color:var(--go-deep, var(--go)); font-weight:600;">running</span>`}
@@ -1887,6 +1887,7 @@ function moversCard() {
       <div class="strip">MOVERS</div>
       <div class="card-body">
         ${rows || `<p class="empty-state">No mover times yet — hit Start when they arrive.</p>`}
+        ${rows ? `<p class="meta" style="margin:6px 0 0;">Tap a visit to fix its date or times.</p>` : ""}
         <div style="display:flex; align-items:center; gap:9px; margin-top:11px;">
           ${open
             ? `<button id="moverEndBtn">End</button>
@@ -2097,6 +2098,23 @@ function wireBudget() {
     };
   });
 
+  // The visit row is the control, the way a timesheet row is: tap to open its
+  // times for editing, tap again to close.
+  document.querySelectorAll("[data-mover-edit]").forEach(rowEl => {
+    rowEl.onclick = (e) => {
+      if (e.target.closest("[data-del-mover]")) return;
+
+      const editor = document.getElementById("moverEditor");
+      if (editor && editor.previousElementSibling === rowEl) {
+        editor.remove();
+        return;
+      }
+
+      const entry = budgetData.movers.find(m => m.id === Number(rowEl.dataset.moverEdit));
+      if (entry) openMoverEditor(rowEl, entry);
+    };
+  });
+
   document.querySelectorAll("[data-rate]").forEach(input => {
     input.onchange = async () => {
       const employeeId = Number(input.dataset.rate);
@@ -2168,6 +2186,60 @@ function wireBudget() {
       drawBudget();
     };
   });
+}
+
+/**
+ * Start and End stamp "now", but nobody stands at the portal the second the
+ * truck pulls up — so a visit's stamps are editable after the fact. A running
+ * visit only offers its start; End is how it closes.
+ */
+function openMoverEditor(rowEl, entry) {
+  document.getElementById("moverEditor")?.remove();
+
+  const toStamp = (value) => new Date(value).toISOString().slice(0, 19).replace("T", " ");
+
+  const editor = document.createElement("div");
+  editor.id = "moverEditor";
+  editor.innerHTML = `
+    <div class="inline-form" style="margin-bottom:8px;">
+      <label>Start <input type="datetime-local" id="moverStartInput" value="${esc(toLocalInput(asDate(entry.started_at)))}"></label>
+      ${entry.ended_at
+        ? `<label>End <input type="datetime-local" id="moverEndInput" value="${esc(toLocalInput(asDate(entry.ended_at)))}"></label>`
+        : ""}
+      <button id="moverSaveBtn">Save</button>
+      <button class="btn-quiet" id="moverCancelBtn">Cancel</button>
+    </div>
+    <p class="form-error" id="moverEditError"></p>
+  `;
+  rowEl.after(editor);
+
+  document.getElementById("moverCancelBtn").onclick = () => editor.remove();
+
+  document.getElementById("moverSaveBtn").onclick = async () => {
+    const startValue = document.getElementById("moverStartInput").value;
+    const endValue = document.getElementById("moverEndInput")?.value;
+
+    if (!startValue || (entry.ended_at && !endValue)) {
+      showFormError("moverEditError", "Every time needs a value.");
+      return;
+    }
+
+    const saveBtn = document.getElementById("moverSaveBtn");
+    saveBtn.disabled = true;
+
+    const result = await apiSend(`/api/mover-times/${entry.id}`, "PUT", {
+      started_at: toStamp(startValue),
+      ended_at: entry.ended_at ? toStamp(endValue) : null
+    });
+
+    if (!result.ok) {
+      saveBtn.disabled = false;
+      showFormError("moverEditError", result.error || "Could not save that.");
+      return;
+    }
+
+    await renderBudget(budgetSlug, false);
+  };
 }
 
 window.renderConventions = renderConventions;

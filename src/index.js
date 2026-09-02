@@ -85,6 +85,7 @@ import {
   handleDeleteExpense,
   handleMoverStart,
   handleMoverEnd,
+  handleUpdateMoverTime,
   handleDeleteMoverTime
 } from "./routes/budget.js";
 import {
@@ -214,6 +215,7 @@ const ROUTES = [
   ["DELETE", "/api/budget-expenses/:id", handleDeleteExpense],
   ["POST", "/api/conventions/:slug/mover-start", handleMoverStart],
   ["POST", "/api/conventions/:slug/mover-end", handleMoverEnd],
+  ["PUT", "/api/mover-times/:id", handleUpdateMoverTime],
   ["DELETE", "/api/mover-times/:id", handleDeleteMoverTime],
 
   ["POST", "/api/conventions/:id/shifts", handleCreateShift],

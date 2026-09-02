@@ -248,6 +248,43 @@ export async function handleMoverEnd(request, env, slug) {
   return { ok: true };
 }
 
+const UTC_STAMP = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+
+/**
+ * Fixes a visit's stamps after the fact — the buttons log "now", but nobody
+ * stands at the portal the second the truck pulls up. A closed visit keeps
+ * both stamps; a running one only accepts its start (End is how it closes,
+ * so it can't grow a second open row by being reopened here).
+ */
+export async function handleUpdateMoverTime(request, env, id) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const row = await env.DB.prepare(
+    `SELECT id, ended_at FROM convention_mover_times WHERE id = ?`
+  ).bind(Number(id)).first();
+
+  if (!row) return { ok: false, error: "Couldn't find that visit any more. Reload and try again." };
+
+  const body = await readJsonBody(request);
+  const startedAt = String(body.started_at || "");
+  const endedAt = row.ended_at ? String(body.ended_at || "") : null;
+
+  if (!UTC_STAMP.test(startedAt) || (row.ended_at && !UTC_STAMP.test(endedAt))) {
+    return { ok: false, error: "Those times didn't look right. Reload and try again." };
+  }
+
+  if (endedAt && endedAt <= startedAt) {
+    return { ok: false, error: "The end has to be after the start." };
+  }
+
+  await env.DB.prepare(
+    `UPDATE convention_mover_times SET started_at = ?, ended_at = ? WHERE id = ?`
+  ).bind(startedAt, endedAt, row.id).run();
+
+  return { ok: true };
+}
+
 export async function handleDeleteMoverTime(request, env, id) {
   const auth = await requireUser(request, env, "manage_conventions");
   if (!auth.ok) return auth;

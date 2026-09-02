@@ -252,7 +252,9 @@ Five cards, top to bottom:
 
 - **Movers** — a two-button clock: Start stamps a row with now, End closes
   it, one open visit at a time. Load-in and load-out are separate rows and
-  the total sums the closed ones. A misclick is deleted with its ×.
+  the total sums the closed ones. A misclick is deleted with its ×, and a
+  row is tapped to edit its stamps — a running visit only offers its start,
+  so it can't be reopened into a second open row.
 - **Labour Costs** — hours come from the event's *schedule* (shifts net of
   break allotments), not the punch log: the schedule is what was agreed
   to and exists before the show does. Rows group by role with a subtotal

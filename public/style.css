@@ -3835,3 +3835,12 @@ button.pick-open {
   line-height: 1;
 }
 
+/* A mover visit opens its times for editing when tapped. */
+.budget-row.row-edit {
+  cursor: pointer;
+}
+
+.budget-row.row-edit:hover {
+  background: var(--chip);
+}
+
