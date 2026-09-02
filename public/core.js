@@ -249,6 +249,7 @@ const PAGE_URLS = {
   "convention-schedule": (d) => `/conventions/${encodeURIComponent(d.slug)}/schedule`,
   "shelf-plan": (d) => `/conventions/${encodeURIComponent(d.slug)}/shelf-plan`,
   "booth-map": (d) => `/conventions/${encodeURIComponent(d.slug)}/booth-map`,
+  budget: (d) => `/conventions/${encodeURIComponent(d.slug)}/budget`,
   schedule: () => "/schedule",
   "schedule-store": () => "/schedule",
   "knowledge-base": () => "/knowledge-base",

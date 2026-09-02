@@ -240,6 +240,37 @@ run, its results were lost on every save, and it mostly rediscovered hours that
 don't change year to year. Setup and load-in times still aren't public either way —
 they live in the exhibitor kit, so the boss fills those in by hand.
 
+## Budget
+
+What a show costs, on its own page (`/conventions/:slug/budget`,
+`routes/budget.js`), reached from a **Budget** pill on the event —
+boss-only end to end: the pill renders only for `canManage` and every
+endpoint requires `manage_conventions`. Money is **integer cents**
+everywhere; dollars exist only in the inputs.
+
+Five cards, top to bottom:
+
+- **Movers** — a two-button clock: Start stamps a row with now, End closes
+  it, one open visit at a time. Load-in and load-out are separate rows and
+  the total sums the closed ones. A misclick is deleted with its ×.
+- **Labour Costs** — hours come from the event's *schedule* (shifts net of
+  break allotments), not the punch log: the schedule is what was agreed
+  to and exists before the show does. Rows group by role with a subtotal
+  each — Staff and Seasonal Staff are the two that matter. Pay rates are
+  per (convention, employee) in `convention_pay_rates`, so next year's
+  raise doesn't rewrite what last year's show cost. Unassigned shifts show
+  as one unpaid line rather than vanishing. `labourRows()` is exported and
+  tested.
+- **Meals** / **Transportation** — free-form expense lines
+  (`convention_expenses`, category `meal` / `transport`).
+- **Booth** — three fixed rows in `convention_booth_costs` (`regular`,
+  `corner`, `electricity`): count × price − discount, electricity without
+  the count.
+
+Rates and booth numbers save on change; expense and mover writes redraw
+from the server. The narrow-input widths need `input.budget-*` selectors —
+a bare class loses to the global `input:not(...)` rule's `width: 100%`.
+
 ## Booth Plan
 
 The booth prep tool that replaced the spreadsheet, reached from the **Booth

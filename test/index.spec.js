@@ -5,6 +5,7 @@ import { matchPath, getCookie, optionalText, requiredText, BadRequest } from "..
 import { roleOutranks, isValidRole, ROLES, ROLE_LABELS } from "../src/lib/permissions.js";
 import { optionalUrl, hiddenFromStaff } from "../src/routes/conventions.js";
 import { pairClockEvents } from "../src/routes/clock.js";
+import { labourRows } from "../src/routes/budget.js";
 import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/dashboard.js";
 import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
 import { mergeIntervals, coverageGaps, toMinutes, resolveSpan, rotaWeeks, scheduleDates } from "../src/routes/schedule.js";
@@ -145,6 +146,31 @@ describe("link fields", () => {
     expect(optionalUrl("", "Link")).toBeNull();
     expect(optionalUrl("   ", "Link")).toBeNull();
     expect(optionalUrl(undefined, "Link")).toBeNull();
+  });
+});
+
+describe("budget labour rows", () => {
+  const shift = (employee_id, full_name, role, starts_at, ends_at, brk = 0) =>
+    ({ employee_id, full_name, role, starts_at, ends_at, break_allotment_minutes: brk });
+
+  it("sums a person's shifts net of break allotments", () => {
+    const rows = labourRows([
+      shift(4, "Kevin", "staff", "10:00", "18:00", 30),
+      shift(4, "Kevin", "staff", "10:00", "16:00", 30)
+    ]);
+
+    expect(rows).toEqual([{ employee_id: 4, full_name: "Kevin", role: "staff", minutes: 780 }]);
+  });
+
+  it("keeps unassigned shifts as their own unpaid line, sorted last", () => {
+    const rows = labourRows([
+      shift(null, null, null, "10:00", "14:00"),
+      shift(7, "Ana", "seasonal", "10:00", "14:00"),
+      shift(4, "Kevin", "staff", "10:00", "14:00")
+    ]);
+
+    expect(rows.map(r => r.full_name)).toEqual(["Kevin", "Ana", "Unassigned shifts"]);
+    expect(rows[2]).toEqual({ employee_id: null, full_name: "Unassigned shifts", role: null, minutes: 240 });
   });
 });
 

@@ -3772,3 +3772,66 @@ button.pick-open {
   width: 100%;
 }
 
+/* ---------- Budget ---------- */
+
+.budget-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 0;
+  border-bottom: 2px solid var(--track);
+  font-size: 13.5px;
+}
+
+/* A booth line is label + qty + price + discount + total — too much for a
+   phone in one line, so the label takes its own there. */
+@media (max-width: 560px) {
+  .budget-row .budget-label {
+    flex: 1 0 100%;
+  }
+}
+
+/* The element selector matters: the global text-input rule is
+   input:not(...):not(...) (0-2-1), so a bare class never out-specifies its
+   width: 100%. These tie it and win on order. */
+.card input.budget-money {
+  width: 84px;
+}
+
+.card input.budget-qty {
+  width: 52px;
+}
+
+.budget-cost {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  min-width: 76px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.budget-subtotal {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  border-bottom: none;
+}
+
+.budget-total {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: 0.04em;
+  border-bottom: none;
+}
+
+/* The little × that removes an expense or a mover entry. */
+.budget-x {
+  padding: 2px 9px;
+  font-size: 15px;
+  line-height: 1;
+}
+

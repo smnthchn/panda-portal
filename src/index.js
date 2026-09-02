@@ -78,6 +78,16 @@ import {
   handleSetRolePermission
 } from "./routes/admin.js";
 import {
+  handleBudget,
+  handleSetPayRate,
+  handleSaveBoothCost,
+  handleAddExpense,
+  handleDeleteExpense,
+  handleMoverStart,
+  handleMoverEnd,
+  handleDeleteMoverTime
+} from "./routes/budget.js";
+import {
   handleConventionList,
   handleConventionDetail,
   handleCreateConvention,
@@ -196,6 +206,15 @@ const ROUTES = [
   ["DELETE", "/api/resources/:id", handleDeleteResource],
 
   ["GET", "/api/conventions/:slug/schedule", handleScheduleView],
+
+  ["GET", "/api/conventions/:slug/budget", handleBudget],
+  ["PUT", "/api/conventions/:slug/budget-rate", handleSetPayRate],
+  ["PUT", "/api/conventions/:slug/budget-booth", handleSaveBoothCost],
+  ["POST", "/api/conventions/:slug/budget-expenses", handleAddExpense],
+  ["DELETE", "/api/budget-expenses/:id", handleDeleteExpense],
+  ["POST", "/api/conventions/:slug/mover-start", handleMoverStart],
+  ["POST", "/api/conventions/:slug/mover-end", handleMoverEnd],
+  ["DELETE", "/api/mover-times/:id", handleDeleteMoverTime],
 
   ["POST", "/api/conventions/:id/shifts", handleCreateShift],
   ["PATCH", "/api/convention-shifts/:id", handleUpdateShift],

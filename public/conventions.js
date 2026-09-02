@@ -211,6 +211,11 @@ function pillRow() {
     `<button class="btn-pill off" id="boothMapPill">Booth map</button>`
   ];
 
+  // What the show costs is the boss's business, not the floor's.
+  if (detailData.canManage) {
+    buttons.push(`<button class="btn-pill off" id="budgetPill">Budget</button>`);
+  }
+
   // The venue map opens in Drive rather than embedding — a hall floorplan is
   // a thing you zoom around, which Drive's viewer does and an iframe doesn't.
   if (convention.venue_map_file_id) {
@@ -871,6 +876,9 @@ function wireConventionDetail() {
 
   const boothMap = document.getElementById("boothMapPill");
   if (boothMap) boothMap.onclick = () => renderShelfPlan(detailData.convention.slug, true, "map");
+
+  const budget = document.getElementById("budgetPill");
+  if (budget) budget.onclick = () => renderBudget(detailData.convention.slug);
 
   // Maps opens the address; Venue map opens its Drive file the same way.
   document.querySelectorAll("[data-maps]").forEach(btn => {
@@ -1805,5 +1813,363 @@ function renderShiftBreakForm(shift, draft = null) {
   };
 }
 
+/* ---------- Budget ---------- */
+
+let budgetData = null;
+let budgetSlug = null;
+
+const BUDGET_ROLE_LABELS = { staff: "Staff", seasonal: "Seasonal Staff", volunteer: "Volunteers", boss: "Boss" };
+const EXPENSE_CARD_TITLES = { meal: "Meals", transport: "Transportation" };
+
+function money(cents) {
+  return (Math.round(cents) / 100).toLocaleString("en-CA", { style: "currency", currency: "CAD" });
+}
+
+/** Dollars typed into an input -> integer cents; anything unreadable is 0. */
+function centsOf(value) {
+  const n = parseFloat(String(value).replace(/[$,]/g, ""));
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
+}
+
+/** UTC "YYYY-MM-DD HH:MM:SS" -> { date: "Sep 2", time: "10:04 AM" } locally. */
+function budgetStamp(dt) {
+  const d = new Date(dt.replace(" ", "T") + "Z");
+  return {
+    date: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    time: d.toLocaleTimeString(TIME_LOCALE, TIME_12H)
+  };
+}
+
+function moverMinutes(entry) {
+  if (!entry.ended_at) return 0;
+  const start = new Date(entry.started_at.replace(" ", "T") + "Z");
+  const end = new Date(entry.ended_at.replace(" ", "T") + "Z");
+  return Math.max(0, Math.round((end - start) / 60000));
+}
+
+async function renderBudget(slug, pushState = true) {
+  if (pushState) pushPageState("budget", { slug });
+
+  const data = await api(`/api/conventions/${encodeURIComponent(slug)}/budget`);
+
+  if (!data.ok) {
+    renderError(data.error || "Could not load the budget");
+    return;
+  }
+
+  budgetData = data;
+  budgetSlug = slug;
+  drawBudget();
+}
+
+function moversCard() {
+  const { movers } = budgetData;
+  const open = movers.find(m => !m.ended_at);
+  const totalMinutes = movers.reduce((sum, m) => sum + moverMinutes(m), 0);
+
+  const rows = movers.map(m => {
+    const started = budgetStamp(m.started_at);
+    const ended = m.ended_at ? budgetStamp(m.ended_at) : null;
+    return `
+      <div class="budget-row">
+        <span class="meta" style="width:52px; flex:none;">${esc(started.date)}</span>
+        <span style="flex:1;">
+          ${esc(started.time)} – ${ended ? esc(ended.time) : `<span style="color:var(--go-deep, var(--go)); font-weight:600;">running</span>`}
+        </span>
+        ${ended ? `<span class="budget-cost">${esc(formatMinutes(moverMinutes(m)))}</span>` : ""}
+        <button class="btn-quiet budget-x" data-del-mover="${m.id}" title="Remove">×</button>
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="card stripped">
+      <div class="strip">MOVERS</div>
+      <div class="card-body">
+        ${rows || `<p class="empty-state">No mover times yet — hit Start when they arrive.</p>`}
+        <div style="display:flex; align-items:center; gap:9px; margin-top:11px;">
+          ${open
+            ? `<button id="moverEndBtn">End</button>
+               <span class="meta">On the clock since ${esc(budgetStamp(open.started_at).time)}</span>`
+            : `<button class="btn-go" id="moverStartBtn">Start</button>`}
+          <span class="budget-total" style="margin-left:auto;">TOTAL ${esc(formatMinutes(totalMinutes))}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function labourCard() {
+  const { labour } = budgetData;
+
+  if (!labour.length) {
+    return `
+      <div class="card stripped">
+        <div class="strip">LABOUR COSTS</div>
+        <div class="card-body">
+          <p class="empty-state">No shifts on this event's schedule yet.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  const cost = (row) => Math.round(row.minutes * (row.rate_cents || 0) / 60);
+  let grand = 0;
+
+  const groups = Object.keys(BUDGET_ROLE_LABELS).map(role => {
+    const rows = labour.filter(r => r.employee_id && r.role === role);
+    if (!rows.length) return "";
+
+    const subtotal = rows.reduce((sum, r) => sum + cost(r), 0);
+    const subMinutes = rows.reduce((sum, r) => sum + r.minutes, 0);
+    grand += subtotal;
+
+    return `
+      <h4 style="margin:12px 0 2px;">${esc(BUDGET_ROLE_LABELS[role])}</h4>
+      ${rows.map(r => `
+        <div class="budget-row">
+          <span style="flex:1;">${esc(r.full_name)}</span>
+          <span class="meta">${esc(formatMinutes(r.minutes))}</span>
+          <span class="meta">$</span><input class="budget-money" inputmode="decimal" placeholder="0.00"
+                 data-rate="${r.employee_id}" value="${r.rate_cents ? esc((r.rate_cents / 100).toFixed(2)) : ""}"><span class="meta">/h</span>
+          <span class="budget-cost">${esc(money(cost(r)))}</span>
+        </div>
+      `).join("")}
+      <div class="budget-row budget-subtotal">
+        <span style="flex:1;">${esc(BUDGET_ROLE_LABELS[role].toUpperCase())} · ${esc(formatMinutes(subMinutes))}</span>
+        <span class="budget-cost">${esc(money(subtotal))}</span>
+      </div>
+    `;
+  }).join("");
+
+  const unassigned = labour.find(r => !r.employee_id);
+
+  return `
+    <div class="card stripped">
+      <div class="strip">LABOUR COSTS</div>
+      <div class="card-body">
+        ${groups}
+        ${unassigned ? `
+          <div class="budget-row" style="margin-top:10px;">
+            <span style="flex:1;" class="meta">Unassigned shifts — nobody to pay yet</span>
+            <span class="meta">${esc(formatMinutes(unassigned.minutes))}</span>
+          </div>
+        ` : ""}
+        <div class="budget-row budget-total">
+          <span style="flex:1;">TOTAL</span>
+          <span class="budget-cost">${esc(money(grand))}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function boothCostCard() {
+  const { booth } = budgetData;
+  const row = (kind) => booth[kind] || { qty: 0, price_cents: 0, discount_cents: 0 };
+
+  const lineTotal = (kind) => {
+    const r = row(kind);
+    return (kind === "electricity" ? r.price_cents : r.qty * r.price_cents) - r.discount_cents;
+  };
+  const total = ["regular", "corner", "electricity"].reduce((sum, k) => sum + lineTotal(k), 0);
+
+  const moneyInput = (kind, field) => {
+    const cents = row(kind)[field];
+    return `<input class="budget-money" inputmode="decimal" placeholder="0.00"
+                   data-booth="${kind}" data-field="${field}"
+                   value="${cents ? esc((cents / 100).toFixed(2)) : ""}">`;
+  };
+
+  const boothLine = (kind, label) => `
+    <div class="budget-row">
+      <span class="budget-label" style="flex:1;">${esc(label)}</span>
+      <span class="meta">×</span><input class="budget-qty" inputmode="numeric"
+             data-booth="${kind}" data-field="qty" value="${row(kind).qty || ""}" placeholder="0">
+      <span class="meta">$</span>${moneyInput(kind, "price_cents")}
+      <span class="meta">− $</span>${moneyInput(kind, "discount_cents")}
+      <span class="budget-cost">${esc(money(lineTotal(kind)))}</span>
+    </div>
+  `;
+
+  return `
+    <div class="card stripped">
+      <div class="strip">BOOTH</div>
+      <div class="card-body">
+        ${boothLine("regular", "Regular")}
+        ${boothLine("corner", "Corner")}
+        <div class="budget-row">
+          <span class="budget-label" style="flex:1;">Electricity</span>
+          <span class="meta">$</span>${moneyInput("electricity", "price_cents")}
+          <span class="meta">− $</span>${moneyInput("electricity", "discount_cents")}
+          <span class="budget-cost">${esc(money(lineTotal("electricity")))}</span>
+        </div>
+        <div class="budget-row budget-total">
+          <span style="flex:1;">TOTAL</span>
+          <span class="budget-cost">${esc(money(total))}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function expenseCard(category) {
+  const rows = budgetData.expenses.filter(e => e.category === category);
+  const total = rows.reduce((sum, e) => sum + e.amount_cents, 0);
+
+  return `
+    <div class="card stripped">
+      <div class="strip">${esc(EXPENSE_CARD_TITLES[category].toUpperCase())}</div>
+      <div class="card-body">
+        ${rows.map(e => `
+          <div class="budget-row">
+            <span style="flex:1;">${esc(e.label)}</span>
+            <span class="budget-cost">${esc(money(e.amount_cents))}</span>
+            <button class="btn-quiet budget-x" data-del-expense="${e.id}" title="Remove">×</button>
+          </div>
+        `).join("")}
+        <div class="inline-form">
+          <input style="flex:1; min-width:120px;" placeholder="${category === "meal" ? "Saturday dinner" : "Gas, truck rental…"}"
+                 data-new-label="${category}" maxlength="120">
+          <span class="meta">$</span><input class="budget-money" inputmode="decimal" placeholder="0.00" data-new-amount="${category}">
+          <button data-add-expense="${category}">Add</button>
+        </div>
+        <div class="budget-row budget-total">
+          <span style="flex:1;">TOTAL</span>
+          <span class="budget-cost">${esc(money(total))}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function drawBudget() {
+  const { convention } = budgetData;
+
+  pageArea().innerHTML = `
+    <div class="title-row">
+      <button class="back-tile" id="budgetBack">‹</button>
+      <h2>Budget</h2>
+    </div>
+    <p class="meta" style="margin:-6px 0 13px;">${esc(convention.name)}</p>
+    <p class="form-error" id="budgetError"></p>
+
+    ${moversCard()}
+    ${labourCard()}
+    ${expenseCard("meal")}
+    ${boothCostCard()}
+    ${expenseCard("transport")}
+  `;
+
+  markActiveNav("conventions");
+  wireBudget();
+}
+
+function wireBudget() {
+  document.getElementById("budgetBack").onclick = () => openConvention(budgetSlug);
+
+  const saveFailed = (result) => {
+    showFormError("budgetError", result.error || "Could not save that.");
+    return renderBudget(budgetSlug, false);
+  };
+
+  const startBtn = document.getElementById("moverStartBtn");
+  if (startBtn) startBtn.onclick = async () => {
+    startBtn.disabled = true;
+    const result = await apiSend(`/api/conventions/${encodeURIComponent(budgetSlug)}/mover-start`, "POST");
+    if (!result.ok) return saveFailed(result);
+    await renderBudget(budgetSlug, false);
+  };
+
+  const endBtn = document.getElementById("moverEndBtn");
+  if (endBtn) endBtn.onclick = async () => {
+    endBtn.disabled = true;
+    const result = await apiSend(`/api/conventions/${encodeURIComponent(budgetSlug)}/mover-end`, "POST");
+    if (!result.ok) return saveFailed(result);
+    await renderBudget(budgetSlug, false);
+  };
+
+  document.querySelectorAll("[data-del-mover]").forEach(btn => {
+    btn.onclick = async () => {
+      const result = await apiSend(`/api/mover-times/${btn.dataset.delMover}`, "DELETE");
+      if (!result.ok) return saveFailed(result);
+      await renderBudget(budgetSlug, false);
+    };
+  });
+
+  document.querySelectorAll("[data-rate]").forEach(input => {
+    input.onchange = async () => {
+      const employeeId = Number(input.dataset.rate);
+      const rate = centsOf(input.value);
+      const result = await apiSend(`/api/conventions/${encodeURIComponent(budgetSlug)}/budget-rate`, "PUT", {
+        employee_id: employeeId,
+        rate_cents: rate
+      });
+      if (!result.ok) return saveFailed(result);
+
+      const row = budgetData.labour.find(r => r.employee_id === employeeId);
+      if (row) row.rate_cents = rate;
+      drawBudget();
+    };
+  });
+
+  document.querySelectorAll("[data-booth]").forEach(input => {
+    input.onchange = async () => {
+      const kind = input.dataset.booth;
+      const field = (name) => document.querySelector(`[data-booth="${kind}"][data-field="${name}"]`);
+
+      const qtyEl = field("qty"); // electricity has no qty input
+      const saved = {
+        kind,
+        qty: qtyEl ? Math.max(0, Math.round(Number(qtyEl.value) || 0)) : 0,
+        price_cents: centsOf(field("price_cents").value),
+        discount_cents: centsOf(field("discount_cents").value)
+      };
+
+      const result = await apiSend(`/api/conventions/${encodeURIComponent(budgetSlug)}/budget-booth`, "PUT", saved);
+      if (!result.ok) return saveFailed(result);
+
+      budgetData.booth[kind] = saved;
+      drawBudget();
+    };
+  });
+
+  document.querySelectorAll("[data-add-expense]").forEach(btn => {
+    btn.onclick = async () => {
+      const category = btn.dataset.addExpense;
+      const labelInput = document.querySelector(`[data-new-label="${category}"]`);
+      const amountInput = document.querySelector(`[data-new-amount="${category}"]`);
+      const label = labelInput.value.trim();
+      const amount = centsOf(amountInput.value);
+
+      if (!label) {
+        showFormError("budgetError", "Give the expense a name.");
+        return;
+      }
+
+      btn.disabled = true;
+      const result = await apiSend(`/api/conventions/${encodeURIComponent(budgetSlug)}/budget-expenses`, "POST", {
+        category, label, amount_cents: amount
+      });
+      if (!result.ok) return saveFailed(result);
+
+      budgetData.expenses.push({ id: result.id, category, label, amount_cents: amount });
+      drawBudget();
+    };
+  });
+
+  document.querySelectorAll("[data-del-expense]").forEach(btn => {
+    btn.onclick = async () => {
+      const id = Number(btn.dataset.delExpense);
+      const result = await apiSend(`/api/budget-expenses/${id}`, "DELETE");
+      if (!result.ok) return saveFailed(result);
+
+      budgetData.expenses = budgetData.expenses.filter(e => e.id !== id);
+      drawBudget();
+    };
+  });
+}
+
 window.renderConventions = renderConventions;
 window.openConvention = openConvention;
+window.renderBudget = renderBudget;
