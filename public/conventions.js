@@ -1867,9 +1867,10 @@ async function renderBudget(slug, pushState = true) {
 }
 
 function moversCard() {
-  const { movers } = budgetData;
+  const { movers, convention } = budgetData;
   const open = movers.find(m => !m.ended_at);
   const totalMinutes = movers.reduce((sum, m) => sum + moverMinutes(m), 0);
+  const rate = convention.mover_rate_cents || 0;
 
   const rows = movers.map(m => {
     const started = budgetStamp(m.started_at);
@@ -1897,7 +1898,12 @@ function moversCard() {
             ? `<button id="moverEndBtn">End</button>
                <span class="meta">On the clock since ${esc(budgetStamp(open.started_at).time)}</span>`
             : `<button class="btn-go" id="moverStartBtn">Start</button>`}
-          <span class="budget-total" style="margin-left:auto;">TOTAL ${esc(formatMinutes(totalMinutes))}</span>
+        </div>
+        <div class="budget-row budget-total">
+          <span style="flex:1;">TOTAL ${esc(formatMinutes(totalMinutes))}</span>
+          <span class="meta">$</span><input class="budget-money" inputmode="decimal" placeholder="0.00"
+                 id="moverRateInput" value="${rate ? esc((rate / 100).toFixed(2)) : ""}"><span class="meta">/h</span>
+          <span class="budget-cost">${esc(money(Math.round(totalMinutes * rate / 60)))}</span>
         </div>
       </div>
     </div>
@@ -2121,6 +2127,18 @@ function wireBudget() {
       if (entry) openMoverEditor(rowEl, entry);
     };
   });
+
+  const moverRate = document.getElementById("moverRateInput");
+  if (moverRate) moverRate.onchange = async () => {
+    const rate = centsOf(moverRate.value);
+    const result = await apiSend(`/api/conventions/${encodeURIComponent(budgetSlug)}/budget-mover-rate`, "PUT", {
+      rate_cents: rate
+    });
+    if (!result.ok) return saveFailed(result);
+
+    budgetData.convention.mover_rate_cents = rate;
+    drawBudget();
+  };
 
   document.querySelectorAll("[data-fold-role]").forEach(fold => {
     fold.ontoggle = () => {

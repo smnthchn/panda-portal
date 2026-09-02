@@ -63,7 +63,7 @@ export async function handleBudget(request, env, slug) {
   if (!auth.ok) return auth;
 
   const convention = await env.DB.prepare(
-    `SELECT id, name, slug FROM conventions WHERE slug = ?`
+    `SELECT id, name, slug, mover_rate_cents FROM conventions WHERE slug = ?`
   ).bind(slug).first();
 
   if (!convention) return { ok: false, error: "Convention not found." };
@@ -132,6 +132,27 @@ export async function handleSetPayRate(request, env, slug) {
      VALUES (?, ?, ?)
      ON CONFLICT (convention_id, employee_id) DO UPDATE SET rate_cents = excluded.rate_cents`
   ).bind(conventionId, employeeId, rate).run();
+
+  return { ok: true };
+}
+
+export async function handleSetMoverRate(request, env, slug) {
+  const auth = await requireUser(request, env, "manage_conventions");
+  if (!auth.ok) return auth;
+
+  const conventionId = await conventionIdBySlug(env, slug);
+  if (!conventionId) return { ok: false, error: "Convention not found." };
+
+  const body = await readJsonBody(request);
+  const rate = Number(body.rate_cents);
+
+  if (!Number.isInteger(rate) || rate < 0 || rate > 10000000) {
+    return { ok: false, error: "That rate didn't look right." };
+  }
+
+  await env.DB.prepare(
+    `UPDATE conventions SET mover_rate_cents = ? WHERE id = ?`
+  ).bind(rate, conventionId).run();
 
   return { ok: true };
 }

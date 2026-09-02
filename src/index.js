@@ -80,6 +80,7 @@ import {
 import {
   handleBudget,
   handleSetPayRate,
+  handleSetMoverRate,
   handleSaveBoothCost,
   handleAddExpense,
   handleDeleteExpense,
@@ -210,6 +211,7 @@ const ROUTES = [
 
   ["GET", "/api/conventions/:slug/budget", handleBudget],
   ["PUT", "/api/conventions/:slug/budget-rate", handleSetPayRate],
+  ["PUT", "/api/conventions/:slug/budget-mover-rate", handleSetMoverRate],
   ["PUT", "/api/conventions/:slug/budget-booth", handleSaveBoothCost],
   ["POST", "/api/conventions/:slug/budget-expenses", handleAddExpense],
   ["DELETE", "/api/budget-expenses/:id", handleDeleteExpense],
