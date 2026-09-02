@@ -75,13 +75,17 @@ function finishShift(open, outAt) {
   // A break that was never ended runs until clock-out. On a shift with no
   // clock-out there's nothing to measure, so it contributes nothing.
   let breakMinutes = open.break_minutes;
-  if (open.breakStart && outAt) breakMinutes += minutesBetween(open.breakStart, outAt);
+  if (open.breakStart) {
+    if (outAt) breakMinutes += minutesBetween(open.breakStart, outAt);
+    open.breaks.push({ start_at: open.breakStart, end_at: null });
+  }
 
   const total = outAt ? minutesBetween(open.in_at, outAt) : null;
 
   return {
     in_at: open.in_at,
     out_at: outAt,
+    breaks: open.breaks,
     break_minutes: Math.round(breakMinutes),
     net_minutes: total === null ? null : Math.max(0, Math.round(total - breakMinutes))
   };
@@ -106,7 +110,7 @@ export function pairClockEvents(events) {
   for (const event of ordered) {
     if (event.event_type === "clock_in") {
       if (open) shifts.push(finishShift(open, null));
-      open = { in_at: event.created_at, break_minutes: 0, breakStart: null };
+      open = { in_at: event.created_at, break_minutes: 0, breakStart: null, breaks: [] };
     } else if (!open) {
       continue;
     } else if (event.event_type === "break_start") {
@@ -114,6 +118,7 @@ export function pairClockEvents(events) {
     } else if (event.event_type === "break_end") {
       if (open.breakStart) {
         open.break_minutes += minutesBetween(open.breakStart, event.created_at);
+        open.breaks.push({ start_at: open.breakStart, end_at: event.created_at });
         open.breakStart = null;
       }
     } else if (event.event_type === "clock_out") {
@@ -190,10 +195,13 @@ export async function handleClockReport(request, env) {
 const UTC_STAMP = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 
 /**
- * Boss-only repair for the two ways a forgotten clock-out shows up: a shift
- * with no clock-out at all, or one "closed" the next morning when the person
- * noticed. Updates the shift's clock-out if it has one, inserts it otherwise.
- * The correction is a normal clock_events row, stamped with who fixed it.
+ * Boss-only repair of a shift's punches: clock-in, every break, and clock-out
+ * move together in one save. The shift is identified by its recorded clock-in
+ * stamp (`in_at`); `new_in_at`, `breaks` and `out_at` are where its punches
+ * should be. Breaks are corrected, never added or removed — the body must
+ * carry exactly the pairs the shift already has, in order. Each correction is
+ * an update to the punch's own row (a missing clock-out or break-end is
+ * inserted), stamped with who fixed it, so the punch log stays the story.
  */
 export async function handleClockFix(request, env) {
   const auth = await requireUser(request, env, "manage_users");
@@ -202,14 +210,25 @@ export async function handleClockFix(request, env) {
   const body = await readJsonBody(request);
   const employeeId = Number(body.employee_id);
   const inAt = String(body.in_at || "");
+  const newInAt = String(body.new_in_at || body.in_at || "");
   const outAt = String(body.out_at || "");
+  const breaks = Array.isArray(body.breaks) ? body.breaks : [];
 
-  if (!Number.isInteger(employeeId) || !UTC_STAMP.test(inAt) || !UTC_STAMP.test(outAt)) {
+  const stampsOk = [inAt, newInAt, outAt].every(s => UTC_STAMP.test(s))
+    && breaks.every(b => b && UTC_STAMP.test(String(b.start_at || "")) && UTC_STAMP.test(String(b.end_at || "")));
+
+  if (!Number.isInteger(employeeId) || !stampsOk) {
     return { ok: false, error: "That fix didn't look right. Reload and try again." };
   }
 
-  if (outAt <= inAt) {
-    return { ok: false, error: "The clock-out has to be after the clock-in." };
+  // Every punch in one strictly-increasing line: in, break pairs, out.
+  const sequence = [newInAt];
+  for (const b of breaks) sequence.push(String(b.start_at), String(b.end_at));
+  sequence.push(outAt);
+  for (let i = 1; i < sequence.length; i++) {
+    if (sequence[i] <= sequence[i - 1]) {
+      return { ok: false, error: "Those times are out of order — each punch has to be after the one before it." };
+    }
   }
 
   const clockIn = await env.DB.prepare(
@@ -232,27 +251,75 @@ export async function handleClockFix(request, env) {
     return { ok: false, error: "That would run into the next shift. Pick an earlier time." };
   }
 
-  const existingOut = await (nextIn
+  // The last punch before this shift — usually the previous shift's clock-out.
+  // The moved clock-in can't back over it.
+  const previous = await env.DB.prepare(
+    `SELECT created_at FROM clock_events
+     WHERE employee_id = ? AND created_at < ?
+     ORDER BY created_at DESC LIMIT 1`
+  ).bind(employeeId, inAt).first();
+
+  if (previous && newInAt <= previous.created_at) {
+    return { ok: false, error: "That would run into the shift before. Pick a later clock-in." };
+  }
+
+  // This shift's other punches: everything up to the next clock-in.
+  const rows = await (nextIn
     ? env.DB.prepare(
-        `SELECT id FROM clock_events
-         WHERE employee_id = ? AND event_type = 'clock_out'
-           AND created_at > ? AND created_at < ?
-         ORDER BY created_at LIMIT 1`
+        `SELECT id, event_type, created_at FROM clock_events
+         WHERE employee_id = ? AND created_at > ? AND created_at < ?
+         ORDER BY created_at`
       ).bind(employeeId, inAt, nextIn.created_at)
     : env.DB.prepare(
-        `SELECT id FROM clock_events
-         WHERE employee_id = ? AND event_type = 'clock_out' AND created_at > ?
-         ORDER BY created_at LIMIT 1`
+        `SELECT id, event_type, created_at FROM clock_events
+         WHERE employee_id = ? AND created_at > ?
+         ORDER BY created_at`
       ).bind(employeeId, inAt)
-  ).first();
+  ).all();
+
+  // Pair the recorded break rows the same way the report does, so the pair
+  // the boss edited is the pair whose rows move.
+  const recordedPairs = [];
+  let openStart = null;
+  for (const row of rows.results || []) {
+    if (row.event_type === "break_start" && !openStart) openStart = row;
+    else if (row.event_type === "break_end" && openStart) {
+      recordedPairs.push({ start: openStart, end: row });
+      openStart = null;
+    }
+  }
+  if (openStart) recordedPairs.push({ start: openStart, end: null });
+
+  if (recordedPairs.length !== breaks.length) {
+    return { ok: false, error: "This shift's breaks changed under you. Reload and try again." };
+  }
+
+  const existingOut = (rows.results || []).find(r => r.event_type === "clock_out") || null;
 
   const note = `Fixed by ${auth.user.full_name}`;
   const statements = [];
-
-  if (existingOut) {
+  const moveRow = (row, to) => {
+    if (row.created_at === to) return;
     statements.push(env.DB.prepare(
       `UPDATE clock_events SET created_at = ?, notes = ? WHERE id = ?`
-    ).bind(outAt, note, existingOut.id));
+    ).bind(to, note, row.id));
+  };
+
+  moveRow({ id: clockIn.id, created_at: inAt }, newInAt);
+  recordedPairs.forEach((pair, i) => {
+    moveRow(pair.start, String(breaks[i].start_at));
+    if (pair.end) {
+      moveRow(pair.end, String(breaks[i].end_at));
+    } else {
+      statements.push(env.DB.prepare(
+        `INSERT INTO clock_events (employee_id, event_type, created_at, notes)
+         VALUES (?, 'break_end', ?, ?)`
+      ).bind(employeeId, String(breaks[i].end_at), note));
+    }
+  });
+
+  if (existingOut) {
+    moveRow(existingOut, outAt);
   } else {
     statements.push(env.DB.prepare(
       `INSERT INTO clock_events (employee_id, event_type, created_at, notes)
@@ -268,7 +335,7 @@ export async function handleClockFix(request, env) {
     }
   }
 
-  await env.DB.batch(statements);
+  if (statements.length) await env.DB.batch(statements);
   return { ok: true };
 }
 

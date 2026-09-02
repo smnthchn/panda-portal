@@ -1288,6 +1288,7 @@ textarea::placeholder {
 
 .inline-form {
   display: flex;
+  flex-wrap: wrap; /* the fix editor holds up to six pickers plus its buttons */
   gap: 8px;
   margin-top: 8px;
   align-items: center;

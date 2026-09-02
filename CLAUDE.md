@@ -655,9 +655,11 @@ buttons — and their own hours appear only if they turn out to have punches. Th
 nav calls it Hours/Timesheets for them, Clock for everyone else. The dashboard
 likewise gives the boss the floor instead of a clock card.
 
-A boss fixes a wrong or missing clock-out from Team hours; the correction is a
-normal `clock_events` row stamped with who fixed it. That inserted row has a
-late id, which is why `pairClockEvents()` orders by `created_at`, never by id.
+A boss fixes any of a shift's punches — clock-in, breaks, clock-out — from
+Team hours; each correction updates (or inserts) that punch's own
+`clock_events` row, stamped with who fixed it. Breaks are corrected in place,
+never added or removed. A fixed row's timestamp no longer matches its id
+order, which is why `pairClockEvents()` orders by `created_at`, never by id.
 Closing someone's trailing open shift also resets their live status, or their
 next Clock In would be rejected. Forgotten clock-outs usually surface as a
 ~24-hour shift (people clock out the next morning when the portal tells them

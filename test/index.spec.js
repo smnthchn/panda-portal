@@ -164,9 +164,23 @@ describe("clock event pairing", () => {
     expect(shifts).toEqual([{
       in_at: "2026-08-10 14:00:00",
       out_at: "2026-08-10 22:00:00",
+      breaks: [
+        { start_at: "2026-08-10 17:00:00", end_at: "2026-08-10 17:30:00" },
+        { start_at: "2026-08-10 19:00:00", end_at: "2026-08-10 19:15:00" }
+      ],
       break_minutes: 45,
       net_minutes: 435
     }]);
+  });
+
+  it("reports a break that never ended with a null end", () => {
+    const shifts = pairClockEvents([
+      ev("clock_in", "2026-08-10 09:00:00"),
+      ev("break_start", "2026-08-10 12:00:00"),
+      ev("clock_out", "2026-08-10 13:00:00")
+    ]);
+
+    expect(shifts[0].breaks).toEqual([{ start_at: "2026-08-10 12:00:00", end_at: null }]);
   });
 
   it("leaves a shift with no clock-out open and uncounted", () => {

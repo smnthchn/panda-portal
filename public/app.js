@@ -829,8 +829,8 @@ function teamHoursCard() {
         <p class="form-error" id="reportError"></p>
         <div id="reportArea"><p class="meta">Loading…</p></div>
         <p class="meta">
-          Fix a wrong or missing clock-out with a row's Fix button — the correction
-          is stamped with your name in the punch log.
+          Fix any punch — clock-in, breaks, clock-out — with a row's Fix button.
+          The correction is stamped with your name in the punch log.
         </p>
       </div>
     </div>
@@ -869,7 +869,7 @@ async function loadTeamHours() {
       const working = !shift.out_at && localDateOf(shift.in_at) === todayLocal();
       if (working) return shiftRow(shift, null);
 
-      teamFixList.push({ employee_id: person.id, in_at: shift.in_at, out_at: shift.out_at });
+      teamFixList.push({ employee_id: person.id, in_at: shift.in_at, out_at: shift.out_at, breaks: shift.breaks || [] });
       return shiftRow(shift, teamFixList.length - 1);
     }).join("");
 
@@ -903,17 +903,33 @@ function asDate(dt) {
 function openFixEditor(row, shift) {
   document.getElementById("fixEditorRow")?.remove();
 
-  // Start from the recorded clock-out; if there isn't one, guess in + 8h.
-  const initial = shift.out_at
+  // Every punch is editable; the recorded times prefill. Guesses only stand
+  // in for a punch that was never made: a missing clock-out gets in + 8h, a
+  // break that never ended gets start + 30m.
+  const outInitial = shift.out_at
     ? toLocalInput(asDate(shift.out_at))
     : toLocalInput(new Date(asDate(shift.in_at).getTime() + 8 * 3600 * 1000));
+
+  const breaks = shift.breaks || [];
+  const breakFields = breaks.map((b, i) => {
+    const n = breaks.length > 1 ? ` ${i + 1}` : "";
+    const endInitial = b.end_at
+      ? toLocalInput(asDate(b.end_at))
+      : toLocalInput(new Date(asDate(b.start_at).getTime() + 30 * 60000));
+    return `
+      <label>Break${n} start <input type="datetime-local" data-fix-break-start="${i}" value="${esc(toLocalInput(asDate(b.start_at)))}"></label>
+      <label>Break${n} end <input type="datetime-local" data-fix-break-end="${i}" value="${esc(endInitial)}"></label>
+    `;
+  }).join("");
 
   const editor = document.createElement("tr");
   editor.id = "fixEditorRow";
   editor.innerHTML = `
     <td colspan="5">
       <div class="inline-form">
-        <label>Clock-out <input type="datetime-local" id="fixOutInput" value="${esc(initial)}"></label>
+        <label>Clock-in <input type="datetime-local" id="fixInInput" value="${esc(toLocalInput(asDate(shift.in_at)))}"></label>
+        ${breakFields}
+        <label>Clock-out <input type="datetime-local" id="fixOutInput" value="${esc(outInitial)}"></label>
         <button id="fixSaveBtn">Save</button>
         <button class="btn-quiet" id="fixCancelBtn">Cancel</button>
       </div>
@@ -924,10 +940,18 @@ function openFixEditor(row, shift) {
 
   document.getElementById("fixCancelBtn").onclick = () => editor.remove();
 
+  const toStamp = (value) => new Date(value).toISOString().slice(0, 19).replace("T", " ");
+
   document.getElementById("fixSaveBtn").onclick = async () => {
-    const value = document.getElementById("fixOutInput").value;
-    if (!value) {
-      showFormError("fixError", "Pick the clock-out time.");
+    const inValue = document.getElementById("fixInInput").value;
+    const outValue = document.getElementById("fixOutInput").value;
+    const breakValues = breaks.map((b, i) => ({
+      start: editor.querySelector(`[data-fix-break-start="${i}"]`).value,
+      end: editor.querySelector(`[data-fix-break-end="${i}"]`).value
+    }));
+
+    if (!inValue || !outValue || breakValues.some(b => !b.start || !b.end)) {
+      showFormError("fixError", "Every punch needs a time.");
       return;
     }
 
@@ -937,7 +961,9 @@ function openFixEditor(row, shift) {
     const result = await apiSend("/api/admin/clock-fix", "POST", {
       employee_id: shift.employee_id,
       in_at: shift.in_at,
-      out_at: new Date(value).toISOString().slice(0, 19).replace("T", " ")
+      new_in_at: toStamp(inValue),
+      out_at: toStamp(outValue),
+      breaks: breakValues.map(b => ({ start_at: toStamp(b.start), end_at: toStamp(b.end) }))
     });
 
     if (!result.ok) {
