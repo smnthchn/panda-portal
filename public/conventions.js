@@ -1818,6 +1818,10 @@ function renderShiftBreakForm(shift, draft = null) {
 let budgetData = null;
 let budgetSlug = null;
 
+// Which labour folds are shut — remembered across the redraws every rate
+// change triggers, or a group would spring open each time a number is typed.
+const budgetClosedRoles = new Set();
+
 const BUDGET_ROLE_LABELS = { staff: "Staff", seasonal: "Seasonal Staff", volunteer: "Volunteers", boss: "Boss" };
 const EXPENSE_CARD_TITLES = { meal: "Meals", transport: "Transportation" };
 
@@ -1917,6 +1921,8 @@ function labourCard() {
   const cost = (row) => Math.round(row.minutes * (row.rate_cents || 0) / 60);
   let grand = 0;
 
+  // Each role folds shut once its rates are in — the summary carries the
+  // subtotal, so a collapsed group still says what it costs.
   const groups = Object.keys(BUDGET_ROLE_LABELS).map(role => {
     const rows = labour.filter(r => r.employee_id && r.role === role);
     if (!rows.length) return "";
@@ -1926,20 +1932,21 @@ function labourCard() {
     grand += subtotal;
 
     return `
-      <h4 style="margin:12px 0 2px;">${esc(BUDGET_ROLE_LABELS[role])}</h4>
-      ${rows.map(r => `
-        <div class="budget-row">
-          <span style="flex:1;">${esc(r.full_name)}</span>
-          <span class="meta">${esc(formatMinutes(r.minutes))}</span>
-          <span class="meta">$</span><input class="budget-money" inputmode="decimal" placeholder="0.00"
-                 data-rate="${r.employee_id}" value="${r.rate_cents ? esc((r.rate_cents / 100).toFixed(2)) : ""}"><span class="meta">/h</span>
-          <span class="budget-cost">${esc(money(cost(r)))}</span>
-        </div>
-      `).join("")}
-      <div class="budget-row budget-subtotal">
-        <span style="flex:1;">${esc(BUDGET_ROLE_LABELS[role].toUpperCase())} · ${esc(formatMinutes(subMinutes))}</span>
-        <span class="budget-cost">${esc(money(subtotal))}</span>
-      </div>
+      <details class="budget-fold" data-fold-role="${esc(role)}" ${budgetClosedRoles.has(role) ? "" : "open"}>
+        <summary>
+          <span style="flex:1;">${esc(BUDGET_ROLE_LABELS[role].toUpperCase())} · ${esc(formatMinutes(subMinutes))}</span>
+          <span class="budget-cost">${esc(money(subtotal))}</span>
+        </summary>
+        ${rows.map(r => `
+          <div class="budget-row">
+            <span style="flex:1;">${esc(r.full_name)}</span>
+            <span class="meta">${esc(formatMinutes(r.minutes))}</span>
+            <span class="meta">$</span><input class="budget-money" inputmode="decimal" placeholder="0.00"
+                   data-rate="${r.employee_id}" value="${r.rate_cents ? esc((r.rate_cents / 100).toFixed(2)) : ""}"><span class="meta">/h</span>
+            <span class="budget-cost">${esc(money(cost(r)))}</span>
+          </div>
+        `).join("")}
+      </details>
     `;
   }).join("");
 
@@ -2112,6 +2119,13 @@ function wireBudget() {
 
       const entry = budgetData.movers.find(m => m.id === Number(rowEl.dataset.moverEdit));
       if (entry) openMoverEditor(rowEl, entry);
+    };
+  });
+
+  document.querySelectorAll("[data-fold-role]").forEach(fold => {
+    fold.ontoggle = () => {
+      if (fold.open) budgetClosedRoles.delete(fold.dataset.foldRole);
+      else budgetClosedRoles.add(fold.dataset.foldRole);
     };
   });
 

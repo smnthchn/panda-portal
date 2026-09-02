@@ -3811,13 +3811,37 @@ button.pick-open {
   white-space: nowrap;
 }
 
-.budget-subtotal {
+/* Labour folds by role; the summary is the subtotal, so a shut group still
+   says what it costs. display:flex drops the native marker, so the arrow is
+   drawn by hand. */
+.budget-fold summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  padding: 9px 0 5px;
   font-family: "Fredoka", sans-serif;
   font-weight: 600;
   font-size: 12px;
   letter-spacing: 0.05em;
   color: var(--muted);
-  border-bottom: none;
+}
+
+.budget-fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.budget-fold summary::before {
+  content: "▸";
+  font-size: 11px;
+}
+
+.budget-fold[open] summary::before {
+  content: "▾";
+}
+
+.budget-fold:not([open]) {
+  border-bottom: 2px solid var(--track);
 }
 
 .budget-total {

@@ -257,8 +257,11 @@ Five cards, top to bottom:
   so it can't be reopened into a second open row.
 - **Labour Costs** — hours come from the event's *schedule* (shifts net of
   break allotments), not the punch log: the schedule is what was agreed
-  to and exists before the show does. Rows group by role with a subtotal
-  each — Staff and Seasonal Staff are the two that matter. Pay rates are
+  to and exists before the show does. Rows group by role into `<details>`
+  folds whose summary is the subtotal, so a collapsed group still says
+  what it costs — Staff and Seasonal Staff are the two that matter. Fold
+  state lives in `budgetClosedRoles`, or the redraw every rate change
+  triggers would spring shut groups open. Pay rates are
   per (convention, employee) in `convention_pay_rates`, so next year's
   raise doesn't rewrite what last year's show cost. Unassigned shifts show
   as one unpaid line rather than vanishing. `labourRows()` is exported and
