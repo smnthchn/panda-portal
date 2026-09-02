@@ -1851,6 +1851,29 @@ function moverMinutes(entry) {
   return Math.max(0, Math.round((end - start) / 60000));
 }
 
+function boothLineTotal(kind) {
+  const r = budgetData.booth[kind] || { qty: 0, price_cents: 0, discount_cents: 0 };
+  return (kind === "electricity" ? r.price_cents : r.qty * r.price_cents) - r.discount_cents;
+}
+
+/** Every card's total, in cents, from one place — the cards and the band at
+ *  the top read these same numbers, so they can't drift apart. */
+function budgetTotals() {
+  const { movers, convention, labour, expenses } = budgetData;
+
+  const moverMins = movers.reduce((sum, m) => sum + moverMinutes(m), 0);
+  const expenseTotal = (cat) =>
+    expenses.filter(e => e.category === cat).reduce((sum, e) => sum + e.amount_cents, 0);
+
+  return {
+    movers: Math.round(moverMins * (convention.mover_rate_cents || 0) / 60),
+    labour: labour.reduce((sum, r) => sum + Math.round(r.minutes * (r.rate_cents || 0) / 60), 0),
+    meals: expenseTotal("meal"),
+    booth: ["regular", "corner", "electricity"].reduce((sum, k) => sum + boothLineTotal(k), 0),
+    transport: expenseTotal("transport")
+  };
+}
+
 async function renderBudget(slug, pushState = true) {
   if (pushState) pushPageState("budget", { slug });
 
@@ -1903,7 +1926,7 @@ function moversCard() {
           <span style="flex:1;">TOTAL ${esc(formatMinutes(totalMinutes))}</span>
           <span class="meta">$</span><input class="budget-money" inputmode="decimal" placeholder="0.00"
                  id="moverRateInput" value="${rate ? esc((rate / 100).toFixed(2)) : ""}"><span class="meta">/h</span>
-          <span class="budget-cost">${esc(money(Math.round(totalMinutes * rate / 60)))}</span>
+          <span class="budget-cost">${esc(money(budgetTotals().movers))}</span>
         </div>
       </div>
     </div>
@@ -1925,7 +1948,6 @@ function labourCard() {
   }
 
   const cost = (row) => Math.round(row.minutes * (row.rate_cents || 0) / 60);
-  let grand = 0;
 
   // Each role folds shut once its rates are in — the summary carries the
   // subtotal, so a collapsed group still says what it costs.
@@ -1935,7 +1957,6 @@ function labourCard() {
 
     const subtotal = rows.reduce((sum, r) => sum + cost(r), 0);
     const subMinutes = rows.reduce((sum, r) => sum + r.minutes, 0);
-    grand += subtotal;
 
     return `
       <details class="budget-fold" data-fold-role="${esc(role)}" ${budgetClosedRoles.has(role) ? "" : "open"}>
@@ -1971,7 +1992,7 @@ function labourCard() {
         ` : ""}
         <div class="budget-row budget-total">
           <span style="flex:1;">TOTAL</span>
-          <span class="budget-cost">${esc(money(grand))}</span>
+          <span class="budget-cost">${esc(money(budgetTotals().labour))}</span>
         </div>
       </div>
     </div>
@@ -1981,12 +2002,7 @@ function labourCard() {
 function boothCostCard() {
   const { booth } = budgetData;
   const row = (kind) => booth[kind] || { qty: 0, price_cents: 0, discount_cents: 0 };
-
-  const lineTotal = (kind) => {
-    const r = row(kind);
-    return (kind === "electricity" ? r.price_cents : r.qty * r.price_cents) - r.discount_cents;
-  };
-  const total = ["regular", "corner", "electricity"].reduce((sum, k) => sum + lineTotal(k), 0);
+  const lineTotal = boothLineTotal;
 
   const moneyInput = (kind, field) => {
     const cents = row(kind)[field];
@@ -2020,7 +2036,7 @@ function boothCostCard() {
         </div>
         <div class="budget-row budget-total">
           <span style="flex:1;">TOTAL</span>
-          <span class="budget-cost">${esc(money(total))}</span>
+          <span class="budget-cost">${esc(money(budgetTotals().booth))}</span>
         </div>
       </div>
     </div>
@@ -2029,7 +2045,7 @@ function boothCostCard() {
 
 function expenseCard(category) {
   const rows = budgetData.expenses.filter(e => e.category === category);
-  const total = rows.reduce((sum, e) => sum + e.amount_cents, 0);
+  const total = budgetTotals()[category === "meal" ? "meals" : "transport"];
 
   return `
     <div class="card stripped">
@@ -2059,6 +2075,8 @@ function expenseCard(category) {
 
 function drawBudget() {
   const { convention } = budgetData;
+  const totals = budgetTotals();
+  const grand = totals.movers + totals.labour + totals.meals + totals.booth + totals.transport;
 
   pageArea().innerHTML = `
     <div class="title-row">
@@ -2067,6 +2085,18 @@ function drawBudget() {
     </div>
     <p class="meta" style="margin:-6px 0 13px;">${esc(convention.name)}</p>
     <p class="form-error" id="budgetError"></p>
+
+    <div class="card navy" style="text-align:center;">
+      <div class="kicker">EVENT TOTAL</div>
+      <div style="font-family:'Fredoka',sans-serif; font-weight:600; font-size:38px; letter-spacing:-0.02em; margin:5px 0 3px;">
+        ${esc(money(grand))}
+      </div>
+      <div style="font-size:12.5px; opacity:0.72;">
+        ${[["Movers", totals.movers], ["Labour", totals.labour], ["Meals", totals.meals],
+           ["Booth", totals.booth], ["Transport", totals.transport]]
+          .map(([label, cents]) => `${esc(label)} ${esc(money(cents))}`).join(" · ")}
+      </div>
+    </div>
 
     ${moversCard()}
     ${labourCard()}

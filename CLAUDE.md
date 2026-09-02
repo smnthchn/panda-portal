@@ -248,7 +248,9 @@ boss-only end to end: the pill renders only for `canManage` and every
 endpoint requires `manage_conventions`. Money is **integer cents**
 everywhere; dollars exist only in the inputs.
 
-Five cards, top to bottom:
+A navy band at the top carries the event total with a per-card breakdown;
+`budgetTotals()` is the one place every card's total is computed, so the
+band and the cards can't disagree. Five cards, top to bottom:
 
 - **Movers** — a two-button clock: Start stamps a row with now, End closes
   it, one open visit at a time. Load-in and load-out are separate rows and
