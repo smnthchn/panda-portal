@@ -222,16 +222,6 @@ export async function handleClockFix(request, env) {
     return { ok: false, error: "That fix didn't look right. Reload and try again." };
   }
 
-  // Every punch in one strictly-increasing line: in, break pairs, out.
-  const sequence = [newInAt];
-  for (const b of breaks) sequence.push(String(b.start_at), String(b.end_at));
-  sequence.push(outAt);
-  for (let i = 1; i < sequence.length; i++) {
-    if (sequence[i] <= sequence[i - 1]) {
-      return { ok: false, error: "Those times are out of order — each punch has to be after the one before it." };
-    }
-  }
-
   const clockIn = await env.DB.prepare(
     `SELECT id FROM clock_events
      WHERE employee_id = ? AND event_type = 'clock_in' AND created_at = ?
@@ -248,10 +238,6 @@ export async function handleClockFix(request, env) {
      ORDER BY created_at LIMIT 1`
   ).bind(employeeId, inAt).first();
 
-  if (nextIn && outAt >= nextIn.created_at) {
-    return { ok: false, error: "That would run into the next shift. Pick an earlier time." };
-  }
-
   // The last punch before this shift — usually the previous shift's clock-out.
   // The moved clock-in can't back over it.
   const previous = await env.DB.prepare(
@@ -259,10 +245,6 @@ export async function handleClockFix(request, env) {
      WHERE employee_id = ? AND created_at < ?
      ORDER BY created_at DESC LIMIT 1`
   ).bind(employeeId, inAt).first();
-
-  if (previous && newInAt <= previous.created_at) {
-    return { ok: false, error: "That would run into the shift before. Pick a later clock-in." };
-  }
 
   // This shift's other punches: everything up to the next clock-in.
   const rows = await (nextIn
@@ -298,6 +280,43 @@ export async function handleClockFix(request, env) {
 
   const existingOut = (rows.results || []).find(r => r.event_type === "clock_out") || null;
 
+  // The editor works in whole minutes, but recorded punches carry seconds. A
+  // punch sent back at its own minute is untouched: it keeps its recorded
+  // stamp (seconds and all) and its row is never rewritten — so two punches
+  // seconds apart in the same minute don't collapse into a tie that the
+  // ordering check would refuse on a save that never meant to move them.
+  const effective = (recorded, sent) =>
+    recorded && sent === recorded.slice(0, 16) + ":00" ? recorded : sent;
+
+  const effIn = effective(inAt, newInAt);
+  const effBreaks = breaks.map((sent, i) => {
+    const pair = recordedPairs[i];
+    return {
+      start: effective(pair && pair.start.created_at, String(sent.start_at)),
+      end: effective(pair && pair.end && pair.end.created_at, String(sent.end_at))
+    };
+  });
+  const effOut = effective(existingOut && existingOut.created_at, outAt);
+
+  // One non-decreasing line: in, break pairs, out. Ties are allowed — the
+  // minute-grained editor can't always split two same-minute punches apart.
+  const sequence = [effIn];
+  for (const b of effBreaks) sequence.push(b.start, b.end);
+  sequence.push(effOut);
+  for (let i = 1; i < sequence.length; i++) {
+    if (sequence[i] < sequence[i - 1]) {
+      return { ok: false, error: "Those times are out of order — each punch has to be after the one before it." };
+    }
+  }
+
+  if (nextIn && effOut >= nextIn.created_at) {
+    return { ok: false, error: "That would run into the next shift. Pick an earlier time." };
+  }
+
+  if (previous && effIn <= previous.created_at) {
+    return { ok: false, error: "That would run into the shift before. Pick a later clock-in." };
+  }
+
   const note = `Fixed by ${auth.user.full_name}`;
   const statements = [];
   const moveRow = (row, to) => {
@@ -307,39 +326,39 @@ export async function handleClockFix(request, env) {
     ).bind(to, note, row.id));
   };
 
-  moveRow({ id: clockIn.id, created_at: inAt }, newInAt);
-  breaks.forEach((sent, i) => {
+  moveRow({ id: clockIn.id, created_at: inAt }, effIn);
+  effBreaks.forEach((sent, i) => {
     const pair = recordedPairs[i];
     if (!pair) {
       // An added break: both punches are new rows.
       statements.push(env.DB.prepare(
         `INSERT INTO clock_events (employee_id, event_type, created_at, notes)
          VALUES (?, 'break_start', ?, ?)`
-      ).bind(employeeId, String(sent.start_at), note));
+      ).bind(employeeId, sent.start, note));
       statements.push(env.DB.prepare(
         `INSERT INTO clock_events (employee_id, event_type, created_at, notes)
          VALUES (?, 'break_end', ?, ?)`
-      ).bind(employeeId, String(sent.end_at), note));
+      ).bind(employeeId, sent.end, note));
       return;
     }
-    moveRow(pair.start, String(sent.start_at));
+    moveRow(pair.start, sent.start);
     if (pair.end) {
-      moveRow(pair.end, String(sent.end_at));
+      moveRow(pair.end, sent.end);
     } else {
       statements.push(env.DB.prepare(
         `INSERT INTO clock_events (employee_id, event_type, created_at, notes)
          VALUES (?, 'break_end', ?, ?)`
-      ).bind(employeeId, String(sent.end_at), note));
+      ).bind(employeeId, sent.end, note));
     }
   });
 
   if (existingOut) {
-    moveRow(existingOut, outAt);
+    moveRow(existingOut, effOut);
   } else {
     statements.push(env.DB.prepare(
       `INSERT INTO clock_events (employee_id, event_type, created_at, notes)
        VALUES (?, 'clock_out', ?, ?)`
-    ).bind(employeeId, outAt, note));
+    ).bind(employeeId, effOut, note));
 
     // Closing someone's trailing open shift has to flip their live status too,
     // or their next "Clock In" gets rejected as already clocked in.
