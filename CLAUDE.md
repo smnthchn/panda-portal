@@ -258,9 +258,15 @@ band and the cards can't disagree. Five cards, top to bottom:
   row is tapped to edit its stamps — a running visit only offers its start,
   so it can't be reopened into a second open row. An hourly rate
   (`conventions.mover_rate_cents`) prices the total.
-- **Labour Costs** — hours come from the event's *schedule* (shifts net of
-  break allotments), not the punch log: the schedule is what was agreed
-  to and exists before the show does. Rows group by role into `<details>`
+- **Labour Costs** — hours come from the *timesheets*: each crew member's
+  punches (with the boss's corrections) across the event's window — every
+  scheduled shift date plus the event's own dates (`eventWindow()`) — are
+  paired by the same `pairClockEvents()` Timesheets uses, breaks deducted,
+  trimmed to local dates in the browser the way Timesheets trims its
+  range. Someone with no punches at all (volunteers don't clock) falls
+  back to their *scheduled* hours net of break allotments, marked
+  "planned" — which is also what the whole card shows before a show
+  exists to punch at. Rows group by role into `<details>`
   folds whose summary is the subtotal, so a collapsed group still says
   what it costs — Staff and Seasonal Staff are the two that matter. Fold
   state lives in `budgetClosedRoles`, or the redraw every rate change

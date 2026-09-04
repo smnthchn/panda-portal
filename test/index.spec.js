@@ -5,7 +5,7 @@ import { matchPath, getCookie, optionalText, requiredText, BadRequest } from "..
 import { roleOutranks, isValidRole, ROLES, ROLE_LABELS } from "../src/lib/permissions.js";
 import { optionalUrl, hiddenFromStaff } from "../src/routes/conventions.js";
 import { pairClockEvents } from "../src/routes/clock.js";
-import { labourRows } from "../src/routes/budget.js";
+import { labourRows, eventWindow } from "../src/routes/budget.js";
 import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/dashboard.js";
 import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
 import { mergeIntervals, coverageGaps, toMinutes, resolveSpan, rotaWeeks, scheduleDates } from "../src/routes/schedule.js";
@@ -171,6 +171,16 @@ describe("budget labour rows", () => {
 
     expect(rows.map(r => r.full_name)).toEqual(["Kevin", "Ana", "Unassigned shifts"]);
     expect(rows[2]).toEqual({ employee_id: null, full_name: "Unassigned shifts", role: null, minutes: 240 });
+  });
+
+  it("stretches the event window over shift dates and event dates alike", () => {
+    const window = eventWindow(
+      { starts_on: "2026-08-27", ends_on: "2026-08-30", setup_on: "2026-08-26" },
+      [{ shift_date: "2026-08-24" }, { shift_date: "2026-08-29" }]
+    );
+
+    expect(window).toEqual({ from: "2026-08-24", to: "2026-08-30" });
+    expect(eventWindow({ starts_on: null, ends_on: null, setup_on: null }, [])).toBeNull();
   });
 });
 

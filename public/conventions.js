@@ -1886,6 +1886,24 @@ async function renderBudget(slug, pushState = true) {
     return;
   }
 
+  // A person's hours are their timesheet — the punch log, corrections and
+  // all — trimmed to the event's local dates the way Timesheets trims its
+  // range. Someone with no punches (volunteers don't clock) falls back to
+  // their scheduled hours, marked as planned. Shifts with no clock-out are
+  // never counted, same as Timesheets.
+  data.labour.forEach(row => {
+    const punched = (row.punch_shifts || []).filter(s => {
+      if (s.net_minutes === null) return false;
+      const day = localDateOf(s.in_at);
+      return data.window && day >= data.window.from && day <= data.window.to;
+    });
+
+    row.from_schedule = !punched.length;
+    row.minutes = row.from_schedule
+      ? row.scheduled_minutes
+      : punched.reduce((sum, s) => sum + s.net_minutes, 0);
+  });
+
   budgetData = data;
   budgetSlug = slug;
   drawBudget();
@@ -1975,7 +1993,7 @@ function labourCard() {
         ${rows.map(r => `
           <div class="budget-row">
             <span style="flex:1;">${esc(r.full_name)}</span>
-            <span class="meta">${esc(formatMinutes(r.minutes))}</span>
+            <span class="meta">${esc(formatMinutes(r.minutes))}${r.from_schedule ? " planned" : ""}</span>
             <span class="meta">$</span><input class="budget-money" inputmode="decimal" placeholder="0.00"
                    data-rate="${r.employee_id}" value="${r.rate_cents ? esc((r.rate_cents / 100).toFixed(2)) : ""}"><span class="meta">/h</span>
             <span class="budget-cost">${esc(money(cost(r)))}</span>
@@ -2002,6 +2020,10 @@ function labourCard() {
           <span style="flex:1;">TOTAL</span>
           <span class="budget-cost">${esc(money(budgetTotals().labour))}</span>
         </div>
+        <p class="meta" style="margin:8px 0 0;">
+          Hours come from the timesheets, breaks deducted. A row marked
+          <em>planned</em> has no punches yet and shows the schedule instead.
+        </p>
       </div>
     </div>
   `;

@@ -1,5 +1,6 @@
 import { requireUser } from "../lib/auth.js";
 import { readJsonBody } from "../lib/http.js";
+import { pairClockEvents } from "./clock.js";
 
 /* ---------- The event budget: labour, booth, expenses, movers ---------- */
 
@@ -50,6 +51,21 @@ export function labourRows(shiftRows) {
   });
 }
 
+/**
+ * The stretch of local dates the event's labour happened on: every scheduled
+ * shift date plus the event's own dates (setup included) — a prep shift days
+ * before doors is still the show's labour. Null when nothing is dated yet.
+ */
+export function eventWindow(convention, shiftRows) {
+  const dates = shiftRows.map(s => s.shift_date).filter(Boolean);
+  for (const d of [convention.starts_on, convention.ends_on, convention.setup_on]) {
+    if (d) dates.push(d);
+  }
+  if (!dates.length) return null;
+  dates.sort();
+  return { from: dates[0], to: dates[dates.length - 1] };
+}
+
 async function conventionIdBySlug(env, slug) {
   const row = await env.DB.prepare(
     `SELECT id FROM conventions WHERE slug = ?`
@@ -62,7 +78,8 @@ export async function handleBudget(request, env, slug) {
   if (!auth.ok) return auth;
 
   const convention = await env.DB.prepare(
-    `SELECT id, name, slug, mover_rate_cents, budget_excluded_roles
+    `SELECT id, name, slug, starts_on, ends_on, setup_on,
+            mover_rate_cents, budget_excluded_roles
      FROM conventions WHERE slug = ?`
   ).bind(slug).first();
 
@@ -93,9 +110,45 @@ export async function handleBudget(request, env, slug) {
     ).bind(convention.id).all()
   ]);
 
+  // The hours the budget prices are the timesheets' — the punch log, with the
+  // boss's corrections — not the schedule. Every crew punch across the event's
+  // window is fetched (a day of slack each side, since punches are UTC and the
+  // dates are local); the browser pairs are already made here, and the client
+  // trims to local dates the way Timesheets does. People who never punch
+  // (volunteers) fall back to their scheduled hours client-side.
+  const scheduled = labourRows(shiftRows.results || []);
+  const crewIds = [...new Set((shiftRows.results || []).filter(s => s.employee_id).map(s => s.employee_id))];
+  const window = eventWindow(convention, shiftRows.results || []);
+
+  const punchShifts = new Map();
+  if (window && crewIds.length) {
+    const placeholders = crewIds.map(() => "?").join(",");
+    const events = await env.DB.prepare(
+      `SELECT employee_id, event_type, created_at FROM clock_events
+       WHERE employee_id IN (${placeholders})
+         AND created_at >= datetime(?, '-1 day')
+         AND created_at < datetime(?, '+2 days')
+       ORDER BY id`
+    ).bind(...crewIds, window.from, window.to).all();
+
+    const byEmployee = new Map();
+    for (const event of events.results || []) {
+      if (!byEmployee.has(event.employee_id)) byEmployee.set(event.employee_id, []);
+      byEmployee.get(event.employee_id).push(event);
+    }
+    for (const [employeeId, list] of byEmployee) {
+      punchShifts.set(employeeId, pairClockEvents(list).map(s => ({
+        in_at: s.in_at,
+        net_minutes: s.net_minutes
+      })));
+    }
+  }
+
   const rates = new Map((rateRows.results || []).map(r => [r.employee_id, r.rate_cents]));
-  const labour = labourRows(shiftRows.results || []).map(row => ({
+  const labour = scheduled.map(row => ({
     ...row,
+    scheduled_minutes: row.minutes,
+    punch_shifts: row.employee_id ? (punchShifts.get(row.employee_id) || []) : [],
     rate_cents: row.employee_id ? (rates.get(row.employee_id) || 0) : null
   }));
 
@@ -106,6 +159,7 @@ export async function handleBudget(request, env, slug) {
     ok: true,
     convention: { ...convention, budget_excluded_roles: excludedRoles },
     labour,
+    window,
     booth: boothRows.results || [],
     expenses: expenseRows.results || [],
     movers: moverRows.results || []
