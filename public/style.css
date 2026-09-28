@@ -1463,6 +1463,101 @@ textarea::placeholder {
   margin-top: 4px;
 }
 
+/* Timesheets: a person's flags sit above their shifts, open ones first. */
+.ts-person {
+  margin-bottom: 18px;
+}
+
+.ts-flags {
+  list-style: none;
+  margin: 6px 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.ts-flag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 7px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--note-bg);
+  color: var(--note-text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ts-flag > span:first-child {
+  flex: 1 1 100%;
+}
+
+.ts-flag .meta {
+  flex: 1 1 160px;
+  font-weight: 400;
+}
+
+.ts-flag-done {
+  background: var(--surface);
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.ts-flag .ts-reason {
+  flex: 1 1 100%;
+  margin: 2px 0 0;
+}
+
+/* What staff said about a flag, under it. */
+.ts-response {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+/* The staff member's own answer form, on their Clock page. */
+.ts-answer {
+  flex: 1 1 100%;
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+.ts-answer label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.ts-answer .form-error {
+  margin: 0;
+}
+
+button.ts-mini {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.ts-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ts-footer .meta {
+  margin: 0;
+  flex: 1 1 200px;
+}
+
 /* ---------- Conventions ---------- */
 
 .badge-row {

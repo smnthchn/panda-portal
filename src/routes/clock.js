@@ -1,5 +1,6 @@
 import { requireUser } from "../lib/auth.js";
 import { readJsonBody } from "../lib/http.js";
+import { approvedPeriodTouching, periodName } from "./timesheets.js";
 
 // event type -> [status required to do it, status it leaves you in]
 const TRANSITIONS = {
@@ -315,6 +316,13 @@ export async function handleClockFix(request, env) {
 
   if (previous && effIn <= previous.created_at) {
     return { ok: false, error: "That would run into the shift before. Pick a later clock-in." };
+  }
+
+  // Approved hours are locked: a fix can't move punches in, out of, or
+  // around a period the boss has signed off without unlocking it first.
+  const locked = await approvedPeriodTouching(env.DB, employeeId, [inAt, effIn, effOut]);
+  if (locked) {
+    return { ok: false, error: `These hours are approved (${periodName(locked)}). Unlock them first.` };
   }
 
   const note = `Fixed by ${auth.user.full_name}`;

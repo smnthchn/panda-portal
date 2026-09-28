@@ -71,6 +71,15 @@ import {
   handleClockFix
 } from "./routes/clock.js";
 import {
+  handleTimesheetPeriod,
+  handleApproveTimesheet,
+  handleUnlockTimesheet,
+  handleDismissFlag,
+  handleUndismissFlag,
+  handleMyFlags,
+  handleRespondToFlag
+} from "./routes/timesheets.js";
+import {
   handleAdminUsers,
   handleCreateUser,
   handleUpdateUser,
@@ -133,6 +142,13 @@ const ROUTES = [
   ["GET", "/api/clock-history", handleClockHistory],
   ["GET", "/api/admin/clock-report", handleClockReport],
   ["POST", "/api/admin/clock-fix", handleClockFix],
+  ["GET", "/api/admin/timesheets", handleTimesheetPeriod],
+  ["POST", "/api/admin/timesheets/approve", handleApproveTimesheet],
+  ["POST", "/api/admin/timesheets/unlock", handleUnlockTimesheet],
+  ["POST", "/api/admin/timesheets/dismiss", handleDismissFlag],
+  ["POST", "/api/admin/timesheets/undismiss", handleUndismissFlag],
+  ["GET", "/api/my-timesheet-flags", handleMyFlags],
+  ["POST", "/api/my-timesheet-flags/respond", handleRespondToFlag],
   ["POST", "/api/clock-in", (req, env) => handleClockEvent(req, env, "clock_in")],
   ["POST", "/api/clock-out", (req, env) => handleClockEvent(req, env, "clock_out")],
   ["POST", "/api/break-start", (req, env) => handleClockEvent(req, env, "break_start")],

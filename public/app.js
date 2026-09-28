@@ -809,93 +809,6 @@ function myHoursCard(shifts) {
   `;
 }
 
-function teamHoursCard() {
-  const start = new Date();
-  start.setDate(start.getDate() - 13);
-
-  return `
-    <div class="card stripped">
-      <div class="strip">TEAM HOURS</div>
-      <div class="card-body">
-        <div class="inline-form report-range">
-          <label>From <input type="date" id="reportFrom" value="${esc(start.toLocaleDateString("en-CA"))}"></label>
-          <label>To <input type="date" id="reportTo" value="${esc(todayLocal())}"></label>
-          <button id="loadReportBtn">Show</button>
-        </div>
-        <p class="form-error" id="reportError"></p>
-        <div id="reportArea"><p class="meta">Loading…</p></div>
-        <p class="meta">
-          Tap a shift to fix its punches — clock-in, breaks, clock-out — or to
-          add a missed break. Corrections are stamped with your name in the
-          punch log.
-        </p>
-      </div>
-    </div>
-  `;
-}
-
-let teamFixList = [];
-
-async function loadTeamHours() {
-  const from = document.getElementById("reportFrom").value;
-  const to = document.getElementById("reportTo").value;
-  showFormError("reportError", "");
-
-  const result = await api(
-    `/api/admin/clock-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
-  );
-
-  if (!result.ok) {
-    showFormError("reportError", result.error || "Could not load the report.");
-    return;
-  }
-
-  teamFixList = [];
-
-  // The server sends a day of slack each side; trim to the exact local dates.
-  const blocks = result.employees.map(person => {
-    const shifts = person.shifts.filter(s => {
-      const day = localDateOf(s.in_at);
-      return day >= from && day <= to;
-    });
-    if (!shifts.length) return "";
-
-    const total = shifts.reduce((sum, s) => sum + (s.net_minutes || 0), 0);
-    const rows = shifts.map(shift => {
-      // Someone working right now isn't a mistake to fix.
-      const working = !shift.out_at && localDateOf(shift.in_at) === todayLocal();
-      if (working) return shiftRow(shift, null);
-
-      teamFixList.push({ employee_id: person.id, in_at: shift.in_at, out_at: shift.out_at, breaks: shift.breaks || [] });
-      return shiftRow(shift, teamFixList.length - 1);
-    }).join("");
-
-    return `
-      <div class="person-block">
-        <h4>${esc(person.full_name)} <span class="meta">· ${esc(formatMinutes(total))}</span></h4>
-        <table class="hours-table"><tbody>${rows}</tbody></table>
-      </div>
-    `;
-  }).filter(Boolean);
-
-  document.getElementById("reportArea").innerHTML = blocks.length
-    ? `<div class="people-grid">${blocks.join("")}</div>`
-    : `<p class="empty-state">No clock activity between those dates.</p>`;
-
-  // The row is the control: tapping a shift opens its punches for editing,
-  // tapping it again closes them.
-  document.querySelectorAll("tr[data-fix]").forEach(tr => {
-    tr.onclick = () => {
-      const editor = document.getElementById("fixEditorRow");
-      if (editor && editor.previousElementSibling === tr) {
-        editor.remove();
-        return;
-      }
-      openFixEditor(tr, teamFixList[Number(tr.dataset.fix)]);
-    };
-  });
-}
-
 /** Date -> the browser-local "YYYY-MM-DDTHH:MM" a datetime-local input wants. */
 function toLocalInput(d) {
   const pad = n => String(n).padStart(2, "0");
@@ -913,16 +826,21 @@ function openFixEditor(row, shift) {
   // in for a punch that was never made: a missing clock-out gets in + 8h, a
   // break that never ended gets start + 30m, and an added break lands as a
   // half hour in the middle of the shift.
-  const outInitial = shift.out_at
-    ? toLocalInput(asDate(shift.out_at))
-    : toLocalInput(new Date(asDate(shift.in_at).getTime() + 8 * 3600 * 1000));
+  // A staff member's own answer ("I left at 7:30") beats any guess.
+  const outInitial = shift.suggested_out
+    ? toLocalInput(asDate(shift.suggested_out))
+    : shift.out_at
+      ? toLocalInput(asDate(shift.out_at))
+      : toLocalInput(new Date(asDate(shift.in_at).getTime() + 8 * 3600 * 1000));
 
   // datetime-local values, edited in place; Add break appends a pair.
   const breakList = (shift.breaks || []).map(b => ({
     start: toLocalInput(asDate(b.start_at)),
     end: b.end_at
       ? toLocalInput(asDate(b.end_at))
-      : toLocalInput(new Date(asDate(b.start_at).getTime() + 30 * 60000))
+      : shift.suggested_break_end
+        ? toLocalInput(asDate(shift.suggested_break_end))
+        : toLocalInput(new Date(asDate(b.start_at).getTime() + 30 * 60000))
   }));
 
   const editor = document.createElement("tr");
@@ -1021,30 +939,7 @@ function openFixEditor(row, shift) {
   render(toLocalInput(asDate(shift.in_at)), outInitial);
 }
 
-/**
- * The boss doesn't punch a clock — they read everyone else's. So this page is
- * the timesheets for them: the team report first, and their own hours only if
- * they turn out to have punches of their own.
- */
-function renderTimesheets(history) {
-  const ownShifts = history.ok ? history.shifts : [];
-
-  pageArea().innerHTML = `
-    <div class="page-header">
-      <h2>Timesheets</h2>
-      <p>Everyone's hours, with breaks deducted</p>
-    </div>
-
-    ${teamHoursCard()}
-    ${ownShifts.length ? myHoursCard(ownShifts) : ""}
-  `;
-
-  markActiveNav("clock", { wide: true });
-
-  const loadReportBtn = document.getElementById("loadReportBtn");
-  loadReportBtn.onclick = () => guard(loadTeamHours);
-  guard(loadTeamHours);
-}
+/* renderTimesheets() — the boss's view of /clock — lives in timesheets.js. */
 
 async function renderClock(pushState = true) {
   if (pushState) pushPageState("clock");
@@ -1053,6 +948,8 @@ async function renderClock(pushState = true) {
     api("/api/clock-status"),
     api("/api/clock-history")
   ]);
+  // Flags on your own hours are staff-only; the boss answers nothing.
+  const myFlags = can("manage_users") ? { ok: true, flags: [] } : await api("/api/my-timesheet-flags");
 
   if (!data.ok) {
     renderError(data.error || "Could not load clock status");
@@ -1114,11 +1011,14 @@ async function renderClock(pushState = true) {
       <p class="form-error" id="clockError"></p>
     </div>
 
+    ${myFlagsCard(myFlags.ok ? myFlags.flags : [])}
+
     ${myHoursCard(history.ok ? history.shifts : [])}
   `;
 
   markActiveNav("clock");
   wireClockButtons(() => renderClock(false));
+  wireMyFlags(myFlags.ok ? myFlags.flags : [], () => renderClock(false));
 }
 
 /* ---------- More (phone) ---------- */

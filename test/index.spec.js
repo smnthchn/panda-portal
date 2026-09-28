@@ -5,6 +5,7 @@ import { matchPath, getCookie, optionalText, requiredText, BadRequest } from "..
 import { roleOutranks, isValidRole, ROLES, ROLE_LABELS } from "../src/lib/permissions.js";
 import { optionalUrl, hiddenFromStaff } from "../src/routes/conventions.js";
 import { pairClockEvents } from "../src/routes/clock.js";
+import { payPeriodFor, stepPeriod, torontoParts, buildPeriod, holidayWindow } from "../src/routes/timesheets.js";
 import { labourRows, eventWindow } from "../src/routes/budget.js";
 import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/dashboard.js";
 import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
@@ -1294,5 +1295,236 @@ describe("Google Doc rendering", () => {
 
     expect(html).not.toContain("<img");
     expect(html).toContain("text stays");
+  });
+});
+
+describe("pay periods", () => {
+  it("splits the month at the 15th", () => {
+    expect(payPeriodFor("2026-09-01")).toEqual({ start: "2026-09-01", end: "2026-09-15" });
+    expect(payPeriodFor("2026-09-15")).toEqual({ start: "2026-09-01", end: "2026-09-15" });
+    expect(payPeriodFor("2026-09-16")).toEqual({ start: "2026-09-16", end: "2026-09-30" });
+  });
+
+  it("runs the second half to the real month end", () => {
+    expect(payPeriodFor("2026-02-20").end).toBe("2026-02-28");
+    expect(payPeriodFor("2028-02-20").end).toBe("2028-02-29");
+    expect(payPeriodFor("2026-10-31").end).toBe("2026-10-31");
+  });
+
+  it("steps across month and year boundaries", () => {
+    const sep = payPeriodFor("2026-09-20");
+    expect(stepPeriod(sep, 1)).toEqual({ start: "2026-10-01", end: "2026-10-15" });
+    expect(stepPeriod(sep, -1)).toEqual({ start: "2026-09-01", end: "2026-09-15" });
+    expect(stepPeriod(payPeriodFor("2026-01-03"), -1)).toEqual({ start: "2025-12-16", end: "2025-12-31" });
+  });
+});
+
+describe("torontoParts", () => {
+  it("puts an evening UTC stamp on the Toronto day it happened", () => {
+    // 01:30 UTC on the 16th is 21:30 EDT on the 15th.
+    expect(torontoParts("2026-09-16 01:30:00")).toEqual({ date: "2026-09-15", minutes: 21 * 60 + 30 });
+  });
+
+  it("follows daylight saving", () => {
+    // January is EST, UTC-5.
+    expect(torontoParts("2026-01-10 04:59:00").date).toBe("2026-01-09");
+    expect(torontoParts("2026-01-10 05:00:00").date).toBe("2026-01-10");
+  });
+});
+
+describe("buildPeriod", () => {
+  const period = { start: "2026-09-01", end: "2026-09-15" };
+  const kevin = { id: 1, full_name: "Kevin", role: "staff" };
+  const base = { period, employees: [kevin], scheduled: [], dismissals: [], approvals: [], now: "2026-09-20 16:00:00" };
+  const punch = (event_type, created_at, notes = null) => ({ employee_id: 1, event_type, created_at, notes });
+
+  it("counts a shift on the Toronto date it clocked in, not the UTC one", () => {
+    // Clocks in 20:00 EDT on the 15th (00:00 UTC on the 16th): still this period.
+    const people = buildPeriod({ ...base, events: [
+      punch("clock_in", "2026-09-16 00:00:00"),
+      punch("clock_out", "2026-09-16 03:00:00")
+    ] });
+    expect(people[0].shifts[0].date).toBe("2026-09-15");
+    expect(people[0].total_minutes).toBe(180);
+    expect(people[0].status).toBe("ready");
+  });
+
+  it("leaves out a shift that started in the next period", () => {
+    const people = buildPeriod({ ...base, events: [
+      punch("clock_in", "2026-09-16 14:00:00"),
+      punch("clock_out", "2026-09-16 20:00:00")
+    ] });
+    expect(people).toEqual([]);
+  });
+
+  it("flags a forgotten clock-out and blocks approval", () => {
+    const people = buildPeriod({ ...base, events: [punch("clock_in", "2026-09-03 15:00:00")] });
+    expect(people[0].flags.map(f => f.type)).toEqual(["no_clock_out"]);
+    expect(people[0].status).toBe("flagged");
+  });
+
+  it("calls an open shift today working, not forgotten", () => {
+    const people = buildPeriod({ ...base, now: "2026-09-10 18:00:00", events: [punch("clock_in", "2026-09-10 15:00:00")] });
+    expect(people[0].flags.map(f => f.type)).toEqual(["working"]);
+  });
+
+  it("flags a scheduled break that wasn't taken, and a dismissal clears it", () => {
+    const scheduled = [{ id: 9, employee_id: 1, title: "Store", shift_date: "2026-09-03", starts_at: "11:30", ends_at: "19:30", break_allotment_minutes: 30 }];
+    const events = [punch("clock_in", "2026-09-03 15:30:00"), punch("clock_out", "2026-09-03 23:30:00")];
+    const flagged = buildPeriod({ ...base, scheduled, events });
+    expect(flagged[0].flags.map(f => f.type)).toEqual(["missed_break"]);
+    expect(flagged[0].shifts[0].scheduled.id).toBe(9);
+
+    const key = flagged[0].flags[0].key;
+    const cleared = buildPeriod({ ...base, scheduled, events, dismissals: [
+      { employee_id: 1, flag_key: key, reason: "Worked through, paid", dismissed_by_name: "Sam", dismissed_at: "2026-09-16 12:00:00" }
+    ] });
+    expect(cleared[0].status).toBe("ready");
+    expect(cleared[0].flags[0].dismissed.reason).toBe("Worked through, paid");
+  });
+
+  it("flags a finished scheduled shift with no punches, for hourly staff only", () => {
+    const scheduled = [{ id: 4, employee_id: 1, title: "Store", shift_date: "2026-09-05", starts_at: "11:30", ends_at: "19:30", break_allotment_minutes: 0 }];
+    const people = buildPeriod({ ...base, scheduled, events: [] });
+    expect(people[0].flags.map(f => f.key)).toEqual(["no_show:4"]);
+
+    const volunteer = buildPeriod({ ...base, scheduled, events: [], employees: [{ ...kevin, role: "volunteer" }] });
+    expect(volunteer).toEqual([]);
+  });
+
+  it("flags a 16-hour shift and a break never ended", () => {
+    const people = buildPeriod({ ...base, events: [
+      punch("clock_in", "2026-09-03 15:00:00"),
+      punch("break_start", "2026-09-03 19:00:00"),
+      punch("clock_out", "2026-09-04 12:00:00")
+    ] });
+    expect(people[0].flags.map(f => f.type).sort()).toEqual(["long_shift", "open_break"]);
+  });
+
+  it("keeps stat-holiday hours in the total and counts them separately", () => {
+    // Labour Day 2026 is Monday 7 September.
+    const people = buildPeriod({ ...base, events: [
+      punch("clock_in", "2026-09-07 15:00:00"),
+      punch("clock_out", "2026-09-07 19:00:00"),
+      punch("clock_in", "2026-09-08 15:00:00"),
+      punch("clock_out", "2026-09-08 17:00:00")
+    ] });
+    expect(people[0].shifts[0].stat_holiday).toBe("Labour Day");
+    expect(people[0].premium_minutes).toBe(240);
+    expect(people[0].regular_minutes).toBe(120);
+    expect(people[0].total_minutes).toBe(360);
+  });
+
+  it("lists the fixes made to a shift's punches", () => {
+    const people = buildPeriod({ ...base, events: [
+      punch("clock_in", "2026-09-03 15:00:00"),
+      punch("clock_out", "2026-09-03 23:00:00", "Fixed by Sam")
+    ] });
+    expect(people[0].shifts[0].fixes).toEqual(["Fixed by Sam"]);
+  });
+
+  it("keeps a staff answer on the shift after its flag is fixed", () => {
+    const people = buildPeriod({ ...base, events: [
+      punch("clock_in", "2026-09-03 15:00:00"),
+      punch("clock_out", "2026-09-03 23:45:00", "Fixed by Sam")
+    ], responses: [
+      { employee_id: 1, flag_key: "no_clock_out:2026-09-03 15:00:00", note: "Forgot, left at 7:45", suggested_at: "2026-09-03 23:45:00", created_at: "2026-09-04 12:00:00" }
+    ] });
+    expect(people[0].flags).toEqual([]);
+    expect(people[0].shifts[0].staff_notes).toEqual([
+      { flag_type: "no_clock_out", note: "Forgot, left at 7:45", suggested_at: "2026-09-03 23:45:00", at: "2026-09-04 12:00:00" }
+    ]);
+  });
+
+  it("says changed when the punches no longer match the approval", () => {
+    const events = [punch("clock_in", "2026-09-03 15:00:00"), punch("clock_out", "2026-09-03 23:00:00")];
+    const approvals = [{ id: 7, employee_id: 1, net_minutes: 480, fingerprint: "old", approved_at: "2026-09-16 12:00:00", approved_by_name: "Sam" }];
+    const same = buildPeriod({ ...base, events, approvals, signatureHashes: new Map([[1, "old"]]) });
+    expect(same[0].status).toBe("approved");
+    const moved = buildPeriod({ ...base, events, approvals, signatureHashes: new Map([[1, "new"]]) });
+    expect(moved[0].status).toBe("changed");
+  });
+});
+
+describe("stat holiday hours", () => {
+  const period = { start: "2026-09-01", end: "2026-09-15" };
+  const kevin = { id: 1, full_name: "Kevin", role: "staff" };
+  const base = { period, employees: [kevin], dismissals: [], approvals: [], now: "2026-09-20 16:00:00" };
+  const punch = (event_type, created_at) => ({ employee_id: 1, event_type, created_at });
+
+  // Labour Day 2026 is a Monday, so its lookback is Aug 10 - Sep 6. Ten
+  // hours on each weekday of Aug 10-31 (11:00-21:00 Toronto) is 160h, all
+  // before the pay period starts.
+  const lookback = [];
+  for (let day = 10; day <= 31; day++) {
+    const date = `2026-08-${String(day).padStart(2, "0")}`;
+    const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
+    if (dow === 0 || dow === 6) continue;
+    const next = new Date(`${date}T00:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 1);
+    lookback.push(punch("clock_in", `${date} 15:00:00`), punch("clock_out", `${next.toISOString().slice(0, 10)} 01:00:00`));
+  }
+  const shiftOn = (id, date) => ({ id, employee_id: 1, title: "Store", shift_date: date, starts_at: "11:00", ends_at: "19:00", break_allotment_minutes: 0 });
+  const worked = date => [punch("clock_in", `${date} 15:00:00`), punch("clock_out", `${date} 23:00:00`)];
+
+  it("looks back over the four Monday-to-Sunday weeks before the holiday's week", () => {
+    expect(holidayWindow("2026-09-07")).toEqual({ start: "2026-08-10", end: "2026-09-06" });
+    // Christmas 2026 is a Friday: its week starts Mon Dec 21.
+    expect(holidayWindow("2026-12-25")).toEqual({ start: "2026-11-23", end: "2026-12-20" });
+  });
+
+  it("pays the lookback hours divided by 20, on top of the hours worked", () => {
+    const people = buildPeriod({
+      ...base,
+      scheduled: [shiftOn(1, "2026-09-04"), shiftOn(2, "2026-09-08")],
+      events: [...lookback, ...worked("2026-09-04"), ...worked("2026-09-08")]
+    });
+    // Sep 4 is in both the period and the lookback: 160h + 8h = 168h -> 8.4h.
+    const h = people[0].holidays[0];
+    expect(h.lookback_minutes).toBe(168 * 60);
+    expect(h.minutes).toBe(504);
+    expect(h.status).toBe("counts");
+    expect(people[0].holiday_minutes).toBe(504);
+    expect(people[0].worked_minutes).toBe(960);
+    expect(people[0].total_minutes).toBe(1464);
+    expect(people[0].status).toBe("ready");
+  });
+
+  it("gives holiday hours to someone who didn't work in the period at all", () => {
+    const people = buildPeriod({ ...base, scheduled: [], events: lookback });
+    expect(people[0].shifts).toEqual([]);
+    expect(people[0].holiday_minutes).toBe(480);
+  });
+
+  it("holds the hours when they missed the last scheduled shift before, until decided", () => {
+    const scheduled = [shiftOn(1, "2026-09-04"), shiftOn(2, "2026-09-08")];
+    const events = [...lookback, ...worked("2026-09-08")];
+    const held = buildPeriod({ ...base, scheduled, events });
+    expect(held[0].holidays[0].status).toBe("held");
+    expect(held[0].holiday_minutes).toBe(0);
+    expect(held[0].status).toBe("flagged");
+    expect(held[0].flags.map(f => f.key)).toContain("holiday_check:2026-09-07");
+
+    const decide = outcome => buildPeriod({ ...base, scheduled, events, dismissals: [
+      { employee_id: 1, flag_key: "holiday_check:2026-09-07", reason: "x", outcome, dismissed_by_name: "Sam", dismissed_at: "2026-09-16 12:00:00" }
+    ] })[0];
+    expect(decide("counts").holiday_minutes).toBe(480);
+    expect(decide("not").holiday_minutes).toBe(0);
+    expect(decide("not").holidays[0].status).toBe("not");
+  });
+
+  it("holds the hours while their first shift after hasn't happened yet", () => {
+    const people = buildPeriod({
+      ...base,
+      now: "2026-09-07 20:00:00",
+      scheduled: [shiftOn(1, "2026-09-04"), shiftOn(2, "2026-09-08")],
+      events: [...lookback, ...worked("2026-09-04")]
+    });
+    expect(people[0].holidays[0].status).toBe("held");
+  });
+
+  it("gives no holiday hours to the boss or volunteers", () => {
+    const people = buildPeriod({ ...base, scheduled: [], events: lookback, employees: [{ ...kevin, role: "volunteer" }] });
+    expect(people).toEqual([]);
   });
 });

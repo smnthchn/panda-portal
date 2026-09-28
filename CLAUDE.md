@@ -10,7 +10,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 96 tests
+npm test               # vitest, 182 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -57,6 +57,7 @@ public/
   conventions.js        Conventions
   resources.js          Resources — the store's image library
   schedule.js           Schedule builder
+  timesheets.js         Timesheets — pay periods, flags, approval, Excel export
   app.js                shell, login, dashboard, KB, My Folder, Clock, Appearance
 migrations/             numbered SQL, applied via wrangler
 ```
@@ -66,8 +67,8 @@ Script order in `index.html` matters: `core.js` defines the helpers, `app.js` ca
 
 ## Design language
 
-Phone-first retro UI, from the Claude Design handoff (`design_handoff_panda_portal/`,
-kept outside the repo). The rules that make it cohere:
+Phone-first retro UI, from the Claude Design handoff (`design/v1` and `design/v2`,
+bundles kept out of git; status in `design/DESIGN-STATUS.md`). The rules that make it cohere:
 
 - **2px solid ink outlines** on every card, never a 1px hairline.
 - **Chunky radii**: cards 16px, inner blocks 14px, buttons 12px, pills 999px.
@@ -701,8 +702,9 @@ flagged and never counted toward a total. Timestamps are UTC (SQLite
 local time — don't group by date in SQL, or evening shifts land on the next day.
 
 **The boss doesn't punch a clock, they read everyone else's.** `/clock` renders
-as **Timesheets** for anyone with `manage_users` — the team report, no clock
-buttons — and their own hours appear only if they turn out to have punches. The
+as **Timesheets** (`public/timesheets.js`, `routes/timesheets.js`) for anyone
+with `manage_users` — no clock buttons — and their own hours appear only if
+they turn out to have punches. The
 nav calls it Hours/Timesheets for them, Clock for everyone else. The dashboard
 likewise gives the boss the floor instead of a clock card.
 
@@ -716,6 +718,71 @@ Closing someone's trailing open shift also resets their live status, or their
 next Clock In would be rejected. Forgotten clock-outs usually surface as a
 ~24-hour shift (people clock out the next morning when the portal tells them
 they're still in), so 16h+ shifts are flagged "check this" in the report.
+
+### Pay periods and approval
+
+Timesheets works in **pay periods, 1st–15th and 16th–month end** (Sam's
+schedule). Unlike the rest of the clock, the period is decided **server-side
+in Toronto time** (`torontoParts()` via `Intl`, `payPeriodFor()`), because
+approval locks it and "which shifts are in" has to be one answer. A shift
+belongs to the Toronto date it clocked in on.
+
+`buildPeriod()` is pure and tested; it pairs punches, matches each worked shift
+to the scheduled shift it overlaps most, and raises flags. `fix` flags (no
+clock-out, break never ended) clear only by fixing punches; `check` flags (16h+
+shift, scheduled break not taken, scheduled shift with no punches) can be
+dismissed with a reason (`timesheet_flag_dismissals`); `working` clears at
+clock-out. No-shows are only chased for `staff` and `seasonal` — the boss and
+volunteers don't clock. Nothing is approved with a flag open, and the approve
+endpoint rebuilds the period itself rather than trusting the screen.
+
+**Only the boss approves**, per person, plus "approve everyone ready".
+`timesheet_approvals` is the log: an unlock stamps `unlocked_at` rather than
+deleting, and a partial unique index allows one live approval per person per
+period. The clock fix refuses to touch punches in an approved period
+(`approvedPeriodTouching()`). A punch that lands in an approved period anyway
+(a staff clock-in) changes the stored SHA-256 fingerprint of the shifts, and
+the person shows **CHANGED** until unlocked and re-approved.
+
+**Stat holiday hours** (Ontario public holiday pay, as hours): for each
+statutory holiday in the period, hours worked in the **four Monday-to-Sunday
+work weeks before the holiday's own week**, ÷ 20 (`holidayWindow()`;
+Labour Day 2026, a Monday, looks back Aug 10 – Sep 6). Hourly roles only.
+Hours worked *on* the holiday are the **Stat Holiday Premium Pay Hours** (Sam
+uses ESA Option B: holiday pay plus 1.5× for working it, no substitute day).
+Regular + premium + stat holiday = total, nothing counted twice — the total is
+what the T4 should show. The **last-and-first rule** is checked against the
+schedule: no punches on the last scheduled shift before or the first after
+(or it not having happened yet) raises a `holiday_check` flag, a `decide`
+kind with Counts / Doesn't count (`outcome` on the dismissal row); the hours
+are held until decided. No scheduled shift on a side isn't a miss — the
+schedule may not be built that far. Only statutory holidays count; the civic
+holiday is `statutory: false`.
+
+**Staff see and answer flags on their own hours** — a CHECK YOUR HOURS card
+on their Clock page, for this period and the last, unless approved.
+`STAFF_FLAG_TYPES` are the answerable ones (no holiday or changed flags).
+They send a note, plus a time for a missing clock-out, open break or 16h
+shift (`timesheet_flag_responses`, one per flag). **Staff never change
+punches**: the boss sees the answer on the flag and a "Use 7:30 PM" button
+that opens the fix editor with it filled in; saving is still the boss's tap.
+**An answer outlives its flag**: each shift carries `staff_notes` (matched by
+the clock-in stamp in the flag key), shown under the person's shifts once the
+flag is fixed and in the export's Staff note column — the reason for a fix
+stays on the record.
+The staff time box is a plain `<input type="time">`, like the clock-out fix
+it feeds — a minute-accurate answer, not a quarter-hour pick; a time before
+the clock-in means past midnight.
+
+The **Excel export is for Sam's records, not an import** — she types hours into
+QuickBooks by hand because QBO payroll is unreliable (its stat-holiday method
+drops the hours from the T4 total). SheetJS 0.18.5 is loaded from cdnjs only
+when someone exports; the workbook is built in the browser: Summary (with a
+total row, the four hour columns and each holiday's calculation), Shifts
+(every punch, fix, flag, staff answer and no-show) and Log. Hours are decimal
+numbers so Excel can sum them. **Pass `json_to_sheet` an explicit header
+list** — it otherwise takes the columns from the first row, and a no-show row
+(fewer fields) coming first scrambled the Shifts sheet.
 
 ## Secrets
 
