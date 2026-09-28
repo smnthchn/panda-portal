@@ -11,7 +11,7 @@ integration** — Sam types everything into QBO by hand because QBO payroll is
 glitchy (e.g. its "correct" stat-holiday method leaves the hours out of the
 total, so the T4 hours come out wrong). The export is for her own records.
 
-### Phase 1 — pay periods, flags, approval, export (built locally 2026-09-28, not deployed)
+### Phase 1 — pay periods, flags, approval, export (LIVE 2026-09-28, commit d7bf928)
 
 - Periods are fixed: **1st–15th** and **16th–month end**. Timesheets opens on
   the current period with ‹ › stepping. Periods are decided in Toronto time,
@@ -67,19 +67,26 @@ not Aug 3–30 as first said.
 Phase 1 status: migration `0047_timesheets.sql`, `src/routes/timesheets.js`,
 `public/timesheets.js`, lock added to the clock fix. 182 tests pass. Tried on
 local test data: fix, dismiss, approve, approve-all, lock, changed-after-
-approval, unlock, export contents. **Not committed, not migrated remote, not
-deployed.** Local D1 has seeded test punches for Aug–Sep 2026 and local
+approval, unlock, export contents. **Deployed 2026-09-28**: 0047 applied to
+production (confirmed in d1_migrations), `wrangler deploy` (version
+b00379cc), then pushed; the GitHub Deploy workflow also passed on the same
+commit, its first real run since it was set up. Local D1 has seeded test punches for Aug–Sep 2026 and local
 session rows `local-ts-test-session` (Sam) and `local-ts-staff-session`
 (Test Staff), local only. Local D1 got 0047's later additions by hand
 (`outcome` column, responses table), since 0047 was already applied there.
 
 ## Open items
 
-- Sam to try Phase 1 locally, then decide on commit + deploy (migration 0047
-  goes remote first; follow the three-step deploy in CLAUDE.md).
-- Phase 2 next, after Phase 1 is live and used for one payday.
+- Use Phase 1 for the Sep 16–30 payday; note anything that's off. Its
+  first real stat holiday is Thanksgiving (Mon Oct 12, 2026), period Oct 1–15:
+  hand-check that one against the portal.
+- Phase 2 (positions, rates, pay timeline) next, after that payday.
+- `design/` is untracked (DESIGN-STATUS.md etc.); decide whether it belongs
+  in git. Bundles under design/v*/ are ignored.
+- GitHub Actions warns Node 20 actions are deprecated and ubuntu-latest moves
+  to Ubuntu 26 from Oct 19, 2026; bump actions/checkout and setup-node when
+  convenient.
 
-- Local `master` is 35 commits ahead of `origin/master` (found 2026-09-28).
-  GitHub is supposed to be the source of truth — ask Sam before pushing.
-- Uncommitted from an earlier session: `.gitignore` (design bundles) and a
-  small `CLAUDE.md` edit.
+Resolved 2026-09-28: the 35 unpushed commits were all older than the last
+manual deploy (Sep 4) and were pushed with this work; GitHub now matches
+production.
