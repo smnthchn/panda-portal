@@ -1,92 +1,31 @@
-# Handoff
-
-Session notes. Durable decisions go in CLAUDE.md once built; this file is
-where we are and what's next.
-
-## Timesheets & payroll (started 2026-09-28)
-
-Scope agreed with Sam: the portal produces **hours she can trust** and an
-estimated gross for staff to see. **No taxes, no deductions, no QuickBooks
-integration** — Sam types everything into QBO by hand because QBO payroll is
-glitchy (e.g. its "correct" stat-holiday method leaves the hours out of the
-total, so the T4 hours come out wrong). The export is for her own records.
-
-### Phase 1 — pay periods, flags, approval, export (LIVE 2026-09-28, commit d7bf928)
-
-- Periods are fixed: **1st–15th** and **16th–month end**. Timesheets opens on
-  the current period with ‹ › stepping. Periods are decided in Toronto time,
-  server-side; a shift belongs to the day it clocked in.
-- Flags per person: no clock-out, break never ended, 16h+ shift, scheduled
-  break not taken, scheduled shift with no punches (no-show). No clock-out and
-  an open break must be fixed; the others can be dismissed with a reason.
-- **Only the boss approves**, one person at a time, plus "approve everyone
-  with no open flags". Approval locks those punches; fixing them needs an
-  unlock, and unlocks are kept as a log.
-- Excel export (SheetJS from cdnjs, built in the browser): summary sheet,
-  punch-detail sheet with fixes, and an approval log. Stat-holiday hours worked
-  get their own column.
-
-### Phase 2 — positions, rates, pay timeline
-
-- A Positions list; each person holds one or more positions, each with a
-  dated rate history (a raise is a new row, never an edit) and a main position.
-- **The schedule decides the position**: shifts get a position picker; punches
-  follow their matching shift; unscheduled punches go to the main position;
-  the boss can change a worked shift's position during review.
-- Timeline on the Staff page — automatic (first day worked, anniversaries,
-  rate/position changes) plus manual (bonus, job change, note).
-- **Staff see their own** positions, rates and timeline, read-only.
-
-### Phase 3 — estimated gross
-
-- Hours × rate per position, **stat holiday pay** and **stat premium**.
-  Sam uses **Option B**: holiday pay plus 1.5× for hours worked on the
-  holiday, no substitute day. No vacation pay, no overtime, no bonuses in the
-  estimate.
-- Holiday pay (Ontario ESA): regular wages in the 4 work weeks before the
-  holiday's work week ÷ 20. Only the 9 statutory holidays (civic holiday is
-  `statutory: false`). **Last-and-first rule** checked against the schedule
-  and flagged; the boss can override ("counts anyway"). Rates must be
-  backdated at least 4 weeks for the first holiday to come out right.
-- Export shows holiday pay as dollars **and** equivalent hours (÷ rate),
-  included in total hours, for honest T4 hours.
-- Staff see it **live** on a My pay page, labelled "Estimate", updating
-  after each shift.
-- Hand-check a holiday period against the portal before staff see it.
-
-Added to Phase 1 (same session): **stat holiday hours** (lookback ÷ 20,
-Mon–Sun work weeks, last-and-first check with Counts / Doesn't count) and
-**premium pay hours** (worked on the holiday) as their own columns, with
-Regular + Premium + Stat Holiday = Total; and **staff can see and answer
-their flags** (note + time) from the Clock page, with a one-tap "Use their
-time" for the boss. Staff notes stay visible on the shift (and in the
-export) after the flag is fixed. Correction given to Sam: Labour Day 2026's lookback is
-Aug 10 – Sep 6 (the holiday is a Monday, so its own week starts that day),
-not Aug 3–30 as first said.
-
-Phase 1 status: migration `0047_timesheets.sql`, `src/routes/timesheets.js`,
-`public/timesheets.js`, lock added to the clock fix. 182 tests pass. Tried on
-local test data: fix, dismiss, approve, approve-all, lock, changed-after-
-approval, unlock, export contents. **Deployed 2026-09-28**: 0047 applied to
-production (confirmed in d1_migrations), `wrangler deploy` (version
-b00379cc), then pushed; the GitHub Deploy workflow also passed on the same
-commit, its first real run since it was set up. Local D1 has seeded test punches for Aug–Sep 2026 and local
-session rows `local-ts-test-session` (Sam) and `local-ts-staff-session`
-(Test Staff), local only. Local D1 got 0047's later additions by hand
-(`outcome` column, responses table), since 0047 was already applied there.
+# Handoff: Panda Portal
 
 ## Open items
+- [Sam] Run the Sep 16–30 payday through the new Timesheets: clear or fix flags, approve everyone, Export to Excel, check the file against what you type into QBO, and tell Claude anything that's off (added 2026-09-28)
+- [Sam] Thanksgiving check (Mon Oct 12, 2026, Oct 1–15 period): pick one person, add up their hours Sep 7 to Oct 4 by hand, divide by 20, and compare with the "Stat Holiday Hours" the portal shows (added 2026-09-28)
+- [Sam] Decide whether `design/` (DESIGN-STATUS.md and the ignored bundles) should be committed to git; it's untracked right now (added 2026-09-28)
+- [Claude] Build Phase 2 (positions, dated rates, position picker on shifts, pay timeline, read-only view for staff) as planned in `docs/payroll-plan.md`, after the Sep 16–30 payday (added 2026-09-28)
+- [Claude] Bump `actions/checkout` and `actions/setup-node` in `.github/workflows/*.yml`: Actions warns that Node 20 is deprecated, and ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (added 2026-09-28)
 
-- Use Phase 1 for the Sep 16–30 payday; note anything that's off. Its
-  first real stat holiday is Thanksgiving (Mon Oct 12, 2026), period Oct 1–15:
-  hand-check that one against the portal.
-- Phase 2 (positions, rates, pay timeline) next, after that payday.
-- `design/` is untracked (DESIGN-STATUS.md etc.); decide whether it belongs
-  in git. Bundles under design/v*/ are ignored.
-- GitHub Actions warns Node 20 actions are deprecated and ubuntu-latest moves
-  to Ubuntu 26 from Oct 19, 2026; bump actions/checkout and setup-node when
-  convenient.
+## Parked
 
-Resolved 2026-09-28: the 35 unpushed commits were all older than the last
-manual deploy (Sep 4) and were pushed with this work; GitHub now matches
-production.
+---
+
+## 2026-09-28
+**Done:**
+- Timesheets now work in pay periods (1st–15th, 16th–end, Toronto time). They have flags (no clock-out, open break, 16h+ shift, missed scheduled break, no-show), approval by the boss per person or for everyone ready, locking with a logged unlock, and an Excel export for Sam's records (Summary, Shifts, Log).
+- Stat holiday hours: the 4 Mon–Sun weeks before the holiday's week ÷ 20, held behind a last-and-first check that the boss decides (Counts / Doesn't count). Premium pay hours are the hours worked on the holiday. Regular + Premium + Stat Holiday = Total.
+- Staff see and answer flags on their own hours from the Clock page, giving a note and a time. The boss has a one-tap "Use 7:45 PM" to apply it. Staff notes stay on the shift and in the export after the fix.
+- Agreed Phase 2 and 3 (positions, rates, timeline, estimated gross, Option B) and wrote them into `docs/payroll-plan.md`.
+- Deployed: migration 0047 on production (confirmed in d1_migrations), `wrangler deploy` (version b00379cc), pushed. The GitHub Deploy workflow passed on both pushes, so pushing to master now reliably deploys. The 35 old unpushed commits (all older than the Sep 4 deploy) went up with it, so GitHub matches production.
+
+**Left off:** Phase 1 is live but hasn't been used for a real payday yet. Timesheets on production were only checked with logged-out requests: the routes answer and the new script loads. The full flow was tested on local data only.
+
+**Next:**
+1. Hear back from Sam on the Sep 16–30 payday and fix anything that comes up.
+2. Thanksgiving hand check around Oct 12–15.
+3. Start Phase 2.
+
+**State:** everything is committed, pushed and deployed. Untracked: `design/` (waiting on Sam), plus `HANDOFF.md` edits and the new `docs/payroll-plan.md` from this wrapup, not committed yet. Local D1 only: seeded Aug–Sep 2026 test punches and session rows `local-ts-test-session` (Sam) and `local-ts-staff-session` (Test Staff). Migration 0047 was edited after it was first applied locally, so local D1 got the `outcome` column and the responses table by hand. Production got the final version.
+
+**Closed:** Try Phase 1 and decide on commit + deploy (done), 35 unpushed commits on master (done: pushed, they predated the last deploy), uncommitted .gitignore / CLAUDE.md edit from an earlier session (done: committed with d7bf928)

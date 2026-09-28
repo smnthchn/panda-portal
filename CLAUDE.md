@@ -24,7 +24,12 @@ applied**. It's a wrangler bug, not an auth or account problem. Because it exits
 non-zero, `npm run migrate:remote && npm run deploy` will silently skip the deploy
 and leave production running old code against a new schema.
 
-Deploy in three steps instead:
+**Pushing to `master` deploys.** `.github/workflows/deploy.yml` runs the
+tests, then these same three steps, on every push that touches anything
+outside `.github/` (so a HANDOFF.md-only push redeploys too). Its first real
+run was 2026-09-28. A push is a production decision.
+
+Deploying by hand, it's three steps:
 
 1. `npm run migrate:remote` — may print a spurious error
 2. `npm run migrate:check` — "No migrations to apply!" means step 1 worked
@@ -720,6 +725,9 @@ next Clock In would be rejected. Forgotten clock-outs usually surface as a
 they're still in), so 16h+ shifts are flagged "check this" in the report.
 
 ### Pay periods and approval
+
+The agreed but unbuilt next phases (positions and rates, pay timeline,
+estimated gross) are in `docs/payroll-plan.md`.
 
 Timesheets works in **pay periods, 1st–15th and 16th–month end** (Sam's
 schedule). Unlike the rest of the clock, the period is decided **server-side
