@@ -3,13 +3,16 @@
 ## Open items
 - [Sam] Run the Sep 16–30 payday through the new Timesheets: clear or fix flags, approve everyone, Export to Excel, check the file against what you type into QBO, and tell Claude anything that's off (added 2026-09-28)
 - [Sam] Thanksgiving check (Mon Oct 12, 2026, Oct 1–15 period): pick one person, add up their hours Sep 7 to Oct 4 by hand, divide by 20, and compare with the "Stat Holiday Hours" the portal shows (added 2026-09-28)
-- [Sam] Decide whether `design/` (DESIGN-STATUS.md and the ignored bundles) should be committed to git; it's untracked right now (added 2026-09-28)
 - [Claude] Build Phase 2 (positions, dated rates, position picker on shifts, pay timeline, read-only view for staff) as planned in `docs/payroll-plan.md`, after the Sep 16–30 payday (added 2026-09-28)
 - [Claude] Bump `actions/checkout` and `actions/setup-node` in `.github/workflows/*.yml`: Actions warns that Node 20 is deprecated, and ubuntu-latest moves to Ubuntu 26 from 2026-10-19 (added 2026-09-28)
 
 ## Parked
 
 ---
+
+## 2026-09-29 (mid-session note)
+**Closed:** Decide whether `design/` goes in git (done: DESIGN-STATUS.md committed, the v1/v2 bundles stay ignored)
+
 
 ## 2026-09-28
 **Done:**
