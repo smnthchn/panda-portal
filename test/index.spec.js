@@ -5,7 +5,7 @@ import { matchPath, getCookie, optionalText, requiredText, BadRequest } from "..
 import { roleOutranks, isValidRole, ROLES, ROLE_LABELS } from "../src/lib/permissions.js";
 import { optionalUrl, hiddenFromStaff } from "../src/routes/conventions.js";
 import { pairClockEvents } from "../src/routes/clock.js";
-import { payPeriodFor, stepPeriod, torontoParts, buildPeriod, holidayWindow } from "../src/routes/timesheets.js";
+import { payPeriodFor, stepPeriod, torontoParts, buildPeriod, holidayWindow, rowKeys, tickBlocker } from "../src/routes/timesheets.js";
 import { labourRows, eventWindow } from "../src/routes/budget.js";
 import { segmentsFor, buildRoster, liveStatusFromEvents } from "../src/routes/dashboard.js";
 import { parseAvatarDataUri, avatarUrlFor } from "../src/routes/staff.js";
@@ -1337,6 +1337,23 @@ describe("buildPeriod", () => {
   const kevin = { id: 1, full_name: "Kevin", role: "staff" };
   const base = { period, employees: [kevin], scheduled: [], dismissals: [], approvals: [], now: "2026-09-20 16:00:00" };
   const punch = (event_type, created_at, notes = null) => ({ employee_id: 1, event_type, created_at, notes });
+
+  it("gives each row a tick key, with the flags on that row, and reads the ticks back", () => {
+    const people = buildPeriod({ ...base,
+      events: [
+        punch("clock_in", "2026-09-03 15:00:00"), punch("clock_out", "2026-09-03 23:00:00"),
+        punch("clock_in", "2026-09-04 15:00:00")
+      ],
+      ticks: [{ employee_id: 1, row_key: "shift:2026-09-03 15:00:00", ticked_by_name: "Sam", ticked_at: "2026-09-16 12:00:00" }]
+    });
+    const rows = rowKeys(people[0]);
+    expect(rows.map(r => r.key)).toEqual(["shift:2026-09-03 15:00:00", "shift:2026-09-04 15:00:00"]);
+    expect(people[0].ticks["shift:2026-09-03 15:00:00"].by).toBe("Sam");
+    expect(tickBlocker(rows[0].flags)).toBeNull();
+    // No clock-out: the hours are wrong, so the row can't be ticked until fixed.
+    expect(rows[1].flags.map(f => f.type)).toEqual(["no_clock_out"]);
+    expect(tickBlocker(rows[1].flags)).toMatch(/Fix the punches/);
+  });
 
   it("counts a shift on the Toronto date it clocked in, not the UTC one", () => {
     // Clocks in 20:00 EDT on the 15th (00:00 UTC on the 16th): still this period.

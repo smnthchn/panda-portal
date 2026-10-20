@@ -139,7 +139,7 @@ Screens that are a phone screen stay in a 560px column on desktop. Data-dense
 ones opt into the full width by passing `markActiveNav(view, { wide: true })` —
 Timesheets and Users & Roles do. Every render calls `markActiveNav`, so the
 width can't leak from the previous screen. Widening buys more rows on screen
-(timesheets go side by side, the permission table stops scrolling), never
+(the timesheets table gets its Notes column, the permission table stops scrolling), never
 longer lines of prose.
 
 ## Dashboard
@@ -743,6 +743,8 @@ dismissed with a reason (`timesheet_flag_dismissals`); `working` clears at
 clock-out. No-shows are only chased for `staff` and `seasonal` — the boss and
 volunteers don't clock. Nothing is approved with a flag open, and the approve
 endpoint rebuilds the period itself rather than trusting the screen.
+
+**The boss screen is one table** (Sep 2026, Sam's design): a group of rows per person, their name, a row per shift, no-show and holiday check in date order, then their total, with everyone's total in the `<tfoot>`. **Name and total rows always look the same** (never red) so each person's block is easy to find; only a shift row with a flag still to deal with goes **light red** (`color-mix()` of `--alert`, so it works in every theme). Icons sit at the end of the row: a small red ! while a flag is open, a note icon when something is written down (a staff answer, a typed reason), and a **tick on every row**. The tick is Sam's review bookmark ("I've looked at this one", so a half-done review can be paused, or a corrected row marked), not an approval; it's stored in `timesheet_row_ticks` (migration 0048) by row key: `shift:<clock-in>`, `no_show:<shift id>` or `holiday:<date>`, from `rowKeys()`. Ticking a row with `check` flags also dismisses them as "Checked", and unticking brings them back, so the tick and the red can't disagree. A row can't be ticked while its hours are wrong, running or undecided (`tickBlocker()`, the same rule on both sides). Grey is unticked, green ticked. **Approve all** (one person, `approve_all: true`) ticks every row, marks every look-at-it flag fine and approves in one batch; it refuses while a fix or decide flag is open. Approve everyone ready ticks the rows of everyone it approves too. Flag details and notes aren't in the table: tapping a row opens them, above the fix editor (`detailHtml` on the shift passed to `openFixEditor()`), or on their own for rows that can't be edited. The table's clicks go through one delegated listener on `#reportArea`, because the detail and its buttons are drawn after the table. Tapping a name folds that person to their total row, and **Totals only** folds everyone; the folded set is `tsCollapsed`, kept across redraws. On a phone the table scrolls sideways inside its card.
 
 **Only the boss approves**, per person, plus "approve everyone ready".
 `timesheet_approvals` is the log: an unlock stamps `unlocked_at` rather than

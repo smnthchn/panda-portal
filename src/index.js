@@ -76,6 +76,7 @@ import {
   handleUnlockTimesheet,
   handleDismissFlag,
   handleUndismissFlag,
+  handleTickRow,
   handleMyFlags,
   handleRespondToFlag
 } from "./routes/timesheets.js";
@@ -147,6 +148,7 @@ const ROUTES = [
   ["POST", "/api/admin/timesheets/unlock", handleUnlockTimesheet],
   ["POST", "/api/admin/timesheets/dismiss", handleDismissFlag],
   ["POST", "/api/admin/timesheets/undismiss", handleUndismissFlag],
+  ["POST", "/api/admin/timesheets/tick", handleTickRow],
   ["GET", "/api/my-timesheet-flags", handleMyFlags],
   ["POST", "/api/my-timesheet-flags/respond", handleRespondToFlag],
   ["POST", "/api/clock-in", (req, env) => handleClockEvent(req, env, "clock_in")],

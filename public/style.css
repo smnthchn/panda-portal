@@ -434,14 +434,6 @@ button:disabled {
     max-width: 1180px;
   }
 
-  /* Several people's timesheets side by side rather than one long scroll. */
-  .page.wide .people-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
-    gap: 0 28px;
-    align-items: start;
-  }
-
   .page.wide .perm-rows {
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   }
@@ -1463,11 +1455,6 @@ textarea::placeholder {
   margin-top: 4px;
 }
 
-/* Timesheets: a person's flags sit above their shifts, open ones first. */
-.ts-person {
-  margin-bottom: 18px;
-}
-
 .ts-flags {
   list-style: none;
   margin: 6px 0 8px;
@@ -1546,16 +1533,233 @@ button.ts-mini {
   font-size: 12px;
 }
 
-.ts-footer {
+/*
+ * Timesheets table: everyone in one table, a person per group of rows (name,
+ * shifts, then their total), everyone's total at the foot. Name and total
+ * rows always look the same, so each person's block is easy to find; only a
+ * shift row with a flag to deal with goes light red. Icons sit at the end.
+ */
+.ts-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ts-scroll {
+  overflow-x: auto;
+}
+
+.ts-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 14.5px;
+}
+
+.ts-table th {
+  text-align: left;
+  padding: 10px 12px;
+  background: var(--chip);
+  border-bottom: 2px solid var(--ink);
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ts-table td {
+  padding: 9px 12px;
+  border-bottom: 2px solid var(--track);
+  vertical-align: middle;
+}
+
+.ts-table .ts-num {
+  text-align: right;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ts-table .ts-date,
+.ts-table tr.ts-shift td:nth-child(2),
+.ts-table tr.ts-shift td:nth-child(3),
+.ts-table tr.ts-total-row td:nth-child(2),
+.ts-grand-row td:nth-child(2) {
+  white-space: nowrap;
+}
+
+/* The icon column: flag, note, check, in that order, right-aligned. */
+.ts-table .ts-icons {
+  text-align: right;
+  white-space: nowrap;
+  width: 1%;
+}
+
+.ts-icons > * {
+  vertical-align: middle;
+}
+
+.ts-icons > * + * {
+  margin-left: 6px;
+}
+
+.ts-name-row td,
+.ts-total-row td {
+  background: var(--paper);
+  font-family: "Fredoka", sans-serif;
+  cursor: pointer;
+}
+
+.ts-name-row td {
+  border-top: 2px solid var(--ink);
+  font-size: 15.5px;
+}
+
+.ts-group:first-of-type .ts-name-row td {
+  border-top: none;
+}
+
+.ts-total-row td {
+  border-bottom: 2px solid var(--ink);
+}
+
+.ts-collapsed .ts-total-row td {
+  border-top: 2px solid var(--ink);
+}
+
+.ts-group:first-of-type.ts-collapsed .ts-total-row td {
+  border-top: none;
+}
+
+.ts-total-row .ts-num {
+  font-size: 15.5px;
+}
+
+.ts-badge {
+  float: right;
+}
+
+.ts-chevron {
+  display: inline-block;
+  width: 18px;
+  color: var(--muted);
+}
+
+.ts-grand-row td {
+  background: var(--chip);
+  font-family: "Fredoka", sans-serif;
+  font-size: 15.5px;
+  border-bottom: none;
+}
+
+.ts-table tr.row-fix {
+  cursor: pointer;
+}
+
+.ts-table tr.row-fix:hover td {
+  background: var(--chip);
+}
+
+/* Flagged: the whole shift row a light red, in every theme. */
+.ts-table tr.ts-flagged td,
+.ts-table tr.ts-flagged.row-fix:hover td {
+  background: color-mix(in srgb, var(--alert) 12%, var(--surface));
+}
+
+.ts-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.ts-ico-flag {
+  border-radius: 999px;
+  background: var(--alert);
+  color: var(--surface);
+  font-family: "Fredoka", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ts-item .ts-ico-flag,
+.pill .ts-ico-flag {
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+
+.ts-ico-note {
+  color: var(--muted);
+}
+
+.ts-ico svg,
+.ts-check svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* A bare tick: grey until tapped, green once a flag is marked fine. */
+button.ts-check {
+  --edge: 0px;
+  --depress: 0px;
+  width: 26px;
+  height: 26px;
+  padding: 2px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: color-mix(in srgb, var(--muted) 55%, var(--surface));
+  box-shadow: none;
+}
+
+button.ts-check:hover {
+  background: var(--chip);
+}
+
+button.ts-check.on {
+  color: var(--go-text);
+}
+
+button.ts-check:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* A row's notes and flag details, opened by tapping it. */
+.ts-detail {
+  margin: 2px 0 10px;
+  padding: 10px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 13.5px;
+}
+
+.ts-item {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
+  margin: 0 0 6px;
 }
 
-.ts-footer .meta {
-  margin: 0;
+.ts-item:last-child {
+  margin-bottom: 0;
+}
+
+.ts-item > span:first-child {
   flex: 1 1 200px;
+}
+
+.ts-item-done {
+  color: var(--muted);
+}
+
+.ts-table .form-error:empty {
+  display: none;
 }
 
 /* ---------- Conventions ---------- */
