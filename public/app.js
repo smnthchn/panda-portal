@@ -860,7 +860,8 @@ function openFixEditor(row, shift) {
 
   const render = (inValue, outValue) => {
     editor.innerHTML = `
-      <td colspan="4">
+      <td colspan="${row.children.length}">
+        ${shift.detailHtml ? `<div class="ts-detail">${shift.detailHtml}</div>` : ""}
         <div class="inline-form">
           <label>Clock-in <input type="datetime-local" id="fixInInput" value="${esc(inValue)}"></label>
           ${breakList.map((b, i) => {

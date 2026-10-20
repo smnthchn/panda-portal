@@ -12,6 +12,8 @@
 let tsDate = null;      // any date inside the period being shown; null = today's
 let tsData = null;      // the last /api/admin/timesheets answer
 let teamFixList = [];   // row index -> the shift its fix editor opens
+const tsCollapsed = new Set(); // people folded down to their totals; kept across redraws
+let tsDetails = [];     // row index -> the notes and flag details shown when it's tapped
 
 const TS_STATUS = {
   approved: { label: "APPROVED", cls: "pill-go" },
@@ -93,6 +95,7 @@ function drawTimesheets() {
 
   const count = status => people.filter(p => p.status === status).length;
   const ready = count("ready");
+  const flagged = count("flagged");
   const totalMinutes = people.reduce((sum, p) => sum + p.total_minutes, 0);
 
   document.getElementById("tsSummary").innerHTML = `
@@ -102,13 +105,15 @@ function drawTimesheets() {
         <div class="badge-row">
           <span class="pill pill-go">${count("approved")} APPROVED</span>
           <span class="pill pill-paper">${ready} READY</span>
-          <span class="pill pill-warm">${count("flagged") + count("changed")} NEED A LOOK</span>
+          ${flagged ? `<span class="pill pill-paper">${tsFlagIcon("Has flags")} ${flagged} FLAGGED</span>` : ""}
+          ${count("changed") ? `<span class="pill pill-late">${count("changed")} CHANGED</span>` : ""}
         </div>
         ${stats.length ? `<p class="meta">Stat holiday${stats.length > 1 ? "s" : ""}: ${stats.map(h => `${esc(h.name)} (${esc(formatDate(h.date))})`).join(", ")}. Hours worked on ${stats.length > 1 ? "them" : "it"} are counted separately in the export.</p>` : ""}
         ${isCurrent ? `<p class="meta">This period is still running. Approve once everyone's last shift is in.</p>` : ""}
         <div class="button-row">
           <button class="btn-go" id="tsApproveAllBtn" ${ready ? "" : "disabled"}>Approve everyone ready${ready ? ` (${ready})` : ""}</button>
           <button class="btn-quiet" id="tsExportBtn" ${people.length ? "" : "disabled"}>Export to Excel</button>
+          ${people.length ? `<button class="btn-quiet" id="tsCollapseAllBtn">${people.every(p => tsCollapsed.has(p.id)) ? "Show all shifts" : "Totals only"}</button>` : ""}
         </div>
         <p class="form-error" id="tsSummaryError"></p>
       </div>
@@ -116,24 +121,48 @@ function drawTimesheets() {
   `;
 
   teamFixList = [];
-  const blocks = people.map(personBlock);
+  tsDetails = [];
 
-  document.getElementById("reportArea").innerHTML = blocks.length
-    ? `<div class="people-grid">${blocks.join("")}</div>
-       <p class="meta">Tap a shift to fix its punches: clock-in, breaks, clock-out, or add a missed break. Corrections are stamped with your name.</p>`
+  document.getElementById("reportArea").innerHTML = people.length
+    ? `
+      <div class="card ts-card">
+        <div class="ts-scroll">
+          <table class="ts-table">
+            <thead>
+              <tr><th>Date</th><th>Shift</th><th>Break</th><th class="ts-num">Hours</th><th></th></tr>
+            </thead>
+            ${people.map(personRows).join("")}
+            ${grandTotalRow(people)}
+          </table>
+        </div>
+      </div>
+      <p class="meta">Tap a shift to see its notes and fix its punches. Tick a row once you've looked at it, so you can stop and pick up where you left off; ticking a red row marks it fine. Approve all ticks everything for that person. Tap a name to fold them down to their total.</p>`
     : `<p class="empty-state">Nobody worked or was scheduled in this period.</p>`;
 
   wireTimesheets();
 }
 
-/** The server sends a no-show's shift rather than its words; times read 12-hour here like everywhere else. */
+/* Row icons, drawn at the end of each row. */
+const tsFlagIcon = title => `<span class="ts-ico ts-ico-flag" title="${esc(title)}">!</span>`;
+const TS_NOTE_ICON = `<span class="ts-ico ts-ico-note" title="Has a note"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5h10a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5H7l-3.5 3v-3H3A1.5 1.5 0 0 1 1.5 10V4A1.5 1.5 0 0 1 3 2.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span>`;
+const TS_CHECK_SVG = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+/** "Thu, Sep 17": the period already says the year. */
+function tsDay(date) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+/** An open flag is one still to deal with; a running shift isn't a problem. */
+const isOpenFlag = f => !f.dismissed && f.type !== "working";
+
+/** The server sends a no-show's shift id rather than its words; its times are already in the row. */
 function flagDetail(person, f) {
   if (f.type === "holiday_check") {
     return (f.detail || "").replace(/\d{4}-\d{2}-\d{2}/g, d => formatDate(d));
   }
   if (f.type !== "no_show") return f.detail || "";
   const shift = person.no_shows.find(n => `no_show:${n.id}` === f.key);
-  return shift ? `${shift.title}, ${formatTime(shift.starts_at)} – ${formatTime(shift.ends_at)}` : "";
+  return shift ? shift.title : "";
 }
 
 /** What the staff member said about a flag, and their time as a one-tap fix. */
@@ -146,58 +175,244 @@ function responseHtml(person, f) {
   const canUse = r.suggested_at && !f.dismissed && !person.approval
     && ["no_clock_out", "open_break", "long_shift"].includes(f.type);
   return `
-    <span class="ts-response">
-      💬 ${esc(first)}: “${esc(r.note)}”${esc(time)}
+    <div class="ts-item">
+      <span>💬 ${esc(first)}: “${esc(r.note)}”${esc(time)}</span>
       ${canUse ? `<button class="btn-go ts-mini" data-use-time="${esc(f.key)}" data-person="${person.id}">Use ${esc(timeOf(r.suggested_at))}</button>` : ""}
-    </span>
+    </div>
   `;
 }
 
-function flagHtml(person, f) {
-  const when = f.date ? `${esc(formatDate(f.date))} · ` : "";
+/** One flag in a row's detail, opened by tapping the row. */
+function flagDetailHtml(person, f) {
+  if (f.type === "working") return `<div class="ts-item meta">Still clocked in. Can't approve until they clock out.</div>`;
+  const detail = flagDetail(person, f);
   if (f.dismissed) {
     const label = f.kind === "decide"
       ? `${f.label.replace(": may not qualify", "")}: ${f.dismissed.outcome === "counts" ? "counts" : "doesn't count"}`
       : f.label;
+    const undo = f.kind === "decide" && !person.approval
+      ? `<button class="btn-quiet ts-mini" data-undismiss="${esc(f.key)}" data-person="${person.id}">Undo</button>`
+      : "";
     return `
-      <li class="ts-flag ts-flag-done">
-        <span>✓ ${esc(label)}</span>
-        <span class="meta">${when}${esc(f.dismissed.reason)} (${esc(f.dismissed.by)})</span>
-        ${person.approval ? "" : `<button class="btn-quiet ts-mini" data-undismiss="${esc(f.key)}" data-person="${person.id}">Undo</button>`}
-        ${responseHtml(person, f)}
-      </li>
+      <div class="ts-item ts-item-done">
+        <span>✓ ${esc(label)}${detail ? ` · ${esc(detail)}` : ""} <span class="meta">(${esc(f.dismissed.reason)}, ${esc(f.dismissed.by)})</span></span>
+        ${undo}
+      </div>
+      ${responseHtml(person, f)}
     `;
   }
-  const actions = f.kind === "check"
-    ? `<button class="btn-quiet ts-mini" data-dismiss="${esc(f.key)}" data-person="${person.id}">It's fine</button>`
-    : f.kind === "decide" && !person.approval
-      ? `<button class="btn-go ts-mini" data-decide="counts" data-key="${esc(f.key)}" data-person="${person.id}">Counts</button>
-         <button class="btn-quiet ts-mini" data-decide="not" data-key="${esc(f.key)}" data-person="${person.id}">Doesn't count</button>`
-      : "";
+  const actions = f.kind === "decide" && !person.approval
+    ? `<button class="btn-go ts-mini" data-decide="counts" data-key="${esc(f.key)}" data-person="${person.id}">Counts</button>
+       <button class="btn-quiet ts-mini" data-decide="not" data-key="${esc(f.key)}" data-person="${person.id}">Doesn't count</button>`
+    : "";
   return `
-    <li class="ts-flag">
-      <span>⚠ ${esc(f.label)}</span>
-      <span class="meta">${when}${esc(flagDetail(person, f))}</span>
+    <div class="ts-item">
+      <span>${tsFlagIcon(f.label)}<strong>${esc(f.label)}</strong>${detail ? ` <span class="meta">· ${esc(detail)}</span>` : ""}</span>
       ${actions}
-      ${responseHtml(person, f)}
-    </li>
+    </div>
+    ${responseHtml(person, f)}
   `;
 }
 
 /**
- * Staff answers about shifts whose flag has since been fixed. An answer on a
+ * Staff answers about a shift whose flag has since been fixed. An answer on a
  * flag that's still open already shows on the flag, so it isn't repeated.
  */
-function staffNotesHtml(person) {
+function staffNotes(person, shift) {
   const openKeys = new Set(person.flags.map(f => f.key));
+  return shift.staff_notes.filter(n => !openKeys.has(`${n.flag_type}:${shift.in_at}`));
+}
+
+/** Why a row can't be ticked yet; the server holds the same rule (tickBlocker()). */
+function tickBlocker(flags) {
+  const open = flags.filter(f => !f.dismissed);
+  if (open.some(f => f.kind === "fix")) return "Fix the punches first";
+  if (open.some(f => f.kind === "wait")) return "Still clocked in";
+  if (open.some(f => f.kind === "decide")) return "Decide Counts or Doesn't count first";
+  return null;
+}
+
+/**
+ * The icons at the end of a row: a red ! while a flag is open, a note when
+ * there's something written down, and the tick. The tick is the boss's
+ * bookmark, "I've looked at this one", saved so a review can be paused and
+ * picked up again; ticking a flagged row also marks its flags fine.
+ */
+function rowIcons(person, flags, hasNote, rowKey) {
+  const open = flags.filter(isOpenFlag);
+  const ticked = person.ticks[rowKey];
+  const blocked = !ticked && tickBlocker(flags);
+  const title = person.approval
+    ? "Approved"
+    : ticked
+      ? `Ticked by ${ticked.by}. Tap to untick.`
+      : blocked || (open.length ? "Tick to mark it fine" : "Tick when you've looked at it");
+  return `
+    <td class="ts-icons">
+      ${open.length ? tsFlagIcon(open.map(f => f.label).join(", ")) : ""}
+      ${hasNote ? TS_NOTE_ICON : ""}
+      <button class="ts-check${ticked ? " on" : ""}" data-tick="${person.id}" data-row="${esc(rowKey)}"
+        title="${esc(title)}" ${person.approval || blocked ? "disabled" : ""}>${TS_CHECK_SVG}</button>
+    </td>
+  `;
+}
+
+/**
+ * One row: light red while it has a flag to deal with. Its notes and flag
+ * details are kept in tsDetails and shown when the row is tapped.
+ */
+function tsRow({ person, date, flags, cells, fixIndex, detail, hasNote, rowKey }) {
+  const open = flags.some(isOpenFlag);
+  const detailIndex = tsDetails.push(detail) - 1;
+  const cls = [open ? "ts-flagged" : "", fixIndex !== null || detail ? "row-fix" : ""].filter(Boolean).join(" ");
+  return `
+    <tr class="ts-shift ${cls}" data-detail="${detailIndex}" ${fixIndex !== null ? `data-fix="${fixIndex}"` : ""}>
+      <td class="ts-date">${esc(tsDay(date))}</td>
+      ${cells}
+      ${rowIcons(person, flags, hasNote, rowKey)}
+    </tr>
+  `;
+}
+
+/**
+ * One person: a name row, a row per shift (plus no-shows and holiday checks,
+ * in date order), and their totals. Folded, only the totals row shows.
+ */
+function personRows(person) {
+  const status = TS_STATUS[person.status];
+  const locked = person.status === "approved" || person.status === "changed";
+  const open = person.flags.some(isOpenFlag);
+  const collapsed = tsCollapsed.has(person.id);
   const first = person.full_name.split(" ")[0];
-  const notes = person.shifts.flatMap(s => s.staff_notes
-    .filter(n => !openKeys.has(`${n.flag_type}:${s.in_at}`))
-    .map(n => ({ ...n, date: s.date })));
-  if (!notes.length) return "";
-  return notes.map(n => `
-    <p class="meta ts-note">💬 ${esc(formatDate(n.date))} · ${esc(first)}: “${esc(n.note)}”${n.suggested_at ? ` (said ${esc(timeOf(n.suggested_at))})` : ""}</p>
-  `).join("");
+
+  const items = [];
+
+  for (const shift of person.shifts) {
+    const notes = staffNotes(person, shift);
+    const hasNote = notes.length > 0 || shift.flags.some(f => f.response || (f.dismissed && f.dismissed.reason !== "Checked"));
+    const detail = [
+      ...shift.flags.map(f => flagDetailHtml(person, f)),
+      ...notes.map(n => `<div class="ts-item">💬 ${esc(first)}: “${esc(n.note)}”${n.suggested_at ? ` (said ${esc(timeOf(n.suggested_at))})` : ""}</div>`),
+      shift.stat_holiday ? `<div class="ts-item meta">${esc(shift.stat_holiday)}: worked the holiday, so these are premium pay hours.</div>` : "",
+      shift.fixes.length ? `<div class="ts-item meta">Corrections: ${esc(shift.fixes.join("; "))}</div>` : ""
+    ].join("");
+
+    // A running shift isn't a mistake to fix, and approved hours are locked.
+    const working = shift.flags.some(f => f.type === "working");
+    let fixIndex = null;
+    if (!working && !locked) {
+      teamFixList.push({ employee_id: person.id, in_at: shift.in_at, out_at: shift.out_at, breaks: shift.breaks || [], flags: shift.flags, detailHtml: detail });
+      fixIndex = teamFixList.length - 1;
+    }
+    const time = shift.out_at
+      ? `${timeOf(shift.in_at)} – ${timeOf(shift.out_at)}`
+      : `${timeOf(shift.in_at)} –`;
+    const hours = shift.out_at
+      ? formatMinutes(shift.net_minutes)
+      : working ? "Working" : "No clock-out";
+    items.push({
+      sort: shift.in_at,
+      html: tsRow({
+        person,
+        date: shift.date,
+        flags: shift.flags,
+        fixIndex,
+        detail,
+        hasNote,
+        rowKey: `shift:${shift.in_at}`,
+        cells: `
+          <td>${esc(time)}</td>
+          <td>${shift.break_minutes ? esc(formatMinutes(shift.break_minutes)) : ""}</td>
+          <td class="ts-num">${esc(hours)}</td>
+        `
+      })
+    });
+  }
+
+  for (const n of person.no_shows) {
+    const found = person.flags.find(x => x.key === `no_show:${n.id}`);
+    const f = found ? { ...found, label: "No punches" } : null;
+    items.push({
+      sort: `${n.date} ${n.starts_at}`,
+      html: tsRow({
+        person,
+        date: n.date,
+        flags: f ? [f] : [],
+        fixIndex: null,
+        detail: f ? flagDetailHtml(person, f) : "",
+        hasNote: !!(f && (f.response || (f.dismissed && f.dismissed.reason !== "Checked"))),
+        rowKey: `no_show:${n.id}`,
+        cells: `
+          <td class="meta">${esc(formatTime(n.starts_at))} – ${esc(formatTime(n.ends_at))} scheduled</td>
+          <td></td>
+          <td class="ts-num">0h</td>
+        `
+      })
+    });
+  }
+
+  for (const f of person.flags.filter(x => x.type === "holiday_check")) {
+    items.push({
+      sort: `${f.date} 99`,
+      html: tsRow({
+        person,
+        date: f.date,
+        flags: [f],
+        fixIndex: null,
+        detail: flagDetailHtml(person, f),
+        hasNote: false,
+        rowKey: `holiday:${f.date}`,
+        cells: `<td colspan="3" class="meta">Stat holiday: does it count?</td>`
+      })
+    });
+  }
+
+  items.sort((a, b) => a.sort.localeCompare(b.sort));
+
+  const chevron = `<span class="ts-chevron">${collapsed ? "▸" : "▾"}</span>`;
+  // Approved hours that moved underneath the approval are said on the name row.
+  const changed = person.flags.filter(f => f.type === "changed");
+  const approvedBy = person.approval ? `Approved by ${person.approval.by}, ${formatDateTime(person.approval.at)}` : "";
+  const pill = person.status === "flagged"
+    ? ""
+    : `<span class="pill ${status.cls}"${approvedBy ? ` title="${esc(approvedBy)}"` : ""}>${status.label}</span>`;
+
+  const nameRow = `
+    <tr class="ts-name-row" data-toggle="${person.id}">
+      <td colspan="5">
+        ${chevron}<strong>${esc(person.full_name)}</strong>
+        <span class="meta">· ${esc(person.role)}</span>
+        <span class="ts-badge">${pill}</span>
+        ${changed.map(f => `<div class="ts-item meta">${esc(f.detail || f.label)}</div>`).join("")}
+      </td>
+    </tr>
+  `;
+
+  const action = person.approval
+    ? `<button class="btn-quiet ts-mini" data-unlock="${person.id}" title="${esc(approvedBy)}">Unlock</button>`
+    : `<button class="btn-go ts-mini" data-approve="${person.id}" ${person.flags.some(f => !f.dismissed && f.kind !== "check") ? `disabled title="Sort out the red rows without a tick first"` : ""}>Approve all</button>`;
+
+  const totalRow = `
+    <tr class="ts-total-row" data-toggle="${person.id}">
+      <td colspan="2">
+        ${collapsed ? `${chevron}<strong>${esc(person.full_name)}</strong>` : `<strong>${esc(first)}'s total</strong>`}
+        <span class="meta">· ${person.days_worked} day${person.days_worked === 1 ? "" : "s"}</span>
+        ${collapsed ? ` ${pill}` : ""}
+        ${breakdownHtml(person)}
+        <p class="form-error" id="tsError${person.id}"></p>
+      </td>
+      <td>${person.break_minutes ? esc(formatMinutes(person.break_minutes)) : ""}</td>
+      <td class="ts-num">${esc(formatMinutes(person.total_minutes))}</td>
+      <td class="ts-icons">${collapsed && open ? tsFlagIcon("Has flags") : ""}${action}</td>
+    </tr>
+  `;
+
+  return `
+    <tbody class="ts-group${collapsed ? " ts-collapsed" : ""}">
+      ${collapsed ? "" : nameRow + items.map(i => i.html).join("")}
+      ${totalRow}
+    </tbody>
+  `;
 }
 
 /** The hours that make up a person's total, when there's more than worked time. */
@@ -214,68 +429,51 @@ function breakdownHtml(person) {
   });
   if (!lines.length && !holidays.length) return "";
   return `
-    ${lines.length ? `<p class="meta">${esc(lines.join(" · "))}</p>` : ""}
-    ${holidays.map(h => `<p class="meta">${esc(h)}</p>`).join("")}
+    ${lines.length ? `<div class="ts-item meta">${esc(lines.join(" · "))}</div>` : ""}
+    ${holidays.map(h => `<div class="ts-item meta">${esc(h)}</div>`).join("")}
   `;
 }
 
-function personBlock(person) {
-  const status = TS_STATUS[person.status];
-  const locked = person.status === "approved" || person.status === "changed";
-
-  const rows = person.shifts.map(shift => {
-    // A running shift isn't a mistake to fix, and approved hours are locked.
-    const working = shift.flags.some(f => f.type === "working");
-    if (working || locked) return shiftRow(shift, null);
-    teamFixList.push({ employee_id: person.id, in_at: shift.in_at, out_at: shift.out_at, breaks: shift.breaks || [], flags: shift.flags });
-    return shiftRow(shift, teamFixList.length - 1);
-  }).join("");
-
-  // Open flags first; the ones already cleared stay visible, for the record.
-  const flags = [...person.flags].sort((a, b) =>
-    Number(!!a.dismissed) - Number(!!b.dismissed) || (a.date || "").localeCompare(b.date || ""));
-
-  const footer = person.approval
-    ? `
-      <p class="meta">
-        Approved by ${esc(person.approval.by)}, ${esc(formatDateTime(person.approval.at))}
-        · ${esc(formatMinutes(person.approval.net_minutes))}
-      </p>
-      <button class="btn-quiet ts-mini" data-unlock="${person.id}">Unlock to make changes</button>
-    `
-    : `<button class="btn-go" data-approve="${person.id}" ${person.status === "ready" ? "" : "disabled"}>Approve ${esc(person.full_name.split(" ")[0])}'s hours</button>`;
-
+/** Everyone together, at the foot of the table. */
+function grandTotalRow(people) {
+  const sum = key => people.reduce((s, p) => s + p[key], 0);
+  const premium = sum("premium_minutes");
+  const holiday = sum("holiday_minutes");
+  const parts = [`Regular ${formatMinutes(sum("regular_minutes"))}`];
+  if (premium) parts.push(`premium pay ${formatMinutes(premium)}`);
+  if (holiday) parts.push(`stat holiday ${formatMinutes(holiday)}`);
+  const days = sum("days_worked");
   return `
-    <div class="person-block ts-person">
-      <h4>
-        ${esc(person.full_name)} <span class="meta">· ${esc(formatMinutes(person.total_minutes))}</span>
-        <span class="pill ${status.cls}" style="float:right;">${status.label}</span>
-      </h4>
-      ${flags.length ? `<ul class="ts-flags">${flags.map(f => flagHtml(person, f)).join("")}</ul>` : ""}
-      ${rows ? `<table class="hours-table"><tbody>${rows}</tbody></table>` : ""}
-      ${staffNotesHtml(person)}
-      ${breakdownHtml(person)}
-      <div class="ts-footer">${footer}</div>
-      <p class="form-error" id="tsError${person.id}"></p>
-    </div>
+    <tfoot>
+      <tr class="ts-grand-row">
+        <td colspan="2">
+          <strong>Everyone</strong> <span class="meta">· ${people.length} ${people.length === 1 ? "person" : "people"}, ${days} day${days === 1 ? "" : "s"}</span>
+          ${premium || holiday ? `<div class="ts-item meta">${esc(parts.join(" · "))}</div>` : ""}
+        </td>
+        <td>${sum("break_minutes") ? esc(formatMinutes(sum("break_minutes"))) : ""}</td>
+        <td class="ts-num">${esc(formatMinutes(sum("total_minutes")))}</td>
+        <td></td>
+      </tr>
+    </tfoot>
   `;
 }
 
+/** A row that can't be edited (locked, running, a no-show) still opens its notes. */
+function openDetailRow(tr, html) {
+  document.getElementById("fixEditorRow")?.remove();
+  const row = document.createElement("tr");
+  row.id = "fixEditorRow";
+  row.innerHTML = `<td colspan="${tr.children.length}"><div class="ts-detail">${html}</div></td>`;
+  tr.after(row);
+}
+
+/**
+ * One listener on the whole table, because a row's detail (and the buttons
+ * in it) is drawn after the table, when the row is tapped.
+ */
 function wireTimesheets() {
   const period = tsData.period;
-
-  // The row is the control: tapping a shift opens its punches for editing,
-  // tapping it again closes them.
-  document.querySelectorAll("tr[data-fix]").forEach(tr => {
-    tr.onclick = () => {
-      const editor = document.getElementById("fixEditorRow");
-      if (editor && editor.previousElementSibling === tr) {
-        editor.remove();
-        return;
-      }
-      openFixEditor(tr, teamFixList[Number(tr.dataset.fix)]);
-    };
-  });
+  const area = document.getElementById("reportArea");
 
   const act = async (btn, path, body, errorId) => {
     btn.disabled = true;
@@ -283,76 +481,95 @@ function wireTimesheets() {
     if (!result.ok) {
       btn.disabled = false;
       showFormError(errorId, result.error || "That didn't save.");
-      return;
+      return false;
     }
-    await loadTeamHours();
+    return true;
   };
 
-  document.querySelectorAll("[data-approve]").forEach(btn => {
-    btn.onclick = () => guard(() => act(btn, "/api/admin/timesheets/approve",
-      { period_start: period.start, employee_id: Number(btn.dataset.approve) }, `tsError${btn.dataset.approve}`));
-  });
+  area.onclick = e => {
+    const btn = e.target.closest("button");
+    if (btn) {
+      const person = Number(btn.dataset.person || btn.dataset.tick || btn.dataset.approve || btn.dataset.unlock);
+      const errorId = `tsError${person}`;
 
-  document.querySelectorAll("[data-unlock]").forEach(btn => {
-    btn.onclick = () => {
-      if (!confirm("Unlock these hours? The approval stays in the log, and you'll need to approve again.")) return;
-      guard(() => act(btn, "/api/admin/timesheets/unlock",
-        { period_start: period.start, employee_id: Number(btn.dataset.unlock) }, `tsError${btn.dataset.unlock}`));
+      if (btn.dataset.tick) {
+        guard(async () => {
+          if (await act(btn, "/api/admin/timesheets/tick", {
+            period_start: period.start, employee_id: person, row_key: btn.dataset.row, on: !btn.classList.contains("on")
+          }, errorId)) await loadTeamHours();
+        });
+      } else if (btn.dataset.approve) {
+        // Approve all ticks every row, and marks any look-at-it flags fine.
+        const who = tsData.people.find(p => p.id === person);
+        const flagged = who.flags.filter(f => !f.dismissed && f.kind === "check").length;
+        if (flagged && !confirm(`Approve all of ${who.full_name.split(" ")[0]}'s hours? This ticks every row and marks ${flagged} flag${flagged === 1 ? "" : "s"} as fine.`)) return;
+        guard(async () => {
+          if (await act(btn, "/api/admin/timesheets/approve", { period_start: period.start, employee_id: person, approve_all: true }, errorId)) await loadTeamHours();
+        });
+      } else if (btn.dataset.unlock) {
+        if (!confirm("Unlock these hours? The approval stays in the log, and you'll need to approve again.")) return;
+        guard(async () => {
+          if (await act(btn, "/api/admin/timesheets/unlock", { period_start: period.start, employee_id: person }, errorId)) await loadTeamHours();
+        });
+      } else if (btn.dataset.decide) {
+        guard(async () => {
+          if (await act(btn, "/api/admin/timesheets/dismiss",
+            { employee_id: person, flag_key: btn.dataset.key, outcome: btn.dataset.decide }, errorId)) await loadTeamHours();
+        });
+      } else if (btn.dataset.undismiss) {
+        guard(async () => {
+          if (await act(btn, "/api/admin/timesheets/undismiss", { employee_id: person, flag_key: btn.dataset.undismiss }, errorId)) await loadTeamHours();
+        });
+      } else if (btn.dataset.useTime) {
+        // "Use 7:30 PM" refills the shift's fix editor with their time;
+        // saving it is still the boss's tap.
+        const key = btn.dataset.useTime;
+        const anchor = key.slice(key.indexOf(":") + 1);
+        const index = teamFixList.findIndex(s => s.employee_id === person && s.in_at === anchor);
+        const row = area.querySelector(`tr[data-fix="${index}"]`);
+        if (index < 0 || !row) return;
+        const at = teamFixList[index].flags.find(f => f.key === key)?.response?.suggested_at;
+        const shift = { ...teamFixList[index] };
+        if (key.startsWith("open_break:")) shift.suggested_break_end = at;
+        else shift.suggested_out = at;
+        openFixEditor(row, shift);
+      }
+      return;
+    }
+    if (e.target.closest("input, select, #fixEditorRow")) return;
+
+    // Tapping a name (or a folded total) folds that person down to their total.
+    const toggle = e.target.closest("tr[data-toggle]");
+    if (toggle) {
+      const id = Number(toggle.dataset.toggle);
+      if (tsCollapsed.has(id)) tsCollapsed.delete(id);
+      else tsCollapsed.add(id);
+      drawTimesheets();
+      return;
+    }
+
+    // Tapping a row opens its notes (and its punches, when they can be
+    // fixed); tapping it again closes them.
+    const tr = e.target.closest("tr[data-detail]");
+    if (!tr) return;
+    const open = document.getElementById("fixEditorRow");
+    if (open && open.previousElementSibling === tr) {
+      open.remove();
+      return;
+    }
+    if (tr.dataset.fix !== undefined) openFixEditor(tr, teamFixList[Number(tr.dataset.fix)]);
+    else if (tsDetails[Number(tr.dataset.detail)]) openDetailRow(tr, tsDetails[Number(tr.dataset.detail)]);
+  };
+
+  const collapseAll = document.getElementById("tsCollapseAllBtn");
+  if (collapseAll) {
+    collapseAll.onclick = () => {
+      const everyone = tsData.people.map(p => p.id);
+      if (everyone.every(id => tsCollapsed.has(id))) everyone.forEach(id => tsCollapsed.delete(id));
+      else everyone.forEach(id => tsCollapsed.add(id));
+      drawTimesheets();
     };
-  });
-
-  document.querySelectorAll("[data-decide]").forEach(btn => {
-    btn.onclick = () => guard(() => act(btn, "/api/admin/timesheets/dismiss",
-      { employee_id: Number(btn.dataset.person), flag_key: btn.dataset.key, outcome: btn.dataset.decide },
-      `tsError${btn.dataset.person}`));
-  });
-
-  // "Use 7:30 PM" opens the shift's fix editor with their time filled in;
-  // saving it is still the boss's tap.
-  document.querySelectorAll("[data-use-time]").forEach(btn => {
-    btn.onclick = () => {
-      const key = btn.dataset.useTime;
-      const anchor = key.slice(key.indexOf(":") + 1);
-      const index = teamFixList.findIndex(s => s.employee_id === Number(btn.dataset.person) && s.in_at === anchor);
-      const row = document.querySelector(`tr[data-fix="${index}"]`);
-      if (index < 0 || !row) return;
-      const flagged = teamFixList[index].flags.find(f => f.key === key);
-      const at = flagged?.response?.suggested_at;
-      const shift = { ...teamFixList[index] };
-      if (key.startsWith("open_break:")) shift.suggested_break_end = at;
-      else shift.suggested_out = at;
-      openFixEditor(row, shift);
-      row.nextElementSibling?.scrollIntoView({ block: "center", behavior: "smooth" });
-    };
-  });
-
-  document.querySelectorAll("[data-undismiss]").forEach(btn => {
-    btn.onclick = () => guard(() => act(btn, "/api/admin/timesheets/undismiss",
-      { employee_id: Number(btn.dataset.person), flag_key: btn.dataset.undismiss }, `tsError${btn.dataset.person}`));
-  });
-
-  // "It's fine" asks why, in place, rather than a browser prompt.
-  document.querySelectorAll("[data-dismiss]").forEach(btn => {
-    btn.onclick = () => {
-      const li = btn.closest("li");
-      if (li.querySelector(".ts-reason")) return;
-      const form = document.createElement("div");
-      form.className = "inline-form ts-reason";
-      form.innerHTML = `
-        <input type="text" placeholder="Why it's fine, e.g. called in sick" maxlength="200">
-        <button class="btn-go ts-mini">Save</button>
-      `;
-      li.appendChild(form);
-      const input = form.querySelector("input");
-      const save = form.querySelector("button");
-      input.focus();
-      const submit = () => guard(() => act(save, "/api/admin/timesheets/dismiss",
-        { employee_id: Number(btn.dataset.person), flag_key: btn.dataset.dismiss, reason: input.value },
-        `tsError${btn.dataset.person}`));
-      save.onclick = submit;
-      input.onkeydown = e => { if (e.key === "Enter") submit(); };
-    };
-  });
+  }
 
   const approveAll = document.getElementById("tsApproveAllBtn");
   approveAll.onclick = () => guard(async () => {

@@ -94,6 +94,27 @@ export function periodSignature(person) {
   ].join(";");
 }
 
+/**
+ * The rows the boss ticks, as the table draws them: a row per worked shift,
+ * per no-show and per stat holiday to decide, each with the flags on it.
+ */
+export function rowKeys(person) {
+  return [
+    ...person.shifts.map(s => ({ key: `shift:${s.in_at}`, flags: person.flags.filter(f => f.key === `${f.type}:${s.in_at}`) })),
+    ...person.no_shows.map(n => ({ key: `no_show:${n.id}`, flags: person.flags.filter(f => f.key === `no_show:${n.id}`) })),
+    ...person.flags.filter(f => f.type === "holiday_check").map(f => ({ key: `holiday:${f.date}`, flags: [f] }))
+  ];
+}
+
+/** Why a row can't be ticked yet: its hours are wrong, still running, or undecided. */
+export function tickBlocker(flags) {
+  const open = flags.filter(f => !f.dismissed);
+  if (open.some(f => f.kind === "fix")) return "Fix the punches first.";
+  if (open.some(f => f.kind === "wait")) return "They're still clocked in.";
+  if (open.some(f => f.kind === "decide")) return "Decide Counts or Doesn't count first.";
+  return null;
+}
+
 function addDays(isoDate, days) {
   const d = new Date(`${isoDate}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
@@ -153,12 +174,13 @@ function flag(type, key, detail) {
  * - employees: id, full_name, role for anyone who might appear.
  * - dismissals: { employee_id, flag_key, reason, outcome, dismissed_by_name, dismissed_at }.
  * - responses: staff answers { employee_id, flag_key, note, suggested_at, created_at }.
+ * - ticks: the boss's row ticks { employee_id, row_key, ticked_by_name, ticked_at }.
  * - approvals: live approvals for this period, with fingerprint.
  * - now: the current UTC stamp, to tell "still working" from "forgot".
  * - signatureHashes: Map employee_id -> hash of the current signature,
  *   computed by the caller (hashing is async; this stays sync).
  */
-export function buildPeriod({ period, events, scheduled, employees, dismissals, approvals, now, responses = [], signatureHashes = new Map() }) {
+export function buildPeriod({ period, events, scheduled, employees, dismissals, approvals, now, responses = [], ticks = [], signatureHashes = new Map() }) {
   const nowLocal = torontoParts(now);
   const holidayList = holidaysBetween(period.start, period.end).filter(h => h.statutory);
   const statHolidays = new Map(holidayList.map(h => [h.date, h.name]));
@@ -378,6 +400,10 @@ export function buildPeriod({ period, events, scheduled, employees, dismissals, 
       break_minutes: shifts.reduce((sum, s) => sum + (s.out_at ? s.break_minutes : 0), 0),
       days_worked: new Set(shifts.map(s => s.date)).size,
       status,
+      // The boss's review bookmarks, by row key (see rowKeys()).
+      ticks: Object.fromEntries(ticks
+        .filter(t => t.employee_id === person.id)
+        .map(t => [t.row_key, { by: t.ticked_by_name, at: t.ticked_at }])),
       approval: approval
         ? { id: approval.id, by: approval.approved_by_name, at: approval.approved_at, net_minutes: approval.net_minutes }
         : null
@@ -405,7 +431,7 @@ async function loadPeriod(db, period, now, employeeId = null) {
   const from = windows.reduce((min, w) => (w.start < min ? w.start : min), period.start);
   const scheduledTo = addDays(period.end, 14);
 
-  const [events, scheduled, dismissals, approvals, responses] = await Promise.all([
+  const [events, scheduled, dismissals, approvals, responses, ticks] = await Promise.all([
     db.prepare(
       `SELECT employee_id, event_type, created_at, notes
        FROM clock_events
@@ -435,6 +461,11 @@ async function loadPeriod(db, period, now, employeeId = null) {
     ).bind(period.start).all(),
     db.prepare(
       `SELECT employee_id, flag_key, note, suggested_at, created_at FROM timesheet_flag_responses`
+    ).all(),
+    db.prepare(
+      `SELECT t.employee_id, t.row_key, t.ticked_at, e.full_name AS ticked_by_name
+       FROM timesheet_row_ticks t
+       JOIN employees e ON e.id = t.ticked_by`
     ).all()
   ]);
 
@@ -464,6 +495,7 @@ async function loadPeriod(db, period, now, employeeId = null) {
     dismissals: dismissals.results || [],
     approvals: approvalRows,
     responses: responses.results || [],
+    ticks: ticks.results || [],
     now
   };
 
@@ -527,6 +559,9 @@ export async function handleApproveTimesheet(request, env) {
   }
   const period = payPeriodFor(body.period_start);
   const allReady = body.all_ready === true;
+  // Approve all: one person, with every row ticked and every look-at-it
+  // flag marked fine on the way.
+  const approveAll = !allReady && body.approve_all === true;
   const employeeId = allReady ? null : Number(body.employee_id);
   if (!allReady && !Number.isInteger(employeeId)) {
     return { ok: false, error: "Pick who to approve." };
@@ -539,20 +574,93 @@ export async function handleApproveTimesheet(request, env) {
     const person = targets[0];
     if (!person) return { ok: false, error: "Nothing to approve for them in this period." };
     if (person.status === "approved") return { ok: false, error: "Already approved." };
-    if (person.status !== "ready") {
+    if (approveAll && person.status === "flagged") {
+      const blocked = rowKeys(person).map(r => tickBlocker(r.flags)).filter(Boolean);
+      if (blocked.length) {
+        return { ok: false, error: `${person.full_name} has ${blocked.length} row${blocked.length === 1 ? "" : "s"} to sort out first. ${[...new Set(blocked)].join(" ")}` };
+      }
+      if (person.flags.some(f => !f.dismissed && f.kind !== "check")) {
+        return { ok: false, error: `${person.full_name} still has a flag to sort out first.` };
+      }
+    } else if (person.status !== "ready") {
       return { ok: false, error: `${person.full_name} still has ${person.open_flags} flag${person.open_flags === 1 ? "" : "s"} to sort out.` };
     }
   }
 
   if (!targets.length) return { ok: true, approved: [] };
 
-  await env.DB.batch(targets.map(p => env.DB.prepare(
+  // Approved means looked at: every row of everyone approved is ticked.
+  const extras = [];
+  for (const person of targets) {
+    for (const f of person.flags.filter(x => !x.dismissed && x.kind === "check")) {
+      extras.push(dismissAsChecked(env.DB, person.id, f.key, auth.user.id));
+    }
+    for (const row of rowKeys(person)) {
+      extras.push(tickStatement(env.DB, person.id, row.key, auth.user.id));
+    }
+  }
+
+  await env.DB.batch([...extras, ...targets.map(p => env.DB.prepare(
     `INSERT INTO timesheet_approvals
        (employee_id, period_start, period_end, net_minutes, fingerprint, approved_by)
      VALUES (?, ?, ?, ?, ?, ?)`
-  ).bind(p.id, period.start, period.end, p.total_minutes, signatureHashes.get(p.id), auth.user.id)));
+  ).bind(p.id, period.start, period.end, p.total_minutes, signatureHashes.get(p.id), auth.user.id))]);
 
   return { ok: true, approved: targets.map(p => p.full_name) };
+}
+
+const dismissAsChecked = (db, employeeId, flagKey, by) => db.prepare(
+  `INSERT INTO timesheet_flag_dismissals (employee_id, flag_key, reason, outcome, dismissed_by)
+   VALUES (?, ?, 'Checked', NULL, ?)
+   ON CONFLICT (employee_id, flag_key) DO NOTHING`
+).bind(employeeId, flagKey, by);
+
+const tickStatement = (db, employeeId, rowKey, by) => db.prepare(
+  `INSERT INTO timesheet_row_ticks (employee_id, row_key, ticked_by) VALUES (?, ?, ?)
+   ON CONFLICT (employee_id, row_key) DO NOTHING`
+).bind(employeeId, rowKey, by);
+
+/**
+ * Ticks or unticks one row: the boss's bookmark for "looked at this one".
+ * Ticking a row also marks its look-at-it flags fine, and unticking brings
+ * them back, so the tick and the red row can't disagree.
+ */
+export async function handleTickRow(request, env) {
+  const auth = await requireUser(request, env, "manage_users");
+  if (!auth.ok) return auth;
+
+  const body = await readJsonBody(request);
+  const employeeId = Number(body.employee_id);
+  const rowKey = String(body.row_key || "");
+  const on = body.on === true;
+  if (!Number.isInteger(employeeId) || !ISO_DATE.test(String(body.period_start || ""))) {
+    return { ok: false, error: "That tick didn't look right. Reload and try again." };
+  }
+  const period = payPeriodFor(body.period_start);
+
+  const { people } = await loadPeriod(env.DB, period, nowUtcStamp(), employeeId);
+  const person = people.find(p => p.id === employeeId);
+  const row = person && rowKeys(person).find(r => r.key === rowKey);
+  if (!row) return { ok: false, error: "That row isn't in this period any more. Reload and try again." };
+  if (person.approval) return { ok: false, error: "These hours are approved. Unlock them to change ticks." };
+
+  const checks = row.flags.filter(f => f.kind === "check");
+  if (on) {
+    const blocked = tickBlocker(row.flags);
+    if (blocked) return { ok: false, error: blocked };
+    await env.DB.batch([
+      tickStatement(env.DB, employeeId, rowKey, auth.user.id),
+      ...checks.filter(f => !f.dismissed).map(f => dismissAsChecked(env.DB, employeeId, f.key, auth.user.id))
+    ]);
+  } else {
+    await env.DB.batch([
+      env.DB.prepare(`DELETE FROM timesheet_row_ticks WHERE employee_id = ? AND row_key = ?`).bind(employeeId, rowKey),
+      ...checks.map(f => env.DB.prepare(
+        `DELETE FROM timesheet_flag_dismissals WHERE employee_id = ? AND flag_key = ?`
+      ).bind(employeeId, f.key))
+    ]);
+  }
+  return { ok: true };
 }
 
 export async function handleUnlockTimesheet(request, env) {
@@ -601,8 +709,9 @@ export async function handleDismissFlag(request, env) {
     outcome = body.outcome === "counts" || body.outcome === "not" ? body.outcome : null;
     if (!outcome) return { ok: false, error: "Pick Counts or Doesn't count." };
     note = reason || (outcome === "counts" ? "Counts" : "Doesn't count");
-  } else if (!reason) {
-    return { ok: false, error: "Say why it's fine, for the record." };
+  } else {
+    // One tap on the grey check clears it; a typed reason is optional.
+    note = reason || "Checked";
   }
 
   await env.DB.prepare(
