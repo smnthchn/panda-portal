@@ -1,0 +1,4714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panda Portal: FAQ mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300..800;1,400&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* copy of public/style.css */
+/* Panda Portal — retro phone-first design language.
+   Every color comes from a theme token. Five palettes ship; the token tables
+   are lifted from the design handoff (Convention screens.dc.html THEMES,
+   supplemented by Theme picker.dc.html for alert/cool/clockSub). Rules:
+   2px ink outlines, chunky radii, hard offset shadows (no blur), buttons with
+   a thick bottom border that compresses on hover. */
+
+* {
+  box-sizing: border-box;
+}
+
+:root,
+body.theme-habbo {
+  --ink: #23324A;
+  --paper: #F4F0E4;
+  --surface: #FFFFFF;
+  --chip: #EDE7D6;
+  --field: #FFFFFF;
+  --text: #23324A;
+  --muted: #7A7461;
+  --shadow: #CFC7B0;
+  --track: #EDE7D6;
+  --brand: #17879B;
+  --on-brand: #F4F0E4;
+  --brand-text: #17879B;
+  --warm: #F2B53B;
+  --on-warm: #5C4413;
+  --cool: #17879B;
+  --on-cool: #FFFFFF;
+  --cool-bg: #DDEAEE;
+  --cool-text: #186071;
+  --cool-muted: #7C949C;
+  --note-bg: #FBEFD6;
+  --note-border: #EADFBE;
+  --note-text: #6B5A2E;
+  --go: #5FD1A0;
+  --go-text: #1E8F68;
+  --on-go: #16223A;
+  --alert: #C6412F;
+  --clock-bg: #23324A;
+  --clock-shadow: #16223A;
+  --clock-text: #E8EDF3;
+  --clock-sub: #9BAAC0;
+  --nav-bg: #E8E1CB;
+  --nav-muted: #8A8468;
+}
+
+/* Mushroom Kingdom: the logo's own letters — red, coin yellow, green and sky
+   blue — on white, over the deep blue the logo sits on. The red is a shade
+   deeper than the artwork so white can sit on it and still be read. */
+body.theme-mario {
+  --ink: #17203B;
+  --paper: #F1F6FF;
+  --surface: #FFFFFF;
+  --chip: #DCE9FF;
+  --field: #FFFFFF;
+  --text: #17203B;
+  --muted: #5C6883;
+  --shadow: #C4D3EC;
+  --track: #E7EDF9;
+  --brand: #D8231C;
+  --on-brand: #FFFFFF;
+  --brand-text: #BE1912;
+  --warm: #FBD000;
+  --on-warm: #453200;
+  --cool: #049CD8;
+  --on-cool: #04263A;
+  --cool-bg: #DBEEFB;
+  --cool-text: #0A5A84;
+  --cool-muted: #6B8496;
+  --note-bg: #FFF4CC;
+  --note-border: #F1DF9E;
+  --note-text: #5B4708;
+  --go: #43B047;
+  --go-text: #237A28;
+  --on-go: #0D2B11;
+  --alert: #BE1912;
+  --clock-bg: #0B57C7;
+  --clock-shadow: #073C8A;
+  --clock-text: #FFFFFF;
+  --clock-sub: #CBE1FB;
+  --nav-bg: #DCE9FF;
+  --nav-muted: #5C6883;
+}
+
+/* Bubblegum: candy pink, periwinkle and mint on blush paper. The fills are
+   pastel, so anything sitting on one takes a deep berry rather than white —
+   pale text on a pale fill is the way a soft palette turns unreadable. */
+body.theme-bubble {
+  --ink: #56406E;
+  --paper: #FFF4F9;
+  --surface: #FFFFFF;
+  --chip: #FFE5F1;
+  --field: #FFFFFF;
+  --text: #56406E;
+  --muted: #6E5F78;
+  --shadow: #F0D3E4;
+  --track: #F9E9F2;
+  --brand: #F7A8CD;
+  --on-brand: #4A2340;
+  --brand-text: #B24A83;
+  --warm: #FFE1A3;
+  --on-warm: #6A5220;
+  --cool: #BBB0F0;
+  --on-cool: #31245A;
+  --cool-bg: #EFEAFF;
+  --cool-text: #5B4899;
+  --cool-muted: #8B81A6;
+  --note-bg: #FFF3DA;
+  --note-border: #F6E3BC;
+  --note-text: #6B5730;
+  --go: #A9E7CE;
+  --go-text: #27735A;
+  --on-go: #1D4A39;
+  --alert: #C44573;
+  --clock-bg: #56406E;
+  --clock-shadow: #3A2A4D;
+  --clock-text: #FDEFF7;
+  --clock-sub: #C7B5D8;
+  --nav-bg: #FFE5F1;
+  --nav-muted: #79596C;
+}
+
+body.theme-sherbet {
+  --ink: #33261F;
+  --paper: #FFF3E9;
+  --surface: #FFFFFF;
+  --chip: #FFE2CF;
+  --field: #FFFFFF;
+  --text: #33261F;
+  --muted: #8C7A6B;
+  --shadow: #DCC9B8;
+  --track: #F4EADF;
+  --brand: #FF7A59;
+  --on-brand: #4A1D0D;
+  --brand-text: #C93F24;
+  --warm: #FFC94D;
+  --on-warm: #4A3406;
+  --cool: #2FB6A8;
+  --on-cool: #0E3733;
+  --cool-bg: #D9F0EC;
+  --cool-text: #14615A;
+  --cool-muted: #7C8F8C;
+  --note-bg: #FFF0D8;
+  --note-border: #EFDCB6;
+  --note-text: #6B5228;
+  --go: #2FB6A8;
+  --go-text: #1F7F76;
+  --on-go: #0E3733;
+  --alert: #D2472B;
+  --clock-bg: #1F6F6B;
+  --clock-shadow: #14504D;
+  --clock-text: #E9F6F4;
+  --clock-sub: #A8D8D2;
+  --nav-bg: #FFE2CF;
+  --nav-muted: #A8907E;
+}
+
+body.theme-arcade {
+  /* The one dark palette, and the one where the outline cannot carry the
+     structure. A 2px ink outline separates everything in the light palettes,
+     but on a dark fill you can have a dark card or a strong dark edge, not
+     both — and a light edge turns the page neon. So the edge stays dark and
+     quiet, and the separation comes from the step up to the card.
+
+     The tones keep the same relationships the light palettes have: chip sits
+     just above paper (they are the booth floor and an unstarted block, which
+     should barely differ) and below surface (a strip is a tint across the top
+     of a card, darker than the card). Break that and the map inverts. */
+  --ink: #191223;
+  --paper: #1A1426;
+  --surface: #4E3F72;
+  --chip: #2E2447;
+  --field: #2A2139;
+  --text: #FBF8FF;
+  --muted: #D3C8E7;
+  --shadow: #0E0A16;
+  --track: #3A2F55;
+  --brand: #FF5C8A;
+  --on-brand: #3D0E20;
+  --brand-text: #FFA8C2;
+  --warm: #FFC94D;
+  --on-warm: #3A2A05;
+  --cool: #7FC6F0;
+  --on-cool: #10293E;
+  --cool-bg: #33496B;
+  --cool-text: #E3F0FB;
+  --cool-muted: #B4C6D6;
+  --note-bg: #453969;
+  --note-border: #57487F;
+  --note-text: #F3ECFC;
+  --go: #5FE3C0;
+  --go-text: #8CF5DA;
+  --on-go: #0F3A30;
+  --alert: #FF9BBB;
+  --clock-bg: #4E3F72;
+  --clock-shadow: #0E0A16;
+  --clock-text: #FBF8FF;
+  --clock-sub: #D3C8E7;
+  --nav-bg: #211A30;
+  --nav-muted: #B7ABD0;
+}
+
+body {
+  /* Derived shades, valid in every palette. */
+  --go-deep: color-mix(in srgb, var(--go) 62%, black);
+  --warm-deep: color-mix(in srgb, var(--warm) 62%, black);
+  --cell-empty: color-mix(in srgb, var(--paper) 80%, var(--muted));
+  --present: color-mix(in srgb, var(--go) 22%, var(--surface));
+
+  margin: 0;
+  font-family: "Public Sans", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  background: var(--paper);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--brand-text);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+h1, h2, h3, h4,
+button {
+  font-family: "Fredoka", sans-serif;
+}
+
+/* ---------- Buttons: thick bottom border that depresses on hover ---------- */
+
+/* A button presses down while it's actually being clicked: the bottom edge
+   gives way by --depress, and the button moves down by the same amount.
+   Because it's the same amount, the space the button occupies never changes,
+   so nothing below it moves. It used to depress on hover, and the constant
+   2px bobbing under the mouse wore thin — the press now only answers a press.
+
+   That balance is the whole point of expressing it this way. It used to be two
+   hard-coded 2px values, which only cancelled out for a button whose bottom
+   border was the full 4px — override that to 2px for a smaller button and the
+   hover had nothing left to take away, so it added its 2px and grew, shoving
+   the rest of the page down and back on every pass of the mouse.
+
+   The bottom edge is --edge at rest, plus --depress of give on top of it.
+   Hover takes exactly --depress off the edge and puts exactly --depress above.
+   Both halves read the same number, so they cannot drift apart.
+
+   Don't set border-bottom-width directly. A rule that sets the `border`
+   shorthand resets the bottom edge behind the calc, so it has to say what it
+   changed to:
+     --depress: 0            a flat button that doesn't move
+     --edge: 0px; --depress: 0 a borderless button, which has no edge at all */
+button {
+  --edge: 2px;
+  --depress: 2px;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 14px;
+  border: 2px solid var(--ink);
+  border-bottom-width: calc(var(--edge) + var(--depress));
+  border-radius: 12px;
+  background: var(--brand);
+  color: var(--on-brand);
+  cursor: pointer;
+}
+
+button:active:not(:disabled) {
+  border-bottom-width: var(--edge);
+  margin-top: var(--depress);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-quiet {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.btn-danger {
+  background: var(--surface);
+  color: var(--alert);
+  padding: 7px 11px;
+  font-size: 13px;
+}
+
+/* Green and amber buttons take a deeper shade of their own fill, never ink. */
+.btn-go {
+  background: var(--go);
+  color: var(--on-go);
+  border-color: var(--go-deep);
+}
+
+.btn-warm {
+  background: var(--warm);
+  color: var(--on-warm);
+  border-color: var(--warm-deep);
+}
+
+.btn-ghost-go {
+  background: transparent;
+  color: var(--go);
+  border-color: var(--go);
+}
+
+.btn-dashed {
+  border-style: dashed;
+  --depress: 0px;
+  background: transparent;
+  color: var(--text);
+  border-radius: 14px;
+}
+
+.btn-dashed:hover:not(:disabled) {
+  background: var(--surface);
+}
+
+/* A pill-shaped button (Floorplan / Booth / Maps rows). */
+.btn-pill {
+  border-radius: 999px;
+  font-size: 12.5px;
+  padding: 9px 10px;
+}
+
+.btn-pill.on {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+.btn-pill.off {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ---------- Shell ---------- */
+
+.portal-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 236px;
+  flex: none;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 20px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sidebar h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  padding: 0 6px;
+}
+
+.sidebar h1 .app-tile {
+  color: var(--on-brand);
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.sidebar .nav-group {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  opacity: 0.55;
+  padding: 14px 8px 5px;
+}
+
+.sidebar a {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  font-size: 13.5px;
+  color: var(--paper);
+  padding: 9px 10px;
+  border-radius: 9px;
+  display: block;
+}
+
+.sidebar a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+}
+
+.sidebar a.active {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+.sidebar .nav-stub {
+  font-family: "Fredoka", sans-serif;
+  font-size: 13.5px;
+  padding: 9px 10px;
+  opacity: 0.4;
+  cursor: default;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 12px 90px;
+}
+
+/* The design is drawn for a 392px phone, so screens that are a phone screen
+   stay in a narrow column even on a desktop. Data-dense ones — timesheets,
+   user admin — opt into the full width with .wide, where the extra room buys
+   you more rows on screen at once instead of just longer lines. */
+.page {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+@media (min-width: 801px) {
+  .page.wide {
+    max-width: 1180px;
+  }
+
+  .page.wide .perm-rows {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+
+  .page.wide .card-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+}
+
+.person-block {
+  break-inside: avoid;
+}
+
+.person-block h4 {
+  margin-top: 0;
+}
+
+/* The 30x30 teal app tile and round avatar from the header spec. */
+.app-tile {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  background: var(--brand);
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  color: var(--on-brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  background: var(--nav-bg);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* An uploaded illustration fills the circle; the outline stays. The initials
+   sit underneath, so a picture that fails to load degrades to them. */
+.avatar.has-image {
+  position: relative;
+  overflow: hidden;
+  background: var(--nav-bg);
+}
+
+.avatar.has-image img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar.large {
+  width: 72px;
+  height: 72px;
+  font-size: 24px;
+  border-radius: 18px;
+}
+
+.avatar.small {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+
+.avatar.mid {
+  width: 26px;
+  height: 26px;
+  font-size: 10px;
+}
+
+.avatar.present {
+  background: var(--present);
+}
+
+/* Back-chevron square used at the top of detail screens. */
+.back-tile {
+  --depress: 0px;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.title-row h2 {
+  flex: 1;
+  font-weight: 600;
+  font-size: 16px;
+  margin: 0;
+}
+
+.title-row .meta {
+  display: block;
+  margin-top: 2px;
+}
+
+/* A stacked title: kicker over heading over summary. Without the spacing the
+   three lines read as one block of text. */
+.screen-title {
+  flex: 1;
+  min-width: 0;
+}
+
+/* On a phone the view buttons would otherwise eat the whole row and crush the
+   title to zero width, wrapping the kicker one character per line. The row
+   wraps instead, so the buttons take their own line underneath. */
+@media (max-width: 800px) {
+  .title-row {
+    flex-wrap: wrap;
+  }
+
+  .title-row .screen-title {
+    flex: 1 1 60%;
+    min-width: 150px;
+  }
+
+  .title-row .button-row {
+    flex: 1 1 100%;
+  }
+
+  .title-row .button-row button {
+    flex: 1;
+    white-space: nowrap;
+  }
+}
+
+.screen-title .kicker-line {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+
+.screen-title h2 {
+  font-size: 21px;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0 0 4px;
+}
+
+.screen-title .meta {
+  margin: 0;
+}
+
+/* ---------- Bottom nav (phone) ---------- */
+
+.bottom-nav {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+  border-top: 3px solid var(--ink);
+  background: var(--nav-bg);
+  padding: 9px 4px calc(15px + env(safe-area-inset-bottom, 0px));
+}
+
+.bottom-nav a {
+  flex: 1;
+  text-align: center;
+  font-family: "Fredoka", sans-serif;
+  font-size: 11px;
+  color: var(--nav-muted);
+  text-decoration: none;
+}
+
+.bottom-nav a .nav-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto 3px;
+}
+
+.bottom-nav a.active {
+  font-weight: 600;
+  color: var(--brand-text);
+}
+
+.bottom-nav a.active .nav-icon {
+  color: var(--brand);
+}
+
+@media (max-width: 800px) {
+  .sidebar {
+    display: none;
+  }
+
+  .bottom-nav {
+    display: flex;
+  }
+
+  .main {
+    padding: 12px 12px 110px;
+  }
+}
+
+/* ---------- Page header ---------- */
+
+.page-header {
+  margin-bottom: 14px;
+}
+
+.page-header h2 {
+  margin: 0 0 3px 0;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.015em;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* ---------- Cards ---------- */
+
+.card {
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  padding: 12px 13px;
+  margin-bottom: 13px;
+  box-shadow: 0 4px 0 var(--shadow);
+}
+
+.card h3 {
+  margin: 0 0 10px 0;
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.card h4 {
+  font-weight: 600;
+  font-size: 13.5px;
+  margin: 14px 0 8px;
+}
+
+/* A card whose first child is a tinted section strip. */
+.card.stripped {
+  padding: 0;
+  overflow: hidden;
+}
+
+.card.stripped > .strip {
+  border-bottom: 2px solid var(--ink);
+}
+
+.card.stripped > .card-body {
+  padding: 12px 13px;
+}
+
+.strip {
+  background: var(--chip);
+  padding: 8px 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.strip.cool {
+  background: var(--cool-bg);
+  color: var(--cool-text);
+}
+
+.strip.brand {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+.strip.warm {
+  background: var(--warm);
+  color: var(--on-warm);
+}
+
+.strip .strip-side {
+  font-weight: 500;
+  font-size: 11.5px;
+}
+
+/* The navy clock-style card. */
+.card.navy {
+  background: var(--clock-bg);
+  color: var(--clock-text);
+  box-shadow: 0 4px 0 var(--clock-shadow);
+}
+
+.card.navy .kicker {
+  color: var(--go);
+}
+
+.kicker {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Cool info card (checklists, notices). */
+.card.cool {
+  background: var(--cool-bg);
+  color: var(--cool-text);
+}
+
+.card.cool h3 {
+  color: var(--cool-text);
+}
+
+/* Amber card, for the thing that still needs answering — an undecided holiday. */
+.card.note {
+  background: var(--note-bg);
+  color: var(--note-text);
+}
+
+.card.note h3 {
+  color: var(--note-text);
+}
+
+/* ---------- Span picker: Day / Week / 2 weeks / Month / Custom ---------- */
+
+.span-picker {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0 0 11px;
+}
+
+.span-pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  --depress: 0px;
+}
+
+.span-pill.on {
+  background: var(--clock-bg);
+  color: var(--clock-text);
+}
+
+/* Hover has to say something, and it can't be a size — see the flat-bottomed
+   button note above. A tint costs no layout. The selected pill is left alone,
+   or it would flicker off its own colour on the way past. */
+.span-pill:not(.on):hover:not(:disabled) {
+  background: var(--chip);
+}
+
+.span-days {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.span-days input {
+  width: 62px;
+}
+
+/* ---------- The rota: a week per table, a person per row ---------- */
+
+/* The chart is wider than a phone. It scrolls inside its own card rather than
+   pushing the page sideways, and the name column stays put while it does. */
+.rota-scroll {
+  overflow-x: auto;
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
+}
+
+.rota-card {
+  margin-bottom: 13px;
+}
+
+.rota {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 620px;
+  font-size: 12px;
+}
+
+.rota th,
+.rota td {
+  border: 1px solid var(--shadow);
+  padding: 5px 6px;
+  vertical-align: top;
+  text-align: left;
+}
+
+.rota-corner,
+.rota-who {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--paper);
+  min-width: 118px;
+  width: 118px;
+}
+
+.rota-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.rota-who span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rota-day {
+  min-width: 72px;
+  cursor: pointer;
+  font-family: "Fredoka", sans-serif;
+  line-height: 1.2;
+}
+
+.rota-day .rota-dow {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rota-day .rota-date {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.rota-day .rota-flag,
+.rota-day .rota-note {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rota-day .rota-flag {
+  color: var(--note-text);
+}
+
+.rota-day .rota-note {
+  color: var(--muted);
+}
+
+/* A column says its own state, so the hole in the week is visible without
+   opening each day: amber for a gap, quiet for closed, plain when covered. */
+.rota-day.rota-gap,
+.rota-day.rota-bare {
+  background: var(--note-bg);
+}
+
+.rota-day.rota-gap .rota-note,
+.rota-day.rota-bare .rota-note,
+.rota-day.rota-gap .rota-flag,
+.rota-day.rota-bare .rota-flag {
+  color: var(--note-text);
+}
+
+.rota-day.rota-shut {
+  background: var(--cool-bg);
+  color: var(--cool-text);
+}
+
+.rota-day.rota-shut .rota-note {
+  color: var(--cool-text);
+}
+
+/* Padded out to keep the Monday-to-Sunday shape, but not part of the range. */
+.rota-day.rota-out,
+.rota-cell.rota-out {
+  background: var(--surface);
+  opacity: 0.45;
+  cursor: default;
+}
+
+.rota-day.on {
+  background: var(--clock-bg);
+  color: var(--clock-text);
+}
+
+.rota-day.on .rota-note,
+.rota-day.on .rota-flag {
+  color: var(--clock-text);
+  opacity: 0.75;
+}
+
+.rota-cell {
+  min-width: 72px;
+}
+
+.rota-shift {
+  display: block;
+  padding: 3px 5px;
+  margin-bottom: 3px;
+  border-radius: 8px;
+  background: var(--go);
+  color: var(--on-go);
+  font-size: 11px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rota-shift:last-child {
+  margin-bottom: 0;
+}
+
+/* An event shift is on the chart because it's why they aren't in the store,
+   but it belongs to the event and isn't edited here. */
+.rota-shift.at-event {
+  background: var(--note-bg);
+  color: var(--note-text);
+  cursor: default;
+}
+
+.rota-shift .rota-at {
+  display: block;
+  font-size: 9px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rota-empty {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 11px;
+}
+
+/* A day tab carrying a holiday, so the week reads at a glance. */
+.day-tab .day-tab-flag {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 600;
+  font-family: "Fredoka", sans-serif;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--note-text);
+}
+
+.day-tab.on .day-tab-flag {
+  color: var(--clock-text);
+  opacity: 0.85;
+}
+
+/* Amber note callout. */
+.note-block {
+  background: var(--note-bg);
+  border: 2px solid var(--note-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--note-text);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 13px;
+  margin-bottom: 13px;
+}
+
+.action-card {
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 4px 0 var(--shadow);
+}
+
+.action-card h3 {
+  margin: 0 0 6px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.action-card p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* ---------- Pills & badges ---------- */
+
+.pill,
+.phase-badge,
+.status-badge {
+  display: inline-block;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  padding: 3px 9px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.pill-ink {
+  background: var(--ink);
+  color: var(--warm);
+  border-color: var(--ink);
+}
+
+/* Over a colored band a paper pill stays legible in every palette (arcade!). */
+.pill-paper {
+  background: var(--paper);
+  color: var(--text);
+}
+
+.status-in,
+.pill-go {
+  background: var(--go);
+  color: var(--on-go);
+}
+
+.status-break,
+.pill-warm {
+  background: var(--warm);
+  color: var(--on-warm);
+}
+
+.status-out {
+  background: var(--chip);
+  color: var(--muted);
+}
+
+.pill-late {
+  background: var(--alert);
+  color: #fff;
+}
+
+.phase-upcoming {
+  background: var(--warm);
+  color: var(--on-warm);
+}
+
+.phase-active {
+  background: var(--go);
+  color: var(--on-go);
+}
+
+.phase-past {
+  background: var(--chip);
+  color: var(--muted);
+}
+
+.phase-draft {
+  background: var(--note-bg);
+  color: var(--note-text);
+}
+
+/* ---------- Meta text ---------- */
+
+.meta {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.empty-state {
+  color: var(--muted);
+  font-style: italic;
+  font-size: 12.5px;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+/* ---------- Login ---------- */
+
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  background: var(--paper);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  padding: 26px;
+  box-shadow: 0 4px 0 var(--shadow);
+}
+
+.login-card h1 {
+  margin: 0 0 4px;
+  font-weight: 600;
+  font-size: 24px;
+}
+
+/* ---------- Forms ---------- */
+
+.breadcrumb {
+  margin-bottom: 10px;
+}
+
+/* Style every text-ish input by exclusion, so adding a new input type (url,
+   number, tel…) can't silently fall back to the browser's default look.
+   Fields use the field token, not white — inputs go dark in arcade. */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  width: 100%;
+  height: 38px;
+  padding: 0 11px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: "Public Sans", system-ui, sans-serif;
+  background: var(--field);
+  color: var(--text);
+}
+
+textarea {
+  height: auto;
+  padding: 9px 11px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+input[type="checkbox"] {
+  width: 19px;
+  height: 19px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.form-grid label,
+.block-label {
+  display: block;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.form-grid label > input,
+.form-grid label > select,
+.block-label > textarea {
+  margin-top: 4px;
+  font-weight: normal;
+}
+
+.block-label {
+  margin-bottom: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  margin-bottom: 12px;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  padding: 11px 12px;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 19px;
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap; /* the fix editor holds up to six pickers plus its buttons */
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.form-error {
+  display: none;
+  color: var(--alert);
+  background: color-mix(in srgb, var(--alert) 10%, var(--surface));
+  border: 2px solid var(--alert);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin: 12px 0 0 0;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Tables ---------- */
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.grid-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 480px;
+}
+
+.grid-table th,
+.grid-table td {
+  text-align: left;
+  padding: 10px 10px 10px 0;
+  border-bottom: 2px solid var(--track);
+  vertical-align: middle;
+}
+
+.grid-table th {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.grid-table .center,
+.grid-table th.center {
+  text-align: center;
+}
+
+.grid-table .right {
+  text-align: right;
+}
+
+.row-inactive td {
+  opacity: 0.5;
+}
+
+.detail-row td {
+  background: var(--paper);
+  border-bottom: 2px solid var(--track);
+}
+
+.detail-panel h4 {
+  margin: 16px 0 8px 0;
+}
+
+.detail-panel h4:first-child {
+  margin-top: 0;
+}
+
+.perm-rows {
+  display: grid;
+  gap: 9px;
+}
+
+.perm-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  padding: 9px 11px;
+  font-size: 13px;
+}
+
+.perm-row select {
+  width: auto;
+  min-width: 150px;
+}
+
+/* ---------- Lists ---------- */
+
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.file-list li {
+  padding: 9px 0;
+  border-bottom: 2px solid var(--track);
+}
+
+.file-list li:last-child {
+  border-bottom: none;
+}
+
+/* ---------- Clock page ---------- */
+
+.hours-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6px 0 14px;
+}
+
+.hours-table td {
+  padding: 7px 10px 7px 0;
+  border-bottom: 2px solid var(--track);
+  font-size: 13px;
+}
+
+.hours-table .net-cell {
+  font-family: "Fredoka", sans-serif;
+  text-align: right;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* A team-report shift opens its punches for editing when tapped. */
+.hours-table tr.row-fix {
+  cursor: pointer;
+}
+
+.hours-table tr.row-fix:hover td {
+  background: var(--chip);
+}
+
+.shift-incomplete td {
+  color: var(--alert);
+}
+
+.shift-long .net-cell {
+  color: var(--note-text);
+}
+
+.report-range {
+  align-items: flex-end;
+}
+
+.report-range label {
+  flex: 1;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.report-range input {
+  margin-top: 4px;
+}
+
+.ts-flags {
+  list-style: none;
+  margin: 6px 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.ts-flag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 7px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--note-bg);
+  color: var(--note-text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ts-flag > span:first-child {
+  flex: 1 1 100%;
+}
+
+.ts-flag .meta {
+  flex: 1 1 160px;
+  font-weight: 400;
+}
+
+.ts-flag-done {
+  background: var(--surface);
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.ts-flag .ts-reason {
+  flex: 1 1 100%;
+  margin: 2px 0 0;
+}
+
+/* What staff said about a flag, under it. */
+.ts-response {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+/* The staff member's own answer form, on their Clock page. */
+.ts-answer {
+  flex: 1 1 100%;
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+.ts-answer label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.ts-answer .form-error {
+  margin: 0;
+}
+
+button.ts-mini {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+/*
+ * Timesheets table: everyone in one table, a person per group of rows (name,
+ * shifts, then their total), everyone's total at the foot. Name and total
+ * rows always look the same, so each person's block is easy to find; only a
+ * shift row with a flag to deal with goes light red. Icons sit at the end.
+ */
+.ts-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ts-scroll {
+  overflow-x: auto;
+}
+
+.ts-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 14.5px;
+}
+
+.ts-table th {
+  text-align: left;
+  padding: 10px 12px;
+  background: var(--chip);
+  border-bottom: 2px solid var(--ink);
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ts-table td {
+  padding: 9px 12px;
+  border-bottom: 2px solid var(--track);
+  vertical-align: middle;
+}
+
+.ts-table .ts-num {
+  text-align: right;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ts-table .ts-date,
+.ts-table tr.ts-shift td:nth-child(2),
+.ts-table tr.ts-shift td:nth-child(3),
+.ts-table tr.ts-total-row td:nth-child(2),
+.ts-grand-row td:nth-child(2) {
+  white-space: nowrap;
+}
+
+/* The icon column: flag, note, check, in that order, right-aligned. */
+.ts-table .ts-icons {
+  text-align: right;
+  white-space: nowrap;
+  width: 1%;
+}
+
+.ts-icons > * {
+  vertical-align: middle;
+}
+
+.ts-icons > * + * {
+  margin-left: 6px;
+}
+
+.ts-name-row td,
+.ts-total-row td {
+  background: var(--paper);
+  font-family: "Fredoka", sans-serif;
+  cursor: pointer;
+}
+
+.ts-name-row td {
+  border-top: 2px solid var(--ink);
+  font-size: 15.5px;
+}
+
+.ts-group:first-of-type .ts-name-row td {
+  border-top: none;
+}
+
+.ts-total-row td {
+  border-bottom: 2px solid var(--ink);
+}
+
+.ts-collapsed .ts-total-row td {
+  border-top: 2px solid var(--ink);
+}
+
+.ts-group:first-of-type.ts-collapsed .ts-total-row td {
+  border-top: none;
+}
+
+.ts-total-row .ts-num {
+  font-size: 15.5px;
+}
+
+.ts-badge {
+  float: right;
+}
+
+.ts-chevron {
+  display: inline-block;
+  width: 18px;
+  color: var(--muted);
+}
+
+.ts-grand-row td {
+  background: var(--chip);
+  font-family: "Fredoka", sans-serif;
+  font-size: 15.5px;
+  border-bottom: none;
+}
+
+.ts-table tr.row-fix {
+  cursor: pointer;
+}
+
+.ts-table tr.row-fix:hover td {
+  background: var(--chip);
+}
+
+/* Flagged: the whole shift row a light red, in every theme. */
+.ts-table tr.ts-flagged td,
+.ts-table tr.ts-flagged.row-fix:hover td {
+  background: color-mix(in srgb, var(--alert) 12%, var(--surface));
+}
+
+.ts-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.ts-ico-flag {
+  border-radius: 999px;
+  background: var(--alert);
+  color: var(--surface);
+  font-family: "Fredoka", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ts-item .ts-ico-flag,
+.pill .ts-ico-flag {
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+
+.ts-ico-note {
+  color: var(--muted);
+}
+
+.ts-ico svg,
+.ts-check svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* A bare tick: grey until tapped, green once a flag is marked fine. */
+button.ts-check {
+  --edge: 0px;
+  --depress: 0px;
+  width: 26px;
+  height: 26px;
+  padding: 2px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: color-mix(in srgb, var(--muted) 55%, var(--surface));
+  box-shadow: none;
+}
+
+button.ts-check:hover {
+  background: var(--chip);
+}
+
+button.ts-check.on {
+  color: var(--go-text);
+}
+
+button.ts-check:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* A row's notes and flag details, opened by tapping it. */
+.ts-detail {
+  margin: 2px 0 10px;
+  padding: 10px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 13.5px;
+}
+
+.ts-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0 0 6px;
+}
+
+.ts-item:last-child {
+  margin-bottom: 0;
+}
+
+.ts-item > span:first-child {
+  flex: 1 1 200px;
+}
+
+.ts-item-done {
+  color: var(--muted);
+}
+
+.ts-table .form-error:empty {
+  display: none;
+}
+
+/* ---------- Conventions ---------- */
+
+.badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.info-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 18px;
+  margin: 0 0 4px 0;
+  font-size: 13px;
+}
+
+.info-list dt {
+  color: var(--muted);
+}
+
+.info-list dd {
+  margin: 0;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+}
+
+/* The event's headline. Same card shape as the clock card — 2px outline all
+   round, chunky radius, hard shadow — rather than the mockup's full-bleed
+   strip, which only lines up inside a phone frame. */
+.hero-band {
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 4px 0 var(--shadow);
+  padding: 14px;
+  margin: 0 0 13px;
+}
+
+.hero-band.warm {
+  background: var(--warm);
+  color: var(--on-warm);
+  box-shadow: 0 4px 0 var(--warm-deep);
+}
+
+.hero-band.brand {
+  background: var(--brand);
+  color: var(--on-brand);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--brand) 62%, black);
+}
+
+.hero-band h2 {
+  margin: 6px 0 3px;
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: -0.015em;
+}
+
+.hero-band .hero-sub {
+  font-size: 13px;
+}
+
+.hero-band.center {
+  text-align: center;
+}
+
+/* Segmented hours bar. */
+.segbar {
+  position: relative;
+  display: flex;
+  height: 30px;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.segbar .seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.segbar .seg + .seg {
+  border-left: 2px solid var(--ink);
+}
+
+.segbar .seg.set {
+  background: var(--chip);
+  color: var(--muted);
+}
+
+.segbar .seg.vip {
+  background: var(--warm);
+  color: var(--on-warm);
+}
+
+.segbar .seg.open {
+  background: var(--brand);
+  color: var(--on-brand);
+  font-size: 11px;
+}
+
+.segbar .now-marker {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 4px;
+  background: var(--ink);
+  border-radius: 2px;
+}
+
+.segbar-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+/* Brief highlight so it's obvious where a "jump to editor" button landed you. */
+.flash-target {
+  animation: flash-highlight 1.6s ease-out;
+  border-radius: 8px;
+}
+
+@keyframes flash-highlight {
+  0%, 40% { background: var(--warm); box-shadow: 0 0 0 6px var(--warm); }
+  100% { background: transparent; box-shadow: 0 0 0 6px transparent; }
+}
+
+.lookup-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.lookup-bar .meta {
+  flex: 1;
+  min-width: 200px;
+  line-height: 1.5;
+}
+
+.notes-block {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  margin: 0;
+  font-size: 13px;
+}
+
+.shift-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px 0;
+}
+
+.shift-list li {
+  display: flex;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 2px solid var(--track);
+}
+
+.shift-list li:last-child {
+  border-bottom: none;
+}
+
+.shift-mine {
+  background: color-mix(in srgb, var(--go) 12%, transparent);
+  border-radius: 8px;
+  padding: 9px 8px !important;
+}
+
+.shift-time {
+  min-width: 130px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.layout-frame {
+  position: relative;
+  width: 100%;
+  padding-top: 62%;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  overflow: hidden;
+  /* Fixed light plate so the empty state stays legible in arcade. */
+  background: #F4F0E4;
+}
+
+.layout-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.checklist li {
+  padding: 8px 0;
+}
+
+.checklist label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  line-height: 1.4;
+  font-size: 13px;
+}
+
+.checked-label {
+  text-decoration: line-through;
+  color: var(--cool-muted);
+}
+
+.check-meta {
+  margin-left: 29px;
+  font-size: 11.5px;
+}
+
+/* Progress cells row (checklist progress, shift fill). */
+.cell-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.cell-row .cell {
+  flex: 1;
+  height: 10px;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  background: var(--track);
+}
+
+.cell-row .cell.done {
+  background: var(--go);
+}
+
+/* Boards — the printed signs and what each one looks like. */
+
+/* Boards stand beside each other, the way they do on the unit — a shelf's
+   back and side board are two faces of one thing, not two entries in a list.
+   They wrap when the panel is too narrow to hold them all. */
+.board-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 10px 0;
+}
+
+.board-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.board-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.board-row {
+  padding: 10px 0;
+  border-bottom: 2px solid var(--track);
+}
+
+.board-row:last-child {
+  border-bottom: none;
+}
+
+.board-row-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 8px;
+}
+
+.board-name {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* The board is only as wide as the board. Fixing a height keeps a column of
+   them level, but the box shrinks to the picture and sits against the left —
+   a full-width panel behind a tall narrow sign was mostly empty fill, and it
+   read as the artwork rather than as the space around it. */
+.board-art {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 110px;
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* It's a button so the artwork can be opened full size; nothing about it
+   should look like one until you're over it. */
+button.board-art {
+  cursor: zoom-in;
+}
+
+button.board-art:hover {
+  margin-top: 0;
+  opacity: 0.85;
+}
+
+.board-art img {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.board-art.empty {
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 2px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Resources — the store's library of images. */
+
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 13px;
+}
+
+.resource-tile {
+  margin: 0;
+  text-align: left;
+}
+
+.resource-art {
+  height: 140px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--chip);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resource-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.resource-name {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 13.5px;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+/* A tile that is itself the choice, in the booth plan's artwork picker. */
+.resource-tile.pickable {
+  cursor: pointer;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+
+.resource-tile.pickable:hover {
+  border-color: var(--brand);
+  margin-top: 0;
+}
+
+/* Full-screen overlays: the artwork picker and a photo at a readable size. */
+/* While an overlay is up, the page under it holds still — and loses its
+   scrollbar, which otherwise runs down the side of a picture that's supposed
+   to be the whole screen. It goes on <html> rather than <body> because <html>
+   is what actually scrolls here; body's overflow doesn't reach the viewport. */
+html.overlay-open {
+  overflow: hidden;
+}
+
+/* Full screen and never scrolls: the bar takes what it needs and whatever is
+   below it gets the rest. */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.lightbox-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 13px;
+  background: var(--chip);
+  border-bottom: 2px solid var(--ink);
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.05em;
+}
+
+/* min-height: 0 is what lets it shrink — a flex item won't go below its own
+   content's height without it, which is how a tall board pushed the box past
+   the screen and put a scrollbar on it. */
+.lightbox > img {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+  object-fit: contain;
+}
+
+/* Looking at a board, the picture is the whole point, so the controls float
+   over a corner of it rather than taking a bar's worth of height off the top.
+   What the bar used to say is on the close button as its tooltip. */
+.lightbox-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lightbox-close {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 19px;
+  line-height: 1;
+}
+
+/* The picker is the one thing in here that does scroll: the library can be
+   longer than the screen. */
+.picker-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 13px;
+}
+
+/* The upload bar. Pinned to the bottom rather than sitting in the page, so
+   it's visible from anywhere in a 31-unit plan without scrolling back. */
+
+.upload-bar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 18px;
+  z-index: 70;
+  width: min(420px, calc(100% - 26px));
+  padding: 10px 13px 12px;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 0 4px 0 var(--shadow);
+}
+
+.upload-bar-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.upload-track {
+  height: 14px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.upload-track span {
+  display: block;
+  height: 100%;
+  background: var(--go);
+  border-radius: 999px;
+  transition: width 0.15s linear;
+}
+
+/* Shrinking the picture, or waiting on the write once the bytes are gone:
+   there's no number to show, so the fill moves instead of freezing at 100%. */
+.upload-track.pending span {
+  background-image: linear-gradient(
+    100deg,
+    var(--go) 0 40%,
+    var(--brand) 50%,
+    var(--go) 60% 100%
+  );
+  background-size: 300% 100%;
+  animation: upload-sweep 1.1s linear infinite;
+  transition: none;
+}
+
+@keyframes upload-sweep {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (max-width: 800px) {
+  /* Clear of the bottom nav, which is fixed over the foot of the page. */
+  .upload-bar {
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upload-track.pending span {
+    animation: none;
+  }
+}
+
+/* Merchandising photos on a unit. */
+
+.shelf-photos {
+  margin-top: 12px;
+  border-top: 2px solid var(--track);
+  padding-top: 9px;
+}
+
+.shelf-photos-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+/* A label doing a button's job, so it can open the file input. */
+.shelf-photo-add {
+  cursor: pointer;
+  display: inline-block;
+}
+
+/* Scrolls sideways rather than stacking: several angles of one shelf is a
+   strip you flick through, not a column that pushes the stages off screen. */
+.shelf-photo-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 3px;
+}
+
+.shelf-photo {
+  flex: none;
+  width: 84px;
+  height: 84px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--chip);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.shelf-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---------- Availability ---------- */
+
+.avail-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 2px solid var(--track);
+  flex-wrap: wrap;
+}
+
+.avail-row:last-of-type {
+  border-bottom: none;
+}
+
+.avail-day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 130px;
+  flex: none;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.avail-times {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 210px;
+}
+
+.avail-times input:disabled {
+  opacity: 0.45;
+}
+
+/* ---------- Schedule builder ---------- */
+
+.day-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 13px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.day-tab {
+  flex: 1;
+  min-width: 68px;
+  padding: 8px 4px;
+  border-radius: 11px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.25;
+  --depress: 0px;
+}
+
+.day-tab .day-tab-date {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.day-tab .day-tab-count {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* Apply to: a week of toggles on the shift form. Lit means "this shift on
+   that day too"; the day being edited is lit and fixed. Selected is the
+   clock pair, never ink/paper — those vanish into each other in arcade. */
+.apply-to {
+  margin-top: 12px;
+}
+
+.apply-to-label {
+  display: block;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 12.5px;
+  margin-bottom: 6px;
+}
+
+.day-toggles {
+  display: flex;
+  gap: 5px;
+}
+
+.day-toggle {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  font-size: 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--brand-text);
+  border-color: var(--brand);
+  --depress: 0px;
+}
+
+.day-toggle.on {
+  background: var(--clock-bg);
+  color: var(--clock-text);
+  border-color: var(--clock-bg);
+}
+
+.day-toggle.fixed:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+/* A day nobody is on yet is the one that needs you. */
+.day-tab.empty {
+  background: var(--note-bg);
+  color: var(--note-text);
+}
+
+.day-tab.empty .day-tab-count {
+  color: var(--note-text);
+}
+
+.day-tab.on {
+  background: var(--clock-bg);
+  color: var(--clock-text);
+}
+
+.day-tab.on .day-tab-count {
+  color: var(--clock-text);
+  opacity: 0.7;
+}
+
+.shift-card {
+  cursor: pointer;
+}
+
+.shift-card:active {
+  box-shadow: 0 2px 0 var(--shadow);
+  margin-top: 2px;
+}
+
+/* ---------- Shelf plan ---------- */
+
+.stage-batteries {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 9px;
+  margin-bottom: 13px;
+}
+
+/* The battery is a button now — clicking it filters the plan to its stage —
+   but it should keep looking like a battery, not a button. */
+button.stage-battery {
+  --edge: 0px;
+  --depress: 0px;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+}
+
+.stage-battery.on .stage-battery-head span:first-child {
+  background: var(--clock-bg);
+  color: var(--clock-text);
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+
+.stage-battery.on .stage-battery-cells {
+  border-color: var(--brand);
+}
+
+.stage-battery-head {
+  display: flex;
+  justify-content: space-between;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.stage-battery-cells {
+  display: flex;
+  gap: 2px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 2px;
+  background: var(--surface);
+}
+
+.stage-battery-cells span {
+  flex: 1;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--cell-empty);
+}
+
+.stage-battery-cells span.on {
+  background: var(--go);
+}
+
+/* The grid. Fixed columns so the eye can run down a stage. */
+.shelf-grid-card {
+  overflow-x: auto;
+}
+
+.shelf-grid-head,
+.shelf-row {
+  display: grid;
+  /* --stage-cols is set by shelfGrid(): the stage list minus hidden stages. */
+  grid-template-columns: 56px minmax(130px, 1fr) 78px 150px minmax(140px, 1fr) repeat(var(--stage-cols, 5), 62px);
+  gap: 8px;
+  align-items: center;
+  min-width: 900px;
+  padding: 5px 13px;
+}
+
+.shelf-grid-head {
+  background: var(--nav-bg);
+  border-bottom: 2px solid var(--ink);
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.shelf-grid-head .col-stage {
+  text-align: center;
+}
+
+.shelf-grid-head .col-stage em {
+  display: block;
+  font-style: normal;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.shelf-row {
+  border-bottom: 2px solid var(--track);
+  background: var(--surface);
+}
+
+.shelf-row.done {
+  background: color-mix(in srgb, var(--go) 10%, var(--surface));
+}
+
+.shelf-row .col-shelf {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* The shelf's own name, and the way into its section and removal. */
+.shelf-code {
+  padding: 2px 5px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.shelf-code:hover {
+  margin-top: 0;
+  background: var(--paper);
+}
+
+.shelf-row .col-stage {
+  text-align: center;
+}
+
+.shelf-wall-row {
+  background: var(--chip);
+  border-bottom: 2px solid var(--shadow);
+  padding: 6px 13px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  min-width: 900px;
+}
+
+.shelf-grid-foot {
+  padding: 11px 13px;
+  border-top: 3px solid var(--ink);
+  min-width: 900px;
+}
+
+/* Form controls are full-width by default, which in this flex row let the
+   section list swell to the whole footer and squeeze the button until its
+   label wrapped onto a second line — that, not the border, is what made it
+   fat. The list takes only what it needs and the button never wraps. */
+.shelf-grid-foot select {
+  width: auto;
+  min-width: 200px;
+}
+
+.add-shelf {
+  flex: none;
+  white-space: nowrap;
+  font-size: 13px;
+  padding: 8px 13px;
+}
+
+/* Edits in place: no edit mode, no modal. */
+.cell-input {
+  width: 100%;
+  height: 30px;
+  padding: 0 7px;
+  border: 2px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 12.5px;
+}
+
+.cell-input:hover {
+  border-color: var(--shadow);
+}
+
+.cell-input:focus {
+  border-color: var(--ink);
+  background: var(--field);
+  outline: none;
+}
+
+.type-pill {
+  width: 100%;
+  height: 25px;
+  padding: 0 6px;
+  border: 2px solid var(--shadow);
+  border-radius: 999px;
+  background: transparent;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  text-align: center;
+  appearance: none;
+  cursor: pointer;
+}
+
+.type-pill:hover {
+  border-color: var(--ink);
+  color: var(--text);
+}
+
+.signage-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  width: 100%;
+  padding: 3px;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.signage-cell:hover:not(:disabled) {
+  margin-top: 0;
+  background: var(--paper);
+}
+
+/* Read-only versions of the editable cells, for anyone who isn't a boss. */
+.cell-static {
+  display: block;
+  padding: 0 7px;
+  font-size: 12.5px;
+}
+
+.type-pill.static {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+
+.signage-cell.static {
+  cursor: default;
+}
+
+.signage-cell.static:hover {
+  background: none;
+}
+
+.sig-tag {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  padding: 3px 6px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+/* An empty cell offers a plain +. A dashed outline shouted about a cell that
+   is, most of the time, correctly empty. */
+.cell-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+button.cell-add:hover {
+  margin-top: 0;
+  color: var(--brand-text);
+}
+
+/* The Boards column: each board as its artwork plus what it's called, so a
+   run down the column is a run down the booth's signage. */
+.boards-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+  padding: 3px;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  cursor: pointer;
+
+  /* Buttons default to cream on the brand fill. This one has no fill, so it
+     has to say what colour its text is or the names come out near-white. */
+  font-family: inherit;
+  font-weight: 400;
+  font-size: 12.5px;
+  color: var(--text);
+  text-align: left;
+}
+
+.boards-cell:hover:not(.static) {
+  margin-top: 0;
+  background: var(--paper);
+}
+
+.boards-cell.static {
+  cursor: default;
+}
+
+/* The name is what you read down the column. The picture is a hover away. */
+.board-name-cell {
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--shadow);
+}
+
+.board-name-cell + .board-name-cell::before {
+  content: "·";
+  margin: 0 5px 0 1px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+/* Floats over everything, positioned in fixed coordinates from JS, because
+   the grid scrolls inside a clipping box that would cut it off. */
+.board-preview {
+  display: none;
+  position: fixed;
+  z-index: 55;
+  width: 210px;
+  height: 150px;
+  padding: 5px;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 0 4px 0 var(--shadow);
+  pointer-events: none;
+}
+
+.board-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.boards-strip {
+  gap: 10px;
+}
+
+/* The families on a unit, wherever the unit is being shown. */
+.shelf-list-groupings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+
+/* A product family on a shelf, with its per-SKU depth. */
+.grouping-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 2px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--cool-bg);
+  color: var(--cool-text);
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.grouping-chip em {
+  font-style: normal;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.groupings-strip {
+  gap: 12px;
+}
+
+.groupings-strip select {
+  width: auto;
+  min-width: 190px;
+}
+
+.facings {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.facings input {
+  width: 58px;
+  padding: 4px 6px;
+}
+
+.board-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.board-slot-face {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.board-slot-name {
+  --edge: 0px;
+  --depress: 0px;
+  max-width: 190px;
+  padding: 3px 2px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text);
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--shadow);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.board-slot-name:hover {
+  color: var(--brand-text);
+}
+
+.board-slot-clear {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  --depress: 0px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--alert);
+  cursor: pointer;
+}
+
+.signage-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 9px 13px 9px 260px;
+  background: var(--paper);
+  border-bottom: 2px solid var(--track);
+  min-width: 900px;
+}
+
+/* The signage strip is indented to sit under its own column. The shelf strip
+   belongs to the leftmost column, so that indent left a wide empty gap — and
+   it has to come after .signage-strip, whose padding shorthand would
+   otherwise win on source order alone. */
+.signage-strip.shelf-strip {
+  padding-left: 13px;
+  gap: 10px;
+}
+
+/* Form controls are full-width by default; unchecked, the section list took
+   the whole strip and pushed everything else onto its own line. */
+.shelf-strip select {
+  width: auto;
+  min-width: 200px;
+}
+
+.sig-toggle {
+  font-size: 9.5px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 2px dashed var(--shadow);
+  --depress: 0px;
+  background: transparent;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.sig-toggle.on {
+  border-style: solid;
+  border-color: var(--ink);
+}
+
+.stage-box {
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid var(--ink);
+  --depress: 0px;
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--on-go);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.stage-box.on {
+  background: var(--go);
+}
+
+.stage-box.na {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--chip);
+  border-color: var(--shadow);
+  color: var(--muted);
+  cursor: default;
+}
+
+/* The phone surface: a card per unit instead of a spreadsheet you'd have to
+   drag sideways to read. */
+.shelf-list-wall {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 14px 2px 7px;
+}
+
+.shelf-list-card.done {
+  background: color-mix(in srgb, var(--go) 10%, var(--surface));
+}
+
+.shelf-list-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.shelf-list-code {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 17px;
+  min-width: 46px;
+}
+
+.shelf-list-stages {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 8px;
+  margin-top: 11px;
+  border-top: 2px solid var(--track);
+  padding-top: 10px;
+}
+
+.shelf-list-stage {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+/* The booth map, to scale at 31px per foot. */
+.booth-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.booth-map-column {
+  max-width: 100%;
+}
+
+/* The map is drawn at whatever scale fits the column, so this only catches
+   the odd pixel of rounding rather than being the way you read the plan. */
+.booth-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.booth-ruler {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.booth-frame {
+  position: relative;
+  border: 3px solid var(--ink);
+  border-radius: 4px;
+  background: var(--chip);
+  flex: none;
+}
+
+.booth-guide {
+  position: absolute;
+  border-color: var(--shadow);
+}
+
+.booth-guide.v {
+  top: 0;
+  bottom: 0;
+  border-left: 1px dashed var(--shadow);
+}
+
+.booth-guide.h {
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--shadow);
+}
+
+.booth-block {
+  position: absolute;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 4px 5px;
+  overflow: hidden;
+  user-select: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+}
+
+.booth-block.fresh {
+  background: var(--paper);
+}
+
+/* Mixed from the palette rather than a fixed pale green: on a dark theme a
+   literal light fill left the block's own light text sitting on it at about
+   1:1, which is the "done" block reading as blank. */
+.booth-block.done {
+  background: color-mix(in srgb, var(--go) 30%, var(--surface));
+  border-color: var(--go-deep);
+}
+
+.booth-block.other {
+  background: var(--note-bg);
+}
+
+.booth-block.selected {
+  border-width: 3px;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 28%, transparent);
+}
+
+/* An invalid plan must not be able to look valid. */
+.booth-block.conflict {
+  border-width: 3px;
+  border-color: var(--alert);
+}
+
+.booth-block.draggable {
+  cursor: grab;
+}
+
+.booth-block.dragging {
+  cursor: grabbing;
+  z-index: 5;
+  opacity: 0.85;
+}
+
+/* A person on the floor. The clock pair rather than ink-on-paper, so the
+   circle reads over any block in all five palettes. */
+.booth-person {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--clock-bg);
+  color: var(--clock-text);
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  user-select: none;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.booth-person.selected {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 28%, transparent);
+}
+
+.booth-person.draggable {
+  cursor: grab;
+}
+
+.booth-person.dragging {
+  cursor: grabbing;
+  z-index: 5;
+  opacity: 0.85;
+}
+
+/* Gap rulers: the aisle a move is changing, measured while you move it. */
+.gap-ruler {
+  position: absolute;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.gap-ruler.h {
+  height: 0;
+  border-top: 2px dashed var(--brand);
+}
+
+.gap-ruler.v {
+  width: 0;
+  border-left: 2px dashed var(--brand);
+}
+
+.gap-ruler span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Fredoka', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--brand);
+  border-radius: 999px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+.block-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.block-head.wide {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.block-id {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.block-dots {
+  display: flex;
+  gap: 2px;
+}
+
+.block-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--cell-empty);
+}
+
+.block-dots span.on {
+  background: var(--go);
+}
+
+.block-dots span.na {
+  background: #E4DDC6;
+}
+
+/* Scoped to the block, because `.block-label` is also a form label further up
+   this file — that's where the muted colour and the 12px margin were coming
+   from, and neither belongs on a unit in the booth. Muted on the "done" fill
+   read at about 2:1 on a dark palette. */
+.booth-block .block-label {
+  font-size: 9px;
+  line-height: 1.15;
+  overflow: hidden;
+  margin-bottom: 0;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+/* A bar on the face a board stands on. */
+.spine {
+  position: absolute;
+}
+
+.spine.left { left: 0; top: 0; bottom: 0; width: 4px; }
+.spine.right { right: 0; top: 0; bottom: 0; width: 4px; }
+.spine.top { top: 0; left: 0; right: 0; height: 4px; }
+.spine.bottom { bottom: 0; left: 0; right: 0; height: 4px; }
+
+.booth-panel {
+  flex: 1;
+  min-width: 300px;
+}
+
+/* The unit's name, and what signage it needs, on one line. */
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.panel-code {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+/* The ticks lead: on the floor this card is a checklist first and a
+   reference second. */
+.panel-stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 11px;
+  border-bottom: 2px solid var(--track);
+}
+
+.panel-stage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nudge-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.sign-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 0;
+  border-bottom: 2px solid var(--track);
+  cursor: pointer;
+}
+
+.sign-row:last-child {
+  border-bottom: none;
+}
+
+/* The board you're about to hang, small enough to sit in the list row. */
+.sign-thumb {
+  width: 46px;
+  height: 32px;
+  flex: none;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  background: var(--chip);
+  overflow: hidden;
+}
+
+.sign-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ---------- Break battery ---------- */
+
+.battery-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.battery {
+  flex: 1;
+  display: flex;
+  gap: 3px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  padding: 3px;
+  background: var(--chip);
+}
+
+.battery .bcell {
+  flex: 1;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--cell-empty);
+}
+
+.battery .bcell.full {
+  background: var(--go);
+}
+
+.battery .bcell.draining {
+  background: var(--warm);
+}
+
+.battery .bdivider {
+  width: 2px;
+  height: 16px;
+  background: var(--ink);
+  flex: none;
+}
+
+.battery-nub {
+  width: 5px;
+  height: 14px;
+  border: 2px solid var(--ink);
+  border-left: none;
+  border-radius: 0 3px 3px 0;
+  background: var(--ink);
+  flex: none;
+}
+
+/* Miniature battery (convention shift card, MARCUS SEES preview). */
+.battery.mini {
+  flex: none;
+  width: 74px;
+  padding: 2px;
+  border-color: var(--go);
+  background: transparent;
+}
+
+.battery.mini .bcell {
+  height: 11px;
+  background: var(--go);
+}
+
+.battery.mini .bdivider {
+  height: 11px;
+  background: var(--clock-bg);
+}
+
+/* ---------- Manage section ---------- */
+
+.manage-card {
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.manage-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.manage-list {
+  border-top: 2px solid var(--track);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+/* ---------- Doc viewer ---------- */
+
+.doc-viewer {
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.doc-viewer h1,
+.doc-viewer h2,
+.doc-viewer h3,
+.doc-viewer h4 {
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+}
+
+.doc-viewer p {
+  margin: 0 0 1em 0;
+}
+
+.doc-viewer a {
+  color: var(--brand-text);
+  text-decoration: underline;
+}
+
+/* Pictures come from Google at whatever size they were pasted; the card,
+   not the doc, decides the width. */
+.doc-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin: 0.6em 0;
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+
+.doc-table td {
+  border: 1px solid var(--track);
+  padding: 8px;
+  vertical-align: top;
+}
+
+/* ---------- Theme picker rows ---------- */
+
+.theme-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  padding: 11px 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--shadow);
+  margin-bottom: 10px;
+}
+
+.theme-row:hover {
+  opacity: 0.9;
+}
+
+.theme-row .swatches {
+  display: flex;
+  gap: 3px;
+  flex: none;
+}
+
+.theme-row .swatch {
+  width: 13px;
+  height: 30px;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+}
+
+.theme-row .picked {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--paper);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-row .picked.on {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+/* The custom profile's wheel. Three tabs say which colour is being edited;
+   the wheel is a canvas with a DOM thumb over it so the thumb carries the
+   2px outline; the slider underneath is brightness. */
+.custom-colors {
+  margin-top: -6px;
+}
+
+.color-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.color-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 7px 10px;
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--track);
+  --depress: 0px;
+}
+
+.color-tab.on {
+  border-color: var(--ink);
+  background: var(--chip);
+}
+
+.color-tab > span:last-child {
+  display: flex;
+  flex-direction: column;
+  font-family: "Fredoka", sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.color-tab-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid var(--ink);
+  flex: none;
+}
+
+.wheel-wrap {
+  position: relative;
+  width: min(240px, 100%);
+  aspect-ratio: 1;
+  margin: 0 auto 10px;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.wheel-wrap .wheel {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px var(--ink), 0 4px 0 2px var(--shadow);
+}
+
+.wheel-thumb {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid var(--ink);
+  box-shadow: 0 0 0 2px #ffffff;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.wheel-bright {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wheel-bright input[type="range"] {
+  flex: 1;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--brand);
+}
+
+.wheel-hex {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* ---------- Dashboard bits ---------- */
+
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 12px;
+}
+
+.dash-header .who {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.dash-header .date {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.event-band {
+  background: var(--warm);
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 0 4px 0 var(--warm-deep);
+  padding: 10px 13px;
+  margin: 0 0 13px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+}
+
+.event-band .band-title {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--on-warm);
+  flex: 1;
+}
+
+.event-band .band-meta {
+  color: var(--on-warm);
+  opacity: 0.85;
+  font-weight: 500;
+}
+
+.event-band .band-arrow {
+  font-family: "Fredoka", sans-serif;
+  font-size: 18px;
+  color: var(--on-warm);
+}
+
+.roster-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 0;
+  border-bottom: 2px solid var(--track);
+}
+
+.roster-row:last-child {
+  border-bottom: none;
+}
+
+.roster-row.later {
+  opacity: 0.6;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (min-width: 801px) {
+  .main {
+    padding: 26px 24px 60px;
+  }
+}
+
+/* Legacy hooks kept so nothing 404s visually while screens are rebuilt. */
+.mobile-topbar {
+  display: none;
+}
+
+.mobile-menu-overlay {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   Tiers and capacity — how much of a shelf a family actually fills
+   -------------------------------------------------------------------------- */
+
+/* A family that's on the unit but standing on no tier. It isn't an error —
+   a shelf gets filled in over several sittings — so it's the note colour
+   rather than the alert one. */
+.grouping-chip.unplaced {
+  background: var(--note-bg);
+  border-color: var(--note-border);
+  color: var(--note-text);
+}
+
+.tier-pick {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tier-toggles {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.tier-toggle {
+  --depress: 0px;
+  min-width: 32px;
+  padding: 4px 6px;
+  border: 2px dashed var(--shadow);
+  border-radius: 999px;
+  background: var(--field);
+  color: var(--muted);
+  font-family: Fredoka, sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.tier-toggle:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+/* Solid when the family stands there, dashed when it doesn't — the same
+   on/off grammar the signage toggles use. */
+.tier-toggle.on {
+  border-style: solid;
+  border-color: var(--cool-text);
+  background: var(--cool-bg);
+  color: var(--cool-text);
+}
+
+.tier-note {
+  font-size: 11.5px;
+  color: var(--muted);
+  align-self: center;
+}
+
+.tier-note em {
+  font-style: normal;
+  font-family: Fredoka, sans-serif;
+  color: var(--ink);
+}
+
+.tier-note strong {
+  font-family: Fredoka, sans-serif;
+  color: var(--ink);
+}
+
+.unplaced-note { color: var(--note-text); }
+
+.tier-count-field input { width: 64px; }
+
+/* Pick list: one row per bring item, ticked as it's pulled. */
+button.pick-open {
+  --edge: 0px;
+  --depress: 0px;
+  border: 2px solid var(--ink);
+  cursor: pointer;
+}
+
+.pick-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 2px solid var(--chip);
+  cursor: pointer;
+}
+
+.pick-row input { margin-top: 3px; }
+
+.pick-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.pick-title em {
+  display: block;
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.pick-row.picked .pick-title { color: var(--muted); text-decoration: line-through; }
+.pick-row.picked .pick-title em { text-decoration: none; }
+
+/* How many of the physical board exist, riding beside its name. */
+.board-qty {
+  font-style: normal;
+  font-family: Fredoka, sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Full schedule folds by day — a four-day show is a long scroll otherwise. */
+.shift-day {
+  border-bottom: 2px solid var(--track);
+}
+
+.shift-day summary {
+  cursor: pointer;
+  padding: 10px 0;
+  font-family: Fredoka, sans-serif;
+  font-weight: 600;
+  font-size: 13.5px;
+  list-style-position: inside;
+}
+
+.shift-day[open] summary {
+  padding-bottom: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   One unit, tier by tier — the phone screen for the store floor
+   -------------------------------------------------------------------------- */
+
+.shelf-detail-card { padding: 0; overflow: hidden; }
+
+/* The band names the unit the way someone standing in front of it would:
+   which wall, then the code big enough to match against the shelf. */
+.shelf-detail-band {
+  background: var(--brand);
+  color: var(--on-brand);
+  padding: 14px 16px 16px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.shelf-detail-code {
+  font-family: Fredoka, sans-serif;
+  font-weight: 600;
+  font-size: 26px;
+  line-height: 1.1;
+  margin-top: 8px;
+}
+
+.shelf-detail-sub {
+  font-family: Fredoka, sans-serif;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.shelf-detail-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.shelf-detail-stage {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.shelf-detail-stage-name {
+  font-family: Fredoka, sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.note-card {
+  margin: 0 16px 14px;
+  padding: 10px 12px;
+  border: 2px solid var(--note-border);
+  border-radius: 14px;
+  background: var(--note-bg);
+  color: var(--note-text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.tier-row {
+  border-bottom: 2px solid var(--chip);
+}
+
+.tier-row.open { background: var(--paper); }
+
+.tier-row-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.tier-row-name {
+  font-family: Fredoka, sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+  min-width: 28px;
+}
+
+/* Who stands on the tier, right in the row, so the list reads without
+   opening anything. */
+.tier-row-families {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.tier-row-count {
+  font-family: Fredoka, sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--ink);
+  min-width: 66px;
+  text-align: right;
+}
+
+.tier-row-count em {
+  display: block;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.tier-open {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 14px;
+}
+
+.chip-name {
+  --edge: 0px;
+  --depress: 0px;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.chip-clear {
+  --edge: 0px;
+  --depress: 0px;
+  border: none;
+  background: none;
+  padding: 0 0 0 6px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tier-move,
+.tier-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+/* ---------- Budget ---------- */
+
+.budget-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 0;
+  border-bottom: 2px solid var(--track);
+  font-size: 13.5px;
+}
+
+/* A booth line is label + qty + price + discount + total — too much for a
+   phone in one line, so the label takes its own there. */
+@media (max-width: 560px) {
+  .budget-row .budget-label {
+    flex: 1 0 100%;
+  }
+}
+
+/* The element selector matters: the global text-input rule is
+   input:not(...):not(...) (0-2-1), so a bare class never out-specifies its
+   width: 100%. These tie it and win on order. */
+.card input.budget-money {
+  width: 84px;
+}
+
+.card input.budget-qty {
+  width: 52px;
+}
+
+.budget-cost {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  min-width: 76px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Labour folds by role; the summary is the subtotal, so a shut group still
+   says what it costs. display:flex drops the native marker, so the arrow is
+   drawn by hand. */
+.budget-fold summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  padding: 9px 0 5px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.budget-fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.budget-fold summary::before {
+  content: "▸";
+  font-size: 11px;
+}
+
+.budget-fold[open] summary::before {
+  content: "▾";
+}
+
+.budget-fold:not([open]) {
+  border-bottom: 2px solid var(--track);
+}
+
+.budget-total {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: 0.04em;
+  border-bottom: none;
+}
+
+/* The little × that removes an expense or a mover entry. */
+.budget-x {
+  padding: 2px 9px;
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* A mover visit opens its times for editing when tapped. */
+.budget-row.row-edit {
+  cursor: pointer;
+}
+
+.budget-row.row-edit:hover {
+  background: var(--chip);
+}
+
+
+</style>
+<style>
+  .mock-note { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-bottom: 14px; padding: 8px 12px; border: 2px dashed var(--muted); border-radius: 12px; font-size: 12.5px; color: var(--muted); }
+  .mock-note b { font-family: "Fredoka", sans-serif; font-weight: 600; letter-spacing: 0.06em; color: var(--text); }
+  .faq-row { display: flex; align-items: center; gap: 10px; padding: 10px 13px; border-top: 2px solid var(--chip); cursor: pointer; background: var(--surface); }
+  .faq-row:first-child { border-top: 0; }
+  .faq-row:hover { background: var(--paper); }
+  .faq-row .q { flex: 1; font-size: 14px; min-width: 0; }
+  .faq-row .chev { color: var(--muted); font-size: 11px; width: 10px; }
+  .faq-item.open > .faq-row { background: var(--paper); }
+  .faq-item.open > .faq-row .q { font-weight: 600; }
+  .faq-answer { padding: 4px 13px 12px 46px; background: var(--paper); font-size: 13.5px; line-height: 1.55; }
+  .faq-answer p { margin: 0 0 8px; }
+  .faq-answer ul, .faq-answer ol { margin: 0 0 8px; padding-left: 20px; }
+  .faq-answer-actions { display: flex; justify-content: flex-end; }
+  .faq-answer-actions button { padding: 6px 14px; font-size: 13px; }
+  .faq-item + .faq-item > .faq-row { border-top: 2px solid var(--chip); }
+  .faq-item:first-child > .faq-row { border-top: 0; }
+  .grip { color: inherit; opacity: 0.6; cursor: grab; font-size: 15px; letter-spacing: -2px; user-select: none; padding: 0 2px; }
+  .faq-cat { cursor: pointer; }
+  .faq-cat .strip-side { white-space: nowrap; }
+  .sec-name { display: flex; align-items: center; gap: 8px; text-transform: uppercase; min-width: 0; }
+  .sec-edit { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  .sec-editor { border-bottom: 2px solid var(--ink); background: var(--paper); }
+  .sec-hidden { border-style: dashed; box-shadow: none; }
+  .sec-hidden > .strip { background: var(--paper); color: var(--muted); }
+  .sec-hidden .faq-row .q { color: var(--muted); }
+  .dragging { opacity: 0.45; }
+  .rt-toolbar { display: flex; gap: 6px; padding: 6px; border: 2px solid var(--ink); border-bottom: 0; border-radius: 10px 10px 0 0; background: var(--chip); }
+  .rt-toolbar button { --edge: 0px; --depress: 0px; border-width: 2px; padding: 3px 10px; font-size: 13px; background: var(--surface); color: var(--text); border-radius: 8px; }
+  .rt-body { border: 2px solid var(--ink); border-radius: 0 0 10px 10px; background: var(--field); padding: 10px 12px; font-size: 14px; line-height: 1.5; min-height: 150px; }
+  .rt-body p { margin: 0 0 10px; }
+  .hist { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 2px solid var(--chip); font-size: 13px; }
+  .hist:first-of-type { border-top: 0; }
+  .hist a { font-weight: 600; }
+  .muted { color: var(--muted); font-size: 12.5px; }
+  .faq-tools { display: flex; gap: 8px; margin-bottom: 13px; }
+  .pill-row { display: flex; gap: 6px; margin-top: 4px; }
+  .trash-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 11px 13px; border-top: 2px solid var(--chip); }
+  .trash-row:first-child { border-top: 0; }
+  .trash-row .t-main { flex: 1; min-width: 200px; }
+  .trash-row .t-title { font-size: 14px; }
+  .trash-row .t-actions { display: flex; gap: 8px; }
+  .trash-confirm { background: var(--note-bg); }
+  .trash-confirm .t-title { color: var(--note-text); font-weight: 600; }
+  .btn-danger.solid { background: var(--alert); color: #fff; border-color: color-mix(in srgb, var(--alert) 62%, black); }
+  .restore-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body class="theme-habbo">
+<div class="portal-shell">
+  <aside class="sidebar">
+    <h1><span class="app-tile">P</span> Panda Portal</h1>
+    <nav>
+      <div class="nav-group">Today</div>
+      <a href="#">Dashboard</a><a href="#">Timesheets</a>
+      <div class="nav-group">Operations</div>
+      <a href="#">Events</a><a href="#">Schedule</a><a href="#">Staff</a>
+      <div class="nav-group">Website</div>
+      <a href="#" class="active">FAQ</a>
+      <div class="nav-group">Reference</div>
+      <a href="#">Docs</a><a href="#">My Folder</a><a href="#">My availability</a>
+      <div class="nav-group">Admin</div>
+      <a href="#">Users &amp; Roles</a><a href="#">Appearance</a>
+      <div class="nav-group">Not built yet</div>
+      <div class="nav-stub">Inventory</div><div class="nav-stub">Purchasing</div>
+    </nav>
+    <a href="#">Log out</a>
+  </aside>
+
+  <main class="main">
+    <div class="page">
+      <div class="mock-note"><b>MOCKUP</b><span>Real questions from the FAQ export. The draft, the Trash and the change history are made up. Nothing saves.</span></div>
+
+      <!-- LIST -->
+      <section id="listView">
+        <div class="title-row">
+          <div class="screen-title">
+            <div class="kicker-line">WEBSITE</div>
+            <h2>FAQ</h2>
+            <div class="meta" id="metaLine"></div>
+          </div>
+          <div class="button-row" style="margin:0;">
+            <button class="btn-quiet" id="trashBtn"></button>
+            <button class="btn-quiet">View on site</button>
+            <button id="newQBtn">New question</button>
+          </div>
+        </div>
+
+        <div class="faq-tools"><input id="search" placeholder="Search questions and answers"></div>
+
+        <div id="sections"></div>
+        <p class="muted" style="text-align:center;" id="dragHint">Click a question to read its answer. Drag ⋮⋮ to reorder sections and questions.</p>
+
+        <button class="btn-dashed" id="newSecBtn" style="width:100%;">+ New section</button>
+        <div class="card stripped" id="newSecForm" hidden>
+          <div class="strip cool"><span>NEW SECTION</span></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <label>Section name <input id="newSecName" placeholder="e.g. Gift cards"></label>
+              <label>Where it goes on the page <select id="newSecPos"></select></label>
+            </div>
+            <p class="muted" style="margin:0 0 10px;">A new section stays off the site until it has at least one Live question.</p>
+            <div class="button-row" style="justify-content:flex-end;margin:0;">
+              <button class="btn-quiet" id="cancelNewSec">Cancel</button>
+              <button class="btn-go" id="addNewSec">Add section</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- EDIT QUESTION -->
+      <section id="editView" hidden>
+        <div class="title-row">
+          <button class="back-tile" data-back>‹</button>
+          <div class="screen-title">
+            <div class="kicker-line" id="eqKicker"></div>
+            <h2 id="eqTitle">Edit question</h2>
+            <div class="meta" id="eqMeta"></div>
+          </div>
+        </div>
+
+        <div class="card note restore-bar" id="restoreBar" hidden>
+          <span style="font-size:13px;">Showing the version from <b id="restoreWhen"></b>. Save to put it back, or Cancel.</span>
+          <button class="btn-quiet" id="restoreCancel">Cancel</button>
+        </div>
+
+        <div class="card">
+          <div class="form-grid" style="grid-template-columns:1fr;">
+            <label>Question <input id="eqQ"></label>
+          </div>
+          <span class="block-label" style="margin-bottom:4px;">Answer</span>
+          <div class="rt-toolbar"><button><b>B</b></button><button><i>I</i></button><button>Link</button><button>• List</button></div>
+          <div class="rt-body" contenteditable="true" id="eqA"></div>
+
+          <div class="form-grid" style="margin-top:12px;">
+            <label>Section <select id="eqSec"></select></label>
+            <label>On the site
+              <div class="pill-row">
+                <button class="btn-pill" data-status="live">Live</button>
+                <button class="btn-pill" data-status="draft">Draft</button>
+              </div>
+            </label>
+          </div>
+          <div class="form-grid" id="eqNewSecWrap" style="grid-template-columns:1fr;" hidden>
+            <label>New section name <input id="eqNewSec" placeholder="e.g. Gift cards"></label>
+          </div>
+
+          <div class="button-row" style="justify-content:space-between;">
+            <button class="btn-danger" id="eqTrash">Move to trash</button>
+            <div style="display:flex;gap:8px;">
+              <button class="btn-quiet">Preview</button>
+              <button class="btn-go" id="eqSave">Save</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card note">
+          <h3>Saving changes the website</h3>
+          <p style="margin:0;font-size:13px;">A Live question updates on pandahobby.ca as soon as you save. Set it to Draft to work on it without customers seeing it.</p>
+        </div>
+
+        <div class="card stripped" id="historyCard">
+          <div class="strip cool"><span>CHANGES</span><span class="strip-side">3</span></div>
+          <div class="card-body">
+            <div class="hist"><span>Oct 24, 2:14 PM · Baldwin · edited the answer</span><a href="#" data-restore="Oct 24, 2:14 PM">Restore</a></div>
+            <div class="hist"><span>Oct 22, 11:02 AM · Sam · changed the question</span><a href="#" data-restore="Oct 22, 11:02 AM">Restore</a></div>
+            <div class="hist"><span>Oct 21 · imported from the old FAQ app</span><a href="#" data-restore="Oct 21">Restore</a></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TRASH -->
+      <section id="trashView" hidden>
+        <div class="title-row">
+          <button class="back-tile" data-back>‹</button>
+          <div class="screen-title">
+            <div class="kicker-line">FAQ</div>
+            <h2>Trash</h2>
+            <div class="meta">Restore puts things back as Draft. Delete forever can't be undone.</div>
+          </div>
+        </div>
+        <div id="trashList"></div>
+      </section>
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <a href="#">Home</a><a href="#">Clock</a><a href="#">Events</a><a href="#" class="active">More</a>
+  </nav>
+</div>
+
+<script type="application/json" id="faqData">{"sections": [{"name": "Shipping", "hidden": false, "questions": [{"question": "How long does it take for my order to ship out?", "answer": "<p>Usually we are able to prepare your order within 24-48 hours unless it&rsquo;s the weekend or holiday. Make sure that your name and address is correct, if we need to get in touch with you to correct any of these issues it will cause delays. <\/p>\n<p>Your order will be shipped out at the next available shipping day (Monday-Friday). Please note postal offices are closed on weekends and holidays, we will not be shipping out those days. <\/p>", "status": "live"}, {"question": "My Tracking Number is not updating!", "answer": "<p>You just received your Tracking Information and there is no update on the tracking link or it says it can't find the item? Don't worry, your package is still safe and on the way!<\/p><br/><p>For some of our customers that live a bit far from us, sometimes your tracking will take some time to update. Our new shipping company first takes your package and ships it to your local post office and then gets handed off to Canada Post for delivery to your address. Once the order arrives in your local shipping hub, the tracking information will be updated. You may see the status of the tracking number not updating for a while but rest assured your order has been shipped out and is on the way to you! Once your order arrives at your local distribution center, the tracking number will be updated so that might take a few days to most of the shipping time. <\/p><br/><br/><p>We are very fast in shipping out your orders, on average we ship out each customer's orders the same day or next business day. We only don't ship on weekends is well postal service don't work on weekends and holidays. But don't worry, if you receive a tracking number that means we've already shipped out your package and it's already on it's way. You will get an update to your tracking once the package has reached your local shipping hub. <\/p><br/><br/><p>If you haven't received your tracking number, sometimes our courier takes a few days to provide us with your tracking number so once we receive your tracking number we will update your order as fulfilled and include the tracking number. Please note this doesn't mean we didn't ship out your order yet! We're pretty fast, we usually ship out your order in a day or two (except on weekends, the post office isn't open at that time)<\/p><br/><br/><p>Please note some areas such as British Columbia may take as long as 7-14 business days for your shipment to arrive by Canada Post. This is just our best estimate and does not include any unforeseen delays such as Covid-19 related or holiday volumes. <\/p>", "status": "live"}, {"question": "How long does shipping take?", "answer": "<p>Shipments within Canada usually arrive between 5-10 business days. Here is our best guess from experience:<\/p><ul><li>Ontario: 1 – 3 business days<\/li><li>Quebec: 2 – 5 business days<\/li><li>New Brunswick: 5 – 7 business days<\/li><li>Nova Scotia: 5 – 7 business days<\/li><li>PEI: 6 – 8 business days<\/li><li>Newfoundland: 7 – 10 business days<\/li><li>Manitoba: 4 – 6 business days<\/li><li>Saskatchewan: 7 – 10 business days<\/li><li>Alberta: 5 – 7 business days<\/li><li>British Columbia: 5 – 7 business days<\/li><\/ul><p>Remember, these are our best guestimations based on previous shipments. Shipping times are subject to change due to the Pandemic situation where delays often occur. <\/p>", "status": "live"}, {"question": "How can I track my package?", "answer": "<p>When your package is shipped we send you a tracking number. You can also login to your account and view your Order History. Click into the order to find the tracking number.<\/p>", "status": "live"}, {"question": "My order is taking really long to arrive! Is it lost?", "answer": "<p>Here’s what you can do! Login to your account and check the order page. Did you order a pre-order? Has your order been fulfilled? Is there a tracking number? If not, check your email, maybe we’ve sent you an email and we’re waiting for your reply. If there is a tracking number, click it and check the status. If this still doesn’t answer your question, send an email to <a href=\"mailto:customerservice@pandahobby.ca\">customerservice@pandahobby.ca<\/a><\/p>", "status": "live"}, {"question": "How much is shipping? Canada", "answer": "<p>Our rates are as follows for most Canadian:<\/p>\n<ul>\n<li>$15 flat rate<\/li>\n<li>$10 for orders over $150 before taxes<\/li>\n<li>FREE for orders over $300 before taxes<\/li>\n<\/ul>\n<p>If the shipping rate exceeds the free shipping threshold you may be required to pay an additional shipping fee. We will try our best to find the most economical and reliable shipping courier for you so that your order arrives safely.<\/p>\n<p><em>Areas that require actual shipping rate:<\/em><\/p>\n<p>Canada: Newfoundland and Labrador, Nortwest Territories, Nunavut, and Yukon<\/p>\n<p>*some exceptions may apply - some remote or rural address may require additional shipping fee<\/p>\n<p>**Large items require actual shipping rate<\/p>\n<p>***Heavy discounted/Clearance items will require actual shipping rate<\/p>", "status": "live"}, {"question": "How much is shipping? (Outside of Canada & USA)", "answer": "<p>For international orders, you will be charged $20 when placing your order. If your shipping rate exceeds the $20 you have already paid you will be sent an invoice for the remaining balance. At that time you can choose to cancel your order and receive a refund, or pay the balance to have your order shipped out. <\/p>", "status": "live"}, {"question": "Why hasn't my order been shipped out yet?", "answer": "<p>You may have chosen VAULT for your shipping options instead of SHIPPING RATE. <\/p><br/><p>VAULT is our private warehouse option to collect, combine and ship out together to take advantage of our shipping rates. <\/p><br/><p>If you have chosen this by mistake you can do one of the following:<\/p><br/><p>1. You can come pick up in-store (Local Only) <\/p><p><br/><\/p><p>2. Request a shipping invoice to change your order to be shipped out (Rates Below)<\/p><br/><p>3. [Fastest Method] You can make another purchase and before you checkout go to View Cart. At the bottom is the Notes section. Please leave a note telling us which order you would like us to combine to ship or simply say \"Ship My Vault\". Make sure that in this order you select the correct shipping method.<\/p><br/><p>Here is our flat rate shipping:<\/p><br/><p>Shipping starts at $15 Flat Rate (+Tax)<\/p><p>Orders $150+ = $10 Shipping (+Tax)<\/p><p>Orders $300+ = Free Shipping (+Tax)<\/p><br/><p>Rates apply to all orders that are shipping out together. <\/p><br/><p>For more info on Panda Vault see here: https://pandahobby.store/pages/vault<\/p>", "status": "live"}, {"question": "Can my address be a PO Box?", "answer": "<p>We do not ship to PO Boxes by default. We may ship to PO Boxes on a case to case basis. If you require shipping to a PO Box please send us an email before hand or your order may be automatically canceled. <br/><\/p>", "status": "live"}, {"question": "What is an Oversized Item?", "answer": "<p>While we try to make sure our flat rate shipping covers all items, there are some items that are considered oversized. These items are either too large to fit in our regular shipping boxes or too heavy to fall under the flat shipping rate. For orders that includes an oversized item, the customer are required to pay the actual shipping rate for the order to be shipped out. If the shipping is too expensive, the customer can request to cancel the order and receive a refund. Please note that the cancelation is only applied to the order with the oversized item. <\/p>", "status": "live"}, {"question": "What is Expedited Carriers shipping option mean?", "answer": "<p>If you choose expedited shipping, the cost will be slightly higher than our standard flat-rate shipping fee.<\/p>\n<p>Your order will be delivered by one of our preferred carriers, such as UPS, FedEx, Canpar, Purolator, ICS, DHL, and others. <\/p>\n<p>However, we may contact you if the shipping fee is too much to ship to your specific address and either request for additional shipping fee or offer to switch to another courier provider to keep cost low. <\/p>", "status": "live"}, {"question": "How Clearance Items are calculated in Shipping Fee", "answer": "<p>Clearance items require actual shipping fee and does not fall under the Flat Rate Shipping.<\/p>\n<p>If your order consist of Clearance items, those item's value will be removed from your orders total to calculate shipping fee. <\/p>\n<p>If the amount of Clearance items size or amount causes the shipping rate to exceed the shipping allowance, additional shipping fee may be required. <\/p>\n<p>For example, if your order amount is over $300 and receives free shipping, however $250 are Clearance items, then we will be charging $15 for shipping fee, however if the size of the order causes the shipping fee to exceed our shipping allowance for $50 order, then we may invoice you for actual shipping fee of what the order would be required to ship out. <\/p>", "status": "live"}, {"question": "Holiday shipping cut-off dates", "answer": "<p>Order by December 15 for delivery before the holidays in Ontario and Quebec, and by December 10 everywhere else in Canada.<\/p>", "status": "draft"}]}, {"name": "USA Shipping", "hidden": false, "questions": [{"question": "How does shipping work with USA?", "answer": "<p>When checking out, you will first pay $30 CAD. Once we prepare your order and get a shipping quote, we will send you a PayPal invoice for the remaining balance for shipping and customs if it is needed.<\/p>\n<p>We require to prepay for your packages's customs/tax to ship into USA.<\/p>", "status": "live"}, {"question": "How much is shipping? USA", "answer": "<p>With the recent change with US/Canada trade regulation changes, we can no longer offer flat rate shipping to US. We will now require actual shipping rate plus customs prepaid in order to ship into the US. <\/p>", "status": "live"}, {"question": "Why do you need to charge customs for shipping?", "answer": "<p>With the new regulation set by the US Government, all inbound shipments require all items to be cleared and prepay for customs/tarrif before entering into the country. <\/p>\n<p>If the package doesn't have the customs prepaid, high chances the package will be rejected at customs.<\/p>", "status": "live"}, {"question": "Can you ship paints, liquid or spray cans to US?", "answer": "<p>As of Oct 2025, no paints, spray can or liquids can be shipped to US. This may change in the future but we will email you if your order has these items. But as of now, if your item consist of only these items, we will cancel and refund your order. If your order has some items in this category, we will contact you to exchange it to another item before shipping. <\/p>", "status": "live"}, {"question": "Can I choose which courier to use for US shipping?", "answer": "<p>In a sense, yes you can, when checking out just put into the notes section which courier you prefer and we'll get a quote for you and send you the shipping quote. Sometimes based on customer's address, different couriers have better rates which is why we often use different courier based on customer's address and the rates at the time of shipping. <\/p>", "status": "live"}]}, {"name": "International Orders", "hidden": false, "questions": [{"question": "How does Shipping Work?", "answer": "<p>When checking out, you will first pay $20 CAD. Once we prepare your order and get a shipping quote, we will send you a PayPal invoice for the remaining balance for shipping. <\/p>\n<p>If you choose to accept the shipping rate, you can pay the PayPal Invoice and we will process your order to be shipped. Please keep in mind, depending on your location, transit time might range from a week to a couple of month. During the invoicing period we can change your rate to have faster delivery time but the price will reflect on the speed. <\/p>\n<p>If you do not wish to proceed, we can cancel your order and refund you the total amount. <\/p>", "status": "live"}, {"question": "Can you ship paints, liquid or spray cans?", "answer": "<p>If your order contains any paint, spray cans or liquids, we will contact you to let you know your order might not be accepted at your country's custom. <\/p>\n<p>If your order is rejected by your country's custom and we receive the returned items, we can refund you the items minus the shipping fee paid. <\/p>\n<p>If your order is seized and destroyed by your country's custom then we are not able to refund your order. <\/p>\n<p>You must agree to these risk in order to ship any parcel with paint, spray cans or liquids. If not we will cancel your order to prevent any risk of your order not arriving. <\/p>\n<p>Please note every country is different and custom agents responds differently, if one order is permitted and another one is denied, we are not responsible for it. <\/p>", "status": "live"}]}, {"name": "Pre-Orders", "hidden": false, "questions": [{"question": "PRE-ORDER POLICY CHANGE", "answer": "<p>If you place an order and it contains a Pre-Order it can ONLY be shipped or picked up when <strong>ALL<\/strong> of the items are available. You will no longer be able to ship or pickup parts of an order. If you would like to ship or pickup some items before the Pre-Order arrives you will need to purchase those items in a separate order.<\/p>", "status": "live"}, {"question": "What does pre-order mean?", "answer": "<p>Pre-orders are items that have not been released yet. They are scheduled for production and if you would like to guarantee that you get one, you can purchase the pre-order. When it releases, usually atleast a month later to a year later, there will be one set aside for you.<\/p>\n<p>Pre-Order customers receive the product first, any stock left will then be released for sale to everyone else. If we do not get enough Pre-Order due to production issues, orders are served based on their order time/date in order. <\/p>", "status": "live"}, {"question": "When will I get my pre-order?", "answer": "<p>On each pre-order product we list the estimated release date provided to us by the manufaturer. We are not notified in advance if there are any delays or the exact date. <\/p>\n<p>When the pre-order arrives at Panda Hobby warehouse, we will notify you by email and you can come into pick up. If you chose shipping your order will be shipped out the next business day. <\/p>\n<p>If you choose Panda VAULT please note your order status will not change until you request to SHIP YOUR VAULT, then the order shipped will change to 'Fulfilled'<\/p>", "status": "live"}, {"question": "When do I pay for the pre-orders?", "answer": "<p>The moment you place your order is when you pay for your pre-order. If we are not able to fulfill your order because product was cancelled then we will refund your pre-order. However, if pre-order is delayed then we would not offer refund since your pre-order will be fulfilled.<\/p>", "status": "live"}, {"question": "Is there a Pre-Order Status Page?", "answer": "<p>Yes, we have a new Pre-Order Status Page where you can see what products arrived and their status. <a href=\"https://pandahobby.ca/collections/pre-order-status\">Click Here - Pre-Order Status Page<\/a><\/p><br/><p>Status <strong>[ARRIVED]<\/strong> = all pre-order have been fulfilled and ready for pick-up/shipping/vault<\/p><br/><p>Status <strong>[PARTIAL ARRIVAL]<\/strong> = only some arrived and in the product description will state the next restock date or product updates. <\/p>", "status": "live"}, {"question": "Can I pickup parts my order if I also have a pre-order?", "answer": "<p>No. Orders can only be picked up if all of the items are available. If you want to pickup your order separately you must make a separate order.<\/p>", "status": "live"}, {"question": "My order contains a pre-order, when will it ship?", "answer": "<p>If your order contains a pre-order then it will only ship out when the pre-order arrives. <\/p><p><br/><\/p>", "status": "live"}, {"question": "Where can I find the order number?", "answer": "<p>Your order number is emailed to you when you place an order. If you have an account, you can check your order history and pull up your previous orders.<\/p>", "status": "live"}, {"question": "When will the Pre-Order Item arrive at your store?", "answer": "<p>For all updates on <strong>Pre-Order products<\/strong>, simply click on the pre-order item. On the product page, the <strong>title<\/strong> of the product will display its <strong>Estimated Arrival Period<\/strong>.Please note this time frame is provided by the <strong>vendor/manufacturer<\/strong> and is <strong>subject to change or delay without notice<\/strong>.<\/p>\n<h3>🔄 Product Status Stages<\/h3>\n<p>Each pre-order product’s title will update automatically as it progresses through different stages:<\/p>\n<p><strong>[Pre-Order] → [Pre-Order END] → [Coming Soon] → [Arrived]<\/strong><\/p>\n<ul><li>\n<p>When the title changes to <strong>[ARRIVED]<\/strong>, it means your pre-order has arrived at our warehouse and is ready for processing.<\/p>\n<\/li>\n<\/ul>\n<h3>📦 Pick-Up and Shipping<\/h3>\n<p><strong>In-Store Pick-Up:<\/strong>You will receive a <strong>“Ready for Pick-Up”<\/strong> email once your order is prepared and available for collection.<\/p>\n<p><strong>Shipping Orders:<\/strong>You will receive a <strong>tracking email<\/strong> once your order has been processed and shipped.Please allow <strong>1–3 business days<\/strong> after the item arrives at our warehouse for processing.<\/p>\n<h3>🏠 Panda Vault Orders<\/h3>\n<p>If you selected <strong>Panda Vault<\/strong> as your delivery option, your order status will <strong>remain unchanged<\/strong> until you request <strong>SHIP MY VAULT<\/strong>.Once requested, your order will be shipped and the status will update to <strong>“Fulfilled.”<\/strong><\/p>\n<h3>🗓 Estimated Release Dates<\/h3>\n<p>Each pre-order product lists the <strong>estimated release date<\/strong> provided by the manufacturer.Please note that <strong>we are not notified in advance<\/strong> of any delays or the exact arrival date.<\/p>", "status": "live"}, {"question": "What does each of the Pre-Order title Status Means?", "answer": "<h3>🛍 <strong>[Pre-Order]<\/strong><\/h3>\n<p>This item is currently <strong>available for pre-order<\/strong>.We are still <strong>accepting pre-orders<\/strong> at this time.<\/p>\n<p>Please note:<\/p>\n<ul><li>\n<p>If all allocated pre-order quantities are sold out, we will <strong>no longer accept additional pre-orders<\/strong>.<\/p>\n<\/li>\n<li>\n<p>We only sell the amount we are <strong>guaranteed to receive<\/strong> from our vendor to avoid overselling.<\/p>\n<\/li>\n<\/ul><h3>⏳ <strong>[Pre-Order End]<\/strong><\/h3>\n<p>This item’s <strong>pre-order period has ended<\/strong>, and we are <strong>no longer accepting new pre-orders<\/strong>.<\/p>\n<p>This usually happens when the vendor’s pre-order window closes.Please note:<\/p>\n<ul><li>\n<p>Even though pre-orders are closed, we <strong>may or may not have additional stock<\/strong> available for regular sale when the shipment arrives.<\/p>\n<\/li>\n<\/ul><h3>🚢 <strong>[Coming Soon]<\/strong><\/h3>\n<p>We have received an <strong>update from our shipping vessel<\/strong> and now have an approximate <strong>arrival date<\/strong>.This means the shipment has <strong>already landed in Canada<\/strong> and should arrive at our warehouse within <strong>1–3 weeks<\/strong>.<\/p>\n<h3>📦 <strong>[Arrived]<\/strong><\/h3>\n<p>The pre-order item has <strong>arrived at our warehouse<\/strong>!We are currently preparing and notifying all customers who pre-ordered this item.<\/p>\n<ul><li>\n<p>If you selected <strong>in-store pickup<\/strong>, you’ll receive a <strong>“Ready for Pick-Up”<\/strong> email once it’s available.<\/p>\n<\/li>\n<li>\n<p>If you selected <strong>shipping<\/strong>, your order will be <strong>processed and shipped out shortly<\/strong>.<\/p>\n<\/li>\n<li>\n<p>If you selected <strong>Panda VAULT<\/strong>, you will receive an <strong>email notification<\/strong> once your item has been <strong>securely stored in your Vault<\/strong>.<\/p>\n<p>Your order status will remain unchanged until you request to <strong>SHIP YOUR VAULT<\/strong>.Once requested, your order will be <strong>processed and shipped<\/strong>, and the status will update to <strong>“Fulfilled.”<\/strong><\/p>\n<\/li>\n<\/ul><h3>⚠️ <strong>[Partial Arrival]<\/strong><\/h3>\n<p>Our vendor supplied <strong>less stock than originally requested<\/strong>, so <strong>only part of the pre-order batch has arrived<\/strong>.<\/p>\n<ul><li>\n<p>If your order was affected, you will have received an <strong>email notification<\/strong> from us.<\/p>\n<\/li>\n<li>\n<p>You can also check the <strong>product description<\/strong> for the next expected restock or shipment date.<\/p>\n<\/li>\n<\/ul>", "status": "live"}, {"question": "What is Pre-Order Deposit and How Does It Work", "answer": "<h4><strong>1. What is a preorder deposit?<\/strong><\/h4>\n<p>A preorder deposit is a partial payment made to reserve an item before it arrives in stock. This ensures that the item is held for you when it becomes available.<\/p>\n<h4><strong>2. How does the preorder process work?<\/strong><\/h4>\n<ul>\n<li>You pay a deposit to secure your preorder item.<\/li>\n<li>Once the item arrives, we will send you an invoice for the remaining balance.<\/li>\n<li>After full payment is made, your order will be shipped or ready for pickup.<\/li>\n<\/ul>\n<h4><strong>3. Is the preorder deposit refundable?<\/strong><\/h4>\n<p>If we do not receive the preorder item from our supplier, we will issue a credit for your deposit. This credit can be used toward other items in-store or online.<\/p>\n<h4><strong>4. Can I cancel my preorder?<\/strong><\/h4>\n<p>Preorders cannot be canceled once the deposit is paid. However, if we are unable to fulfill your order, your deposit will be credited for future purchases.<\/p>\n<h4><strong>5. When will I receive my preorder item?<\/strong><\/h4>\n<p>Preorder arrival times vary depending on the supplier. We will provide an estimated timeframe, but please note that delays may occur.<\/p>\n<h4><strong>6. How will I know when my preorder item has arrived?<\/strong><\/h4>\n<p>We will notify you via email or text when your preorder item is available and send an invoice for the remaining balance.<\/p>\n<h4><strong>7. What happens if I don&rsquo;t pay the remaining balance?<\/strong><\/h4>\n<p>If the remaining balance is not paid within a specified period after notification, we may cancel your preorder and apply the deposit as store credit.<\/p>", "status": "live"}]}, {"name": "In-Store Pickup", "hidden": false, "questions": [{"question": "How does it work?", "answer": "<p>Buy online, and pickup in-store! Go through the checkout process and when we ask you to choose your shipping option just choose pickup and your pickup location. When your order is ready, come in with your email confirmation and order number.<\/p>", "status": "live"}, {"question": "How can I pickup my order?", "answer": "<p>After you have placed an order you will receive a confirmation email stating that we received your order. We will prepare your order and when it is ready, we will send you an email telling you that your order is READY FOR PICKUP. Now you can come to the store to pick up your order. Instructions to pick up your orders are in your READY FOR PICKUP email notifications. <br/><\/p>", "status": "live"}, {"question": "When can I pick up my order?", "answer": "<p>You can pickup your order after we email you that it is ready. During operating hours this may take up to 2 hours. If the store is closed, your order will be prepared when we are open. You do not have to pickup the order on the same day, or even the same week. Because of the current situation, we know it might be difficult or take more time to get to the store. Don't worry if you cannot make it out anytime soon. We will keep your order safe.<\/p>", "status": "live"}, {"question": "I accidentally chose PICKUP instead of SHIPPING. HELP!!!", "answer": "<p>Don’t worry! We can send you an invoice to pay for shipping. Please reply the READY FOR PICKUP email and let us know what happened. We will make sure that your order gets shipped to you. <\/p><p>Or you can place a separate order and add instructions to the notes section on the bottom of the carts page to combine your two orders together to ship out. Please make sure to select the correct shipping method for your second order with shipping fees paid. <\/p><br/>", "status": "live"}, {"question": "Where is the Markham Location?", "answer": "<p>140 Amber St. Unit 8<br/>Markham ON, L3R 3J8<\/p>", "status": "live"}]}, {"name": "Orders / Refund Policy", "hidden": false, "questions": [{"question": "What is the refund policy?", "answer": "<p><strong>Return/Exchange Policy<\/strong><\/p>\n<p>Eligible returns or exchanges are accepted up to 14 days after purchase date. Eligible returns will be issued a store credit in the form of a Gift Card.  Final sale items are not applicable for returns or exchanges. All exchanged items are Final Sale. All Panda Reward redepmtion items are Final Sale.<\/p>\n<p><strong>In-Store Eligibility:<\/strong><\/p>\n<ol><li>Up to 14 days from the date of purchase on the receipt<\/li>\n<li>Item(s) must be new, unused, in original packaging, and in the same condition as it was when it was purchased<\/li>\n<\/ol><p><strong>Online Eligibility:<\/strong><\/p>\n<ol><li>Up to 14 days from the tracking delivered date<\/li>\n<li>Item(s) must be new, unused, in original packaging, and in the same condition it was received or a restocking fee will be applied<\/li>\n<li>Item(s) must be packaged securely<\/li>\n<li>The shipping fees must be prepaid (We do not cover shipping fee) and the package must be trackable. If possible, send the item(s) in the same shipping box that it arrived in.<\/li>\n<\/ol><p>Once we receive your return we will issue you a store credit in the form of a Gift Card less shipping fees.<\/p>\n<p><\/p>\n<p><strong>Final Sale Items<\/strong><\/p>\n<p>Paints, thinners, pigments, markers, and consumables that do not have an additional seal are final sale.<\/p>\n<p>Tools, paintbrushes and or items that cannot be verified that it has not been (items without seal) used are final sale.<\/p>\n<p>Any items on sale, clearance, or marked final sale are considered final sale. All collectibles, Trading Cards, blind boxes, exclusive or limited edition items are final sale. <\/p>\n<p><strong>Cancelation Policy<\/strong><\/p>\n<p>Pre-orders, orders placed into the Vault, or for Pickup are not able to be canceled.<\/p>\n<p>Shipping Orders that do not have a tracking number can be canceled and you will be issued a store credit in the form of a Gift Card.<\/p>\n<p><strong>Damaged and Defective Items<\/strong>Any item that arrives defective or is damaged during transit is eligible for an exchange for the same item or a replacement part, depending on the issue. Store credit may also be offered based on the extent of the damage. All requests must be submitted within 14 days of receiving your order.<\/p>\n<p>To assist in resolving the issue, we may ask you to email a photo of the damaged or defective item to help determine whether a full replacement or a replacement part is the best solution.<\/p>\n<p>Please note that the following do not qualify as product defects:<\/p>\n<p>Minor cosmetic paint imperfectionsPackaging condition<\/p>\n<p><strong>Panda Reward Redepmtion Items<\/strong><\/p>\n<p>Items bought using Panda Reward points are valued at the price paid. If you bought an item for $100 and used a redemption for $20 off, your exchange value is $80 (the amount that was paid) <\/p>", "status": "live"}, {"question": "I already placed an order and I want to add more. What can I do?", "answer": "<p>If your order has not been shipped yet you can send us an email to combine the two orders together. Please provide both of your order numbers.<\/p>", "status": "live"}, {"question": "I made a mistake with my order, what can I do?", "answer": "<p>If your order has already been shipped that means it is already on the way to you. There is nothing we can do at this point. If the order has not been fulfilled you can send us an email with your order number to adjust your order.<\/p>", "status": "live"}, {"question": "There is something missing from my order!", "answer": "<p>Oh no! Please check inside the boxes. Sometimes we might put smaller items like decals or markers inside of the kit boxes. If it is not there please send an email to <a href=\"mailto:customerservice@pandahobby.ca\">customerservice@pandahobby.ca<\/a> and we will get that sorted out for you right away.<\/p>", "status": "live"}, {"question": "Do you sell replacement parts?", "answer": "We do not carry replacement parts and we cannot order them.", "status": "live"}, {"question": "There is a defect in the product, what can I do?", "answer": "<p>If there is a problem with the product we can contact the manufacturer on your behalf. Please take a picture and send an email to <a href=\"mailto:customerservice@pandahobby.ca\">customerservice@pandahobby.ca<\/a>. We will try to our best to help!<\/p>", "status": "live"}, {"question": "My order didn't go through but there's a charge", "answer": "<p>Anytime you make a purchase online, your credit card will place a pending charge (it might appear as a charge, authorization, or pending depending on your bank) and show up on your account online. Please note this is because your bank has authorized the charge and is only to hold the amount while the check-out process is being conducted and the payment is captured only when your order is finished and processed properly. If your order was not processed or the order didn't go through properly, your pending charge will be removed/returned later when the bank resyncs again. We have no control over this process and is with your bank specifically. <\/p><br/><p>If you placed an order using a debit/visa, the money is withdrawn by your bank and held for the transaction to finish processing. If the order is not processed the bank will return your money after. <\/p><br/><p>The return of your fund process may take up to 2-14 business days (depending on your bank) however we've seen this clear up as fast as a few hours. <\/p><br/><p>If you have any additional questions we would suggest inquiring with your bank as we did not receive your order or payment.<\/p>", "status": "live"}, {"question": "Can I pay with Gift Card and another payment method online?", "answer": "<p>Yes, you can! You can pay partial of the order with a gift card and pay the remainder with your choice of payment method. Please make sure to enter your gift card number in the right side during check out before fully checking out. <\/p>", "status": "live"}]}, {"name": "Out of Stock", "hidden": false, "questions": [{"question": "When will you get a SPECIFIC ITEM back in stock?", "answer": "Japan runs a little bit differently than what we are familiar with. They don’t produce all of their products constantly. Instead they have their own production schedules and batches of products are produced at a time. That means that a particular model kit maybe produced every few months, once a year, once every two years, etc. We do not know what the production schedules are so we are unable to tell you when something is going to be produced. We are Authorized Resellers of the brands we carry, so we will have access to all of the produced products, and we will try to bring everything we can.", "status": "live"}, {"question": "How can I get notified when a SPECIFIC ITEM is back in stock?", "answer": "<p>When a product is out of stock, click into the product and find the Notify Me button. Enter your email and you will be notified automatically as soon as the product becomes available for purchase.<\/p><p><br/><\/p>", "status": "live"}, {"question": "When do you get restocks?", "answer": "<p>We have a calendar that we try to keep as updated as possible. The calendar has our restock schedule as well as any upcoming events, contests, or closures. You can find the calendar on the main menu, under the Panda tab.<\/p>", "status": "live"}, {"question": "A SPECIFIC ITEM is out of stock online, is it available in-store?", "answer": "<p>Our online and in-store inventory are synced. Each product will show which location has inventory available. If all of the locations are showing out of stock we will not have it in-store. <\/p>", "status": "live"}, {"question": "Can you save an item for me? I’m afraid it will sell out before I arrive.", "answer": "<p>The only way you can guarantee you will get what you want when you come in is to buy it online. You can buy an item online and choose in-store pickup for free.<\/p>", "status": "live"}]}, {"name": "Panda Rewards", "hidden": false, "questions": [{"question": "What are Panda Rewards?", "answer": "<p>We’ve been working on this for a really long time and we are so excited to announce that it’s finally ready!Panda Rewards is one of the ways that Panda Hobby can thank our loyal customers for supporting our shop. With each purchase, our customers can collect points which can be redeemed for awesome rewards. These rewards ranges from specially made items to unique trinkets you cannot purchase.<\/p><p><strong>1. SIGN UP<\/strong><\/p><p>Start earning points with every purchase online or in-store by using the same email to create an online account on our website and provide the email in-store. Be sure to use to the same email to collect your points both online and in-store. <\/p><p><strong>2. EARN POINTS<\/strong><\/p><p>Earn 1 point for every dollar you spend online or in-store. Be sure to check Panda Rewards often to see other ways to earn points. <\/p><p><strong>3. GET REWARDS<\/strong><\/p><p>Redeem your points for free stuff or $$ off! Rewards ranges from free kits to rare items found in Japan.<\/p>", "status": "live"}, {"question": "How do I create an account?", "answer": "<p>Mobile: In the menu at the top of the page click on the person. Click “Register”. Use the same email you normally use in-store to register for your account.<\/p><p>Desktop: Look for the “Register” button at the top right-hand side of the page. Use the same email you normally use in-store to register for your account.<\/p>", "status": "live"}, {"question": "I used a different email for in store and online, what can I do?", "answer": "<p>We can change your in-store email address to the same email address as your online account. Just send us an email! We can only accept requests to link accounts over email.<\/p>", "status": "live"}, {"question": "Can I have more than one account?", "answer": "<p>No. Limit one account per person, duplicate accounts are not be eligible for points redemption.<\/p>", "status": "live"}, {"question": "Can I transfer points between accounts?", "answer": "<p>No. Because we give away bonus points, we cannot allow the transfer of points between accounts.<\/p>", "status": "live"}, {"question": "How do I earn points?", "answer": "<p>You earn points for every purchase you make both in-store and online. Just make sure you use the same email so it goes to the same account. If you login to your account online you can see the list of things you can do to earn bonus points.<\/p>", "status": "live"}, {"question": "Can I earn points in store and online?", "answer": "Yes! Use the same email in-store and online, it’s that easy!", "status": "live"}, {"question": "How do I see my points balance?", "answer": "<p>Sign into your account and click on the bubble with the gift box at the lower left-hand corner.<\/p>", "status": "live"}, {"question": "What rewards can I choose from?", "answer": "<p>The rewards you can redeem will change based on availability. We are aiming to keep it stocked with Panda &amp; Japan goodies. You can view what rewards are available for redemption on the Rewards page.<\/p>\n<p>You can get $$$ off for your next purchase. Please note the Panda Rewards act like a discount code and not cash value. If you use a $10 off code on an order that is $8, you won't get $2 as credit. <\/p>\n<p>Panda Rewards are not applicable to sales and other promotional items.<br/><\/p>\n<p>Panda Rewards are not applicable to Pre-Order Items. <\/p>", "status": "live"}, {"question": "How can I redeem points?", "answer": "<p>Click the Panda Rewards button (that little gift box bubble on the bottom left) and you will be able to see all the rewards you can redeem. When you have earned enough points to redeem click on the big redeem button. You will get a code to apply during checkout. Make sure to add it!<\/p>\n<p>For a detailed guidance, please visit <a target=\"_blank\" href=\"https://pandahobby.ca/pages/how-to-redeem-panda-rewards\">https://pandahobby.ca/pages/how-to-redeem-panda-rewards<\/a><\/p>", "status": "live"}, {"question": "Don't click redeem if you don't want to redeem it!", "answer": "<p>If you click the redeem button, it will redeem your points!<\/p>", "status": "live"}, {"question": "What can I redeem my Panda Rewards for?", "answer": "<p>You can use your Panda Rewards to purchase any regular-priced items. Please note that items currently on sale or available for preorder are not eligible for redemption.<\/p>", "status": "live"}]}, {"name": "Panda Vault", "hidden": false, "questions": [{"question": "Combine Orders and Save on Shipping!", "answer": "<p>Everyone who has an account with us has their own Vault. This means that when you make an order you can put it in your Vault. We keep your orders in your Vault and you can have them combined to ship together. <\/p><p><strong>1. SIGN UP<\/strong><\/p><p>Sign up for an account and make sure you use the same account every time you make an order. We can only combine orders from the same account. <\/p><p><strong>2. PLACE AN ORDER<\/strong><\/p><p>When you place an order, choose the Vault as your shipping option. When we see this, we know to put it in your Vault.  <\/p><p><strong>3. COMBINE AND SHIP<\/strong><\/p><p>Ready to ship your orders? Let us know by filling out <strong><a href=\"https://pandahobby.ca/pages/ship-my-vault\">this form<\/a><\/strong>. Once we get your request we will combine and ship out your order. <\/p>", "status": "live"}, {"question": "What is it for?", "answer": "<p><strong>You only have one small item to buy right now<\/strong><\/p><p>Suddenly you find yourself in need of cement. But you have nothing else to buy! With the Vault, you can buy the cement and put it in your vault. Now you're guaranteed to get it, but you don't have to ship it out right away. You can combine it with other purchases later and pay only one shipping rate.<br/><br/><\/p><p><strong>Something you wanted came back in-stock!<\/strong><\/p><p>The kit you want is back in-stock, but a new release is coming out next week. Now you don't have to gamble and hope that both are in-stock at the same time. You can order the kit you want and store it in your Vault. When everything you want have arrived you can combine the orders to take advantage of one shipping rate. <\/p>", "status": "live"}, {"question": "How can I save on shipping?", "answer": "<p>Your shipping fee is based on the total amount before taxes of all your orders combined. For example, you make an order for $80, $130, and $90. If you shipped each of these orders separately you would have to pay 3 shipping rates. If you put them in your Vault and ship them out together, you would qualify for free shipping over $300! (before tax)<\/p>", "status": "live"}, {"question": "How long can I keep my orders in my Vault?", "answer": "<p><p><p><p>Orders can be stored in your Vault for 60 days. <\/p><br/><\/p><\/p><\/p>", "status": "live"}, {"question": "I'm ready to ship the orders in my Vault, what do I do!", "answer": "<p>Let us know you are ready to ship your orders out by filling out <strong><a href=\"https://pandahobby.ca/pages/ship-my-vault\">this form<\/a> <\/strong>. When we receive the form we will combine your orders for shipping. If you qualify for free shipping we will pack your order and ship it out within 24-48 hours. If you do not qualify for free shipping we will email you to choose 1 of 2 Options. <\/p><p><strong>Option 1.<\/strong> We can email you a shipping invoice. (Rates Below) Reply to this email if you choose this method.<\/p><p><strong>Option 2.<\/strong> You can make another purchase and before you checkout go to View Cart. At the bottom is the Notes section. Please leave a note telling us which order you would like us to combine to ship or simply say \"Ship My Vault\". Make sure that in this order you select the correct shipping method.<\/p><p>Shipping starts at $15 Flat Rate (+Tax)Orders $150+ = $10 Shipping (+Tax)Orders $300+ = Free Shipping (+Tax)<\/p>", "status": "live"}, {"question": "Areas that require Actual Shipping Fee", "answer": "<p>For areas that require Actual Shipping Fee, customers are free to use our Panda Vault however when shipping out, we will invoice the actual shipping rate.<\/p>\n<p>This is to help our friends in those areas to be able to combine multiple orders together to get a single cheaper shipping rate. <\/p>\n<p><strong>Please note once an order is placed into our Vault, we cannot cancel or refund the order. <\/strong><\/p>", "status": "live"}, {"question": "How Clearance Items are calculated in Vault Shipping Fee", "answer": "<p>Clearance items require actual shipping fee and does not fall under the Flat Rate Shipping.<\/p>\n<p>If your vault order consist of Clearance items, those item's value will be removed from your Vault's total to calculate shipping fee. <\/p>\n<p>If the amount of Clearance items size or amount causes the shipping rate to exceed the shipping allowance, additional shipping fee may be required. <\/p>\n<p>For example, if your Vault amount is over $300 and receives free shipping, however $250 are Clearance items, then we will be charging $15 for shipping fee, however if the size of the order causes the shipping fee to exceed our shipping allowance for $50 order, then we may invoice you for actual shipping fee of what the order would be required to ship out. <\/p>", "status": "live"}]}, {"name": "General Panda FAQ", "hidden": true, "questions": [{"question": "How can I hang out with other builders?", "answer": "<p>We have a <a href=\"https://www.facebook.com/groups/pandahobbygroup/\">Panda Hobby Facebook Group<\/a> for all our fellow builders to connect. Don't be a stranger and reach out to one another. You are not alone.<\/p><p>We hope everyone will continue to support our small business and together we will get through these challenging times. Remember to be kind to one another.<\/p>", "status": "live"}, {"question": "I Emailed but no one responded to me yet.", "answer": "Our customer service team works Monday - Friday from 12pm-7pm EST. All communications via e-mail, Facebook or Instagram will be done between work hours. We do not answer e-mails after hours, over the weekend or holidays.", "status": "live"}]}, {"name": "Trade In - Panda Trading Post", "hidden": false, "questions": [{"question": "I want to sell my backlog. How do I start?", "answer": "<p>Simply contact us via our online form, and one of our specialists will reach out to discuss a valuation for your items.<\/p>\n<p>Ready to Start? Fill out this form: <a href=\"https://form.asana.com/?k=md9Vsgm1ZqM0dWW9bQQlyQ&amp;d=1198489172670925\">CLICK HERE - Trade In Form<\/a><\/p>", "status": "live"}, {"question": "What payment method is used for the transaction?", "answer": "<p>Depending on the specific trade-in, our specialists can offer either store credit or cash payments. Each situation is different and our specialist will guide you through it.<\/p>", "status": "live"}, {"question": "How does trade in work?", "answer": "<p>First, send us a list of the items you wish to trade in, including photos of their current condition.<\/p>\n<p>We will respond with a price estimate. Once agreed, we will schedule a date for you to drop off or mail the items.<\/p>\n<p>Upon receipt, we will inspect the kits for damages, missing parts, and overall condition. If everything matches your description, your payment will be issued the following business day.<\/p>", "status": "live"}, {"question": "What do you accept for Trade-In?", "answer": "<p>We currently accept the follwing:<\/p>\n<ul><li>Gundam Kits<\/li>\n<li>Bandai Kits<\/li>\n<li>Kotobukiya Kits<\/li>\n<li>Japanese Kits<\/li>\n<li>Third Party Kits<\/li>\n<\/ul>\n<p>Right now we don't accept:<\/p>\n<ul><li>Ships<\/li>\n<li>Tanks<\/li>\n<li>Planes<\/li>\n<li>Bootleg Kits<\/li>\n<\/ul>\n<p>You can always email us to ask!<\/p>", "status": "live"}, {"question": "Item Condition Requirement", "answer": "<p>In order for your items to be accepted in a Trade In, your items must be:<\/p>\n<ul><li>Unassembled<\/li>\n<li>In Box<\/li>\n<li>Bags sealed<\/li>\n<li>No Missing Parts<\/li>\n<li>In Sellable Condition<\/li>\n<\/ul>", "status": "live"}, {"question": "Discrepancies and Deductions", "answer": "<p>If the items received do not match the condition submitted in your initial form, we may deduct an amount from the total offer or refuse the item for trade-in entirely.<\/p>", "status": "live"}]}], "trash": [{"type": "q", "secName": "Shipping", "by": "Baldwin", "when": "Oct 23", "q": {"question": "Do you ship on weekends?", "answer": "<p>We ship Monday to Friday. Post offices are closed on weekends and holidays.<\/p>", "status": "live"}}, {"type": "sec", "by": "Sam", "when": "Oct 22", "sec": {"name": "COVID Updates", "hidden": false, "questions": [{"question": "Is Panda Hobby open?", "answer": "<p>We are open for in-store shopping.<\/p>", "status": "live"}, {"question": "Will my order still be shipped out?", "answer": "<p>Yes, orders ship as normal.<\/p>", "status": "live"}, {"question": "Is curbside pickup available?", "answer": "<p>Curbside pickup has ended. Pick up in store instead.<\/p>", "status": "live"}]}}]}</script>
+<script>
+  const DATA = JSON.parse(document.getElementById("faqData").textContent);
+  const sections = DATA.sections;
+  const trash = DATA.trash;
+  const state = { expanded: new Set(), open: new Set([0]), editingSec: null, secHidden: false, search: "", edit: null, eqStatus: "live", confirm: null };
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const plain = (html) => { const d = document.createElement("div"); d.innerHTML = html; return d.textContent; };
+
+  function show(view) {
+    for (const v of ["listView", "editView", "trashView"]) $(v).hidden = v !== view;
+    scrollTo(0, 0);
+  }
+
+  /* ---------- List ---------- */
+
+  function renderList() {
+    const total = sections.reduce((n, s) => n + s.questions.length, 0);
+    const hidden = sections.filter(s => s.hidden).length;
+    $("metaLine").textContent = `${total} questions · ${sections.length} sections${hidden ? ` (${hidden} hidden)` : ""} · shows on pandahobby.ca/pages/faq`;
+    $("trashBtn").textContent = `Trash · ${trash.length}`;
+
+    const term = state.search.trim().toLowerCase();
+    $("dragHint").hidden = !!term;
+    $("sections").innerHTML = sections.map((sec, i) => {
+      const qs = sec.questions.map((q, j) => ({ q, j }))
+        .filter(({ q }) => !term || (q.question + " " + plain(q.answer)).toLowerCase().includes(term));
+      if (term && !qs.length) return "";
+      const open = term || state.open.has(i);
+      const editing = state.editingSec === i;
+      return `
+        <div class="card stripped ${sec.hidden ? "sec-hidden" : ""}" data-drag="sec" data-i="${i}">
+          <div class="strip ${open && !sec.hidden ? "brand" : ""} faq-cat" data-toggle="${i}">
+            <span class="sec-name">${term ? "" : `<span class="grip" title="Drag to reorder">⋮⋮</span>`}${esc(sec.name)}
+              ${sec.hidden ? `<span class="pill pill-paper">HIDDEN</span>` : ""}</span>
+            <span class="strip-side">${sec.questions.length} question${sec.questions.length === 1 ? "" : "s"} · <a href="#" class="sec-edit" data-edit-sec="${i}">Edit</a> ${open ? "▾" : "▸"}</span>
+          </div>
+          ${editing ? sectionEditor(sec, i) : ""}
+          ${open ? `<div class="sec-body" data-body="${i}">${qs.map(({ q, j }) => {
+            const expanded = state.expanded.has(q);
+            return `
+            <div class="faq-item ${expanded ? "open" : ""}" data-drag="q" data-i="${i}" data-j="${j}">
+              <div class="faq-row" data-expand>
+                ${term ? "" : `<span class="grip" title="Drag to reorder">⋮⋮</span>`}
+                <span class="chev">${expanded ? "▾" : "▸"}</span>
+                <span class="q">${esc(q.question)}</span>
+                <span class="pill ${q.status === "live" ? "pill-go" : "pill-warm"}">${q.status === "live" ? "LIVE" : "DRAFT"}</span>
+              </div>
+              ${expanded ? `<div class="faq-answer">${q.answer}
+                <div class="faq-answer-actions"><button class="btn-quiet" data-edit-q>Edit</button></div></div>` : ""}
+            </div>`; }).join("") || `<div class="faq-row muted" style="cursor:default;">No questions yet. Use New question to add one.</div>`}</div>` : ""}
+        </div>`;
+    }).join("");
+
+    $("newSecPos").innerHTML = [`<option value="0">At the top</option>`]
+      .concat(sections.map((s, i) => `<option value="${i + 1}" ${i === sections.length - 1 ? "selected" : ""}>${i === sections.length - 1 ? "At the end, after" : "After"} ${esc(s.name)}</option>`)).join("");
+  }
+
+  function sectionEditor(sec, i) {
+    const vis = state.secHidden;
+    return `
+      <div class="card-body sec-editor">
+        <div class="form-grid">
+          <label>Section name <input id="secName" value="${esc(sec.name)}"></label>
+          <label>On the site
+            <div class="pill-row">
+              <button class="btn-pill ${vis ? "off" : "on"}" data-vis="shown">Shown</button>
+              <button class="btn-pill ${vis ? "on" : "off"}" data-vis="hidden">Hidden</button>
+            </div>
+          </label>
+        </div>
+        <p class="muted" style="margin:0 0 10px;">${vis
+          ? `Hidden: this section and all ${sec.questions.length} of its questions are off pandahobby.ca until you show it again. Nothing is deleted.`
+          : `Moving a section to the Trash takes its ${sec.questions.length} questions with it. Restore brings them all back.`}</p>
+        <div class="button-row" style="justify-content:space-between;margin:0;">
+          <button class="btn-danger" data-trash-sec="${i}">Move to trash</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-quiet" data-cancel-sec>Cancel</button>
+            <button class="btn-go" data-save-sec="${i}">Save</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  $("sections").addEventListener("click", (e) => {
+    const t = e.target;
+    if (t.closest(".grip")) return;
+    const editLink = t.closest("[data-edit-sec]");
+    if (editLink) {
+      e.preventDefault();
+      const i = +editLink.dataset.editSec;
+      state.editingSec = state.editingSec === i ? null : i;
+      state.secHidden = sections[i].hidden;
+      return renderList();
+    }
+    const vis = t.closest("[data-vis]");
+    if (vis) { state.secHidden = vis.dataset.vis === "hidden"; return renderList(); }
+    if (t.closest("[data-cancel-sec]")) { state.editingSec = null; return renderList(); }
+    const save = t.closest("[data-save-sec]");
+    if (save) {
+      const sec = sections[+save.dataset.saveSec];
+      sec.name = $("secName").value.trim() || sec.name;
+      sec.hidden = state.secHidden;
+      state.editingSec = null;
+      return renderList();
+    }
+    const tr = t.closest("[data-trash-sec]");
+    if (tr) {
+      const i = +tr.dataset.trashSec;
+      trash.unshift({ type: "sec", sec: sections[i], by: "You", when: "Just now" });
+      sections.splice(i, 1);
+      state.editingSec = null;
+      state.open = new Set();
+      return renderList();
+    }
+    if (t.closest(".sec-editor")) return;
+    const item = t.closest(".faq-item");
+    if (item && t.closest("[data-edit-q]")) return openEdit(+item.dataset.i, +item.dataset.j);
+    if (item && t.closest("[data-expand]")) {
+      const q = sections[+item.dataset.i].questions[+item.dataset.j];
+      state.expanded.has(q) ? state.expanded.delete(q) : state.expanded.add(q);
+      return renderList();
+    }
+    if (item) return;
+    const strip = t.closest("[data-toggle]");
+    if (strip) {
+      const i = +strip.dataset.toggle;
+      state.open.has(i) ? state.open.delete(i) : state.open.add(i);
+      renderList();
+    }
+  });
+
+  /* Drag to reorder: the grip arms its card or row, so inputs inside stay selectable. */
+  let drag = null;
+  document.addEventListener("mousedown", (e) => {
+    const g = e.target.closest(".grip");
+    if (g) g.closest("[data-drag]").draggable = true;
+  });
+  $("sections").addEventListener("dragstart", (e) => {
+    const el = e.target.closest("[data-drag]");
+    if (!el || !el.draggable) return;
+    drag = { el, kind: el.dataset.drag };
+    el.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", "");
+    e.stopPropagation();
+  });
+  $("sections").addEventListener("dragover", (e) => {
+    if (!drag) return;
+    e.preventDefault();
+    const over = e.target.closest(`[data-drag="${drag.kind}"]`);
+    if (!over || over === drag.el || over.parentNode !== drag.el.parentNode || over.contains(drag.el)) return;
+    const r = over.getBoundingClientRect();
+    over.parentNode.insertBefore(drag.el, e.clientY > r.top + r.height / 2 ? over.nextSibling : over);
+  });
+  $("sections").addEventListener("dragend", () => {
+    if (!drag) return;
+    const { el, kind } = drag;
+    el.draggable = false;
+    el.classList.remove("dragging");
+    if (kind === "sec") {
+      const order = [...$("sections").children].map(c => +c.dataset.i);
+      const openNames = new Set([...state.open].map(i => sections[i]));
+      const reordered = order.map(i => sections[i]);
+      sections.splice(0, sections.length, ...reordered);
+      state.open = new Set(sections.map((s, i) => openNames.has(s) ? i : -1).filter(i => i >= 0));
+    } else {
+      const i = +el.dataset.i;
+      const body = el.parentNode;
+      const qs = [...body.querySelectorAll(".faq-item")].map(r => sections[i].questions[+r.dataset.j]);
+      sections[i].questions.splice(0, sections[i].questions.length, ...qs);
+    }
+    drag = null;
+    renderList();
+  });
+
+  $("search").addEventListener("input", (e) => { state.search = e.target.value; renderList(); });
+
+  $("newSecBtn").onclick = () => { $("newSecBtn").hidden = true; $("newSecForm").hidden = false; $("newSecName").focus(); };
+  $("cancelNewSec").onclick = () => { $("newSecForm").hidden = true; $("newSecBtn").hidden = false; };
+  $("addNewSec").onclick = () => {
+    const name = $("newSecName").value.trim();
+    if (!name) return $("newSecName").focus();
+    const at = +$("newSecPos").value;
+    sections.splice(at, 0, { name, hidden: false, questions: [] });
+    state.open = new Set([at]);
+    $("newSecName").value = "";
+    $("cancelNewSec").onclick();
+    renderList();
+  };
+
+  /* ---------- Edit question ---------- */
+
+  function setStatus(s) {
+    state.eqStatus = s;
+    document.querySelectorAll("[data-status]").forEach(b => {
+      b.classList.toggle("on", b.dataset.status === s);
+      b.classList.toggle("off", b.dataset.status !== s);
+    });
+  }
+
+  function openEdit(i, j) {
+    const isNew = j === undefined;
+    const q = isNew ? { question: "", answer: "", status: "draft" } : sections[i].questions[j];
+    state.edit = { i, j, isNew };
+    $("eqKicker").textContent = `FAQ · ${sections[i].name.toUpperCase()}`;
+    $("eqTitle").textContent = isNew ? "New question" : "Edit question";
+    $("eqMeta").textContent = isNew ? "Starts as a Draft, so it's off the site until you set it Live" : "Last changed by Baldwin, Oct 24 at 2:14 PM";
+    $("eqQ").value = q.question;
+    $("eqA").innerHTML = q.answer;
+    $("eqSec").innerHTML = sections.map((s, k) => `<option value="${k}" ${k === i ? "selected" : ""}>${esc(s.name)}</option>`).join("") + `<option value="new">+ New section…</option>`;
+    $("eqNewSecWrap").hidden = true;
+    $("eqTrash").hidden = isNew;
+    $("historyCard").hidden = isNew;
+    $("restoreBar").hidden = true;
+    setStatus(q.status);
+    show("editView");
+  }
+
+  document.querySelectorAll("[data-status]").forEach(b => b.onclick = () => setStatus(b.dataset.status));
+  $("eqSec").onchange = () => { $("eqNewSecWrap").hidden = $("eqSec").value !== "new"; };
+  $("newQBtn").onclick = () => openEdit([...state.open][0] ?? 0);
+
+  $("eqSave").onclick = () => {
+    const { i, j, isNew } = state.edit;
+    const q = isNew ? {} : sections[i].questions[j];
+    q.question = $("eqQ").value.trim() || "Untitled question";
+    q.answer = $("eqA").innerHTML;
+    q.status = state.eqStatus;
+    let target = $("eqSec").value;
+    if (target === "new") {
+      sections.push({ name: $("eqNewSec").value.trim() || "New section", hidden: false, questions: [] });
+      target = sections.length - 1;
+    }
+    target = +target;
+    if (!isNew) sections[i].questions.splice(j, 1);
+    sections[target].questions.push(q);
+    state.open.add(target);
+    renderList();
+    show("listView");
+  };
+
+  $("eqTrash").onclick = () => {
+    const { i, j } = state.edit;
+    const [q] = sections[i].questions.splice(j, 1);
+    trash.unshift({ type: "q", secName: sections[i].name, q, by: "You", when: "Just now" });
+    renderList();
+    show("listView");
+  };
+
+  document.querySelectorAll("[data-restore]").forEach(a => a.onclick = (e) => {
+    e.preventDefault();
+    $("restoreWhen").textContent = a.dataset.restore;
+    $("restoreBar").hidden = false;
+    scrollTo(0, 0);
+  });
+  $("restoreCancel").onclick = () => { $("restoreBar").hidden = true; };
+
+  document.querySelectorAll("[data-back]").forEach(b => b.onclick = () => { renderList(); show("listView"); });
+
+  /* ---------- Trash ---------- */
+
+  function renderTrash() {
+    if (!trash.length) {
+      $("trashList").innerHTML = `<div class="card"><p class="empty-state" style="margin:0;">The Trash is empty.</p></div>`;
+      return;
+    }
+    const rows = trash.map((item, k) => {
+      const title = item.type === "sec" ? `Section: ${esc(item.sec.name)}` : esc(item.q.question);
+      const sub = item.type === "sec"
+        ? `${item.sec.questions.length} questions · deleted by ${esc(item.by)}, ${esc(item.when)}`
+        : `${esc(item.secName)} · deleted by ${esc(item.by)}, ${esc(item.when)}`;
+      if (state.confirm === k) {
+        return `<div class="trash-row trash-confirm">
+          <div class="t-main"><div class="t-title">Delete "${title}" forever?</div><div class="muted">This can't be undone.</div></div>
+          <div class="t-actions"><button class="btn-quiet" data-cancel-confirm>Cancel</button><button class="btn-danger solid" data-forever="${k}">Delete forever</button></div>
+        </div>`;
+      }
+      return `<div class="trash-row">
+        <div class="t-main"><div class="t-title">${title}</div><div class="muted">${sub}</div></div>
+        <div class="t-actions"><button class="btn-quiet" data-untrash="${k}">Restore</button><button class="btn-danger" data-ask="${k}">Delete forever</button></div>
+      </div>`;
+    }).join("");
+    const emptying = state.confirm === "all";
+    $("trashList").innerHTML = `
+      <div class="card stripped">
+        <div class="strip"><span>IN THE TRASH</span><span class="strip-side">${trash.length}</span></div>
+        <div>${rows}</div>
+      </div>
+      ${emptying
+        ? `<div class="card note restore-bar"><span style="font-size:13px;"><b>Empty the Trash?</b> All ${trash.length} items are deleted forever. This can't be undone.</span>
+             <span style="display:flex;gap:8px;"><button class="btn-quiet" data-cancel-confirm>Cancel</button><button class="btn-danger solid" data-forever="all">Empty Trash</button></span></div>`
+        : `<div class="button-row" style="justify-content:flex-end;"><button class="btn-danger" data-ask="all">Empty Trash</button></div>`}`;
+  }
+
+  $("trashList").addEventListener("click", (e) => {
+    const t = e.target;
+    const ask = t.closest("[data-ask]");
+    if (ask) { state.confirm = ask.dataset.ask === "all" ? "all" : +ask.dataset.ask; return renderTrash(); }
+    if (t.closest("[data-cancel-confirm]")) { state.confirm = null; return renderTrash(); }
+    const forever = t.closest("[data-forever]");
+    if (forever) {
+      forever.dataset.forever === "all" ? trash.splice(0) : trash.splice(+forever.dataset.forever, 1);
+      state.confirm = null;
+      return renderTrash();
+    }
+    const un = t.closest("[data-untrash]");
+    if (un) {
+      const [item] = trash.splice(+un.dataset.untrash, 1);
+      if (item.type === "sec") {
+        item.sec.hidden = true;
+        sections.push(item.sec);
+      } else {
+        item.q.status = "draft";
+        let i = sections.findIndex(s => s.name === item.secName);
+        if (i < 0) { sections.push({ name: item.secName, hidden: false, questions: [] }); i = sections.length - 1; }
+        sections[i].questions.push(item.q);
+      }
+      state.confirm = null;
+      renderTrash();
+    }
+  });
+
+  $("trashBtn").onclick = () => { state.confirm = null; renderTrash(); show("trashView"); };
+
+  /* Mockup states for screenshots: #edit, #trash, #trash-confirm, #hide-section, #new-section, #restore */
+  renderList();
+  const h = location.hash.slice(1);
+  if (h === "edit" || h === "restore") { openEdit(0, 0); if (h === "restore") document.querySelector("[data-restore]").click(); }
+  if (h === "trash" || h === "trash-confirm") { state.confirm = h === "trash-confirm" ? 0 : null; renderTrash(); show("trashView"); }
+  if (h === "hide-section") {
+    const i = sections.findIndex(s => s.hidden);
+    state.open = new Set([0]); state.editingSec = i; state.secHidden = true; renderList();
+  }
+  if (h === "expanded") {
+    state.expanded.add(sections[0].questions[1]); state.expanded.add(sections[0].questions[5]); renderList();
+  }
+  if (h === "new-section") { $("newSecBtn").onclick(); setTimeout(() => $("newSecForm").scrollIntoView({ block: "end" }), 0); }
+</script>
+</body>
+</html>

@@ -65,6 +65,10 @@ public/
   timesheets.js         Timesheets — pay periods, flags, approval, Excel export
   app.js                shell, login, dashboard, KB, My Folder, Clock, Appearance
 migrations/             numbered SQL, applied via wrangler
+shopify-app/            the "Panda Portal" Shopify app's config + theme app extension
+                        `panda-faq` (the FAQ block on pandahobby.ca/pages/faq). NOT part
+                        of the Worker deploy: release with `shopify app deploy` from this
+                        folder (Sam signs the CLI in). Plan + gotchas: docs/faq-plan.md
 ```
 
 Script order in `index.html` matters: `core.js` defines the helpers, `app.js` calls

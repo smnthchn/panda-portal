@@ -2,10 +2,28 @@
 
 ## Open items
 - [Claude] Build Phase 2 (positions, dated rates, position picker on shifts, pay timeline, read-only view for staff) as planned in `docs/payroll-plan.md` (added 2026-09-28; no longer waits on a payday, the app isn't in real use yet)
+- [Sam] OK to commit the FAQ work, which has never been in git: `shopify-app/` (the live Panda FAQ app block, version faq-2), `docs/faq-plan.md`, `design/mockups/`. The push redeploys the Worker on the same code, so nothing changes for staff (added 2026-11-03)
+- [Claude] FAQ cutover step 20, ask Sam first (deletes on the live store): delete theme copy 189206954290, the empty `/pages/avada-faqs` page, and the 2021 body text on `/pages/faq` (added 2026-11-03)
+- [Claude] FAQ phase 3: the portal FAQ editor (plan in `docs/faq-plan.md`, clickable mockup `design/mockups/faq-editor.html`) (added 2026-11-03)
 
 ## Parked
+<!-- Items asked about twice at /startup with no answer. Not lost, just not nagging. -->
+- [Claude] FAQ sticky header: on desktop the theme's 138px sticky header covers the question title when a `#hc-…` link opens it, because `faq.css` only leaves `scroll-margin-top: 24px` (lines 120 and 132). Fix the CSS, then release a new app version. Sam (2026-11-03): leave it for now. Good time to do it is the next app release, e.g. phase 3 (added 2026-11-03, parked 2026-11-03 by Sam)
 
 ---
+
+## 2026-11-03 (FAQ migration)
+**Done:**
+- The SB: FAQ HelpCenter app is gone. The yearly charge arrived before the Dec 22 renewal we expected, but the developer hadn't collected it and said Sam could uninstall at no charge. Sam uninstalled it 2026-11-03.
+- Sam added the redirect `/apps/help-center` → `/pages/faq`, and Shopify accepted the `/apps/` path, so the app-proxy fallback isn't needed. Tested: it 301s with or without a trailing slash or query, and `#hc-…` question links still open the right question. The redirects page is now admin.shopify.com/store/panda-hobby-store/redirects (Navigation moved under Content → Menus).
+- Earlier in this run of sessions: page live 2026-10-23, every link repointed 2026-10-26 (0 old links across 55 pages), and all 47 Shopify notification emails checked with 0 old links (2026-10-27).
+**Left off:** The cutover is done apart from step 20 cleanup. The sticky-header issue was found and parked by Sam.
+**Next:**
+1. Commit the FAQ work, with Sam's OK.
+2. Step 20 cleanup, with Sam's OK.
+3. Phase 3, the portal FAQ editor.
+**State:** NOT in git: `shopify-app/` (the code for the live FAQ app block; `.shopify/` and node_modules are ignored), `docs/faq-plan.md`, `design/mockups/`. master is otherwise clean and level with origin. The FAQ app (faq-2) is released on Shopify; nothing is waiting to deploy.
+**Closed:** none from the list. Done outside it: FAQ steps E and F (uninstall + redirect).
 
 ## 2026-09-29 (mid-session note)
 **Closed:** Decide whether `design/` goes in git (done: DESIGN-STATUS.md committed, the v1/v2 bundles stay ignored). Bump the Actions versions (done: checkout and setup-node v7, deploy passed). Sep 16–30 payday run and Thanksgiving hand check (dropped: the portal isn't used for real payroll yet, per Sam).
