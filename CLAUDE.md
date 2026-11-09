@@ -6,6 +6,13 @@ the browser runs.
 
 Live at **https://portal.pandahobby.ca**.
 
+## Where things live
+
+- Plan: CLAUDE.md, docs/faq-plan.md, docs/payroll-plan.md
+- Status: HANDOFF.md
+- Design: design/DESIGN-STATUS.md
+- Reference only, not plan: docs/ai-foundation/ (old starter pack; the knowledge base lives in Google Docs)
+
 ## Commands
 
 ```bash
@@ -54,7 +61,8 @@ src/
     google.js           service-account JWT, Drive listing, Google Doc -> HTML
     http.js             json(), matchPath(), cookies, field validation
   routes/               session, dashboard, knowledge, clock, admin, staff,
-                        conventions, schedule, shelves, resources
+                        conventions, schedule, shelves, resources, availability,
+                        bring, budget, groupings, timesheets
 public/
   core.js               shared helpers — MUST load first (esc, api, themes, battery)
   admin.js              Users & Roles
@@ -68,7 +76,8 @@ migrations/             numbered SQL, applied via wrangler
 shopify-app/            the "Panda Portal" Shopify app's config + theme app extension
                         `panda-faq` (the FAQ block on pandahobby.ca/pages/faq). NOT part
                         of the Worker deploy: release with `shopify app deploy` from this
-                        folder (Sam signs the CLI in). Plan + gotchas: docs/faq-plan.md
+                        folder (Sam signs the CLI in). How it works: the FAQ section
+                        below; the unbuilt editor: docs/faq-plan.md
 ```
 
 Script order in `index.html` matters: `core.js` defines the helpers, `app.js` calls
@@ -440,12 +449,34 @@ it was taken beside it; the worker has no Shopify access.
 big expensive boxes that sit on top of the shelves; there are only ever one or
 two of each, and in a tier they would eat a whole run). Those show their
 placement instead of an empty tier row, and what they need is a bring quantity
-rather than a position — which isn't built yet.
+rather than a position, which the bring list carries (below).
 
 **The phone shelf detail is a state, not a route.** The booth map earned its
 own URL because it is the thing you send someone; a shelf's tiers are a
 drill-down you come back out of, so Back steps out of the unit before it leaves
 the plan.
+
+### Bring list
+
+**A bring item is one SKU to pull for one event, ticked off as it's picked.** The
+Google Sheet stays the planning surface (cuts, quantities, the TCG cull);
+`bring_items` (migration 0039) is a per-event snapshot of its decided rows, loaded
+from the sheet. The portal has no screen or route to add or edit items. Each row
+carries its family (`grouping_id`), Sam's product-line `label`, SKU, title, bring
+`qty`, `placement`, and `stock` (0042, a snapshot of the sheet's stock column).
+
+**Anyone who can see the plan can tick and untick** (the `conventions` permission),
+the same reasoning as shelf photos. A tick is the row's own `picked_by` and
+`picked_at`, so people picking at once can't overwrite each other.
+
+Every family with items gets a "picked 45/97" button on the map's selected card,
+the phone shelf detail and the grid's grouping strip. It opens a lightbox of the
+family's items grouped by label, showing "stock N" per row, or "bring N" on gacha.
+`groupings.bring_list_url` (0035) links each family to its tab of the sheet.
+Routes are in `routes/bring.js`: `GET /api/conventions/:slug/bring-items?grouping=`
+and `POST /api/bring-items/:id/pick`; `bringProgress()` puts per-family
+picked/total on the plan payload. Rows with no family (`grouping_id` NULL, the
+ungrouped Up Top and side-hang blocks) get no button.
 
 ### Resources, board artwork and shelf photos
 
@@ -797,6 +828,149 @@ total row, the four hour columns and each holiday's calculation), Shifts
 numbers so Excel can sum them. **Pass `json_to_sheet` an explicit header
 list** — it otherwise takes the columns from the first row, and a no-show row
 (fewer fields) coming first scrambled the Shifts sheet.
+
+## FAQ
+
+The store FAQ at **pandahobby.ca/pages/faq**. Shopify holds the content; the
+portal has no FAQ screens yet (the editor is phase 3 in `docs/faq-plan.md`),
+so **edits happen in Shopify admin** → Content → Metaobjects → FAQ question /
+FAQ section. The old **SB: FAQ HelpCenter** app is gone (uninstalled
+2026-11-03).
+
+### Where the FAQs are stored
+
+Two **merchant-owned** metaobject types, not app-owned (`$app:`): app-owned
+entries are deleted if the app is ever uninstalled; merchant-owned ones
+survive, and stay editable in Shopify admin. Both have
+`access.storefront: PUBLIC_READ`.
+
+`faq_section` (`gid://shopify/MetaobjectDefinition/28479422770`)
+- `name` (single line text, required)
+- `sort_order` (integer)
+- `hidden` (boolean): hides the section and everything in it from the site
+- `trashed` (boolean)
+
+`faq_question` (`…/28479488306`), with the **publishable** capability
+(Active = Live, Draft = Draft)
+- `question` (single line text, required)
+- `answer` (rich text, required)
+- `section` (metaobject reference to `faq_section`, required)
+- `sort_order` (integer)
+- `trashed` (boolean): a trashed question is also set to Draft
+- **handle = the old anchor slug** (`how-long-does-shipping-take`), so the page
+  gives each question `id="hc-<handle>"` and old links that jump to a
+  specific question keep working.
+
+The content came from the old app's export (`C:\dev\faq-migration\`, with the
+import scripts and logs); the wording matches it apart from 12 missing spaces
+after full stops and colons, added in 3 answers (Sam's OK).
+`shopify_faq.py verify` in `scripts\` compares the store with the export.
+
+**The "Panda Portal" app** in the Shopify Dev Dashboard, client-credentials
+grant. Scopes in `shopify-app/shopify.app.toml`: read and write metaobjects
+and metaobject definitions, plus `customer_read_metaobjects`. Secrets
+`SHOPIFY_SHOP`, `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET` are wrangler
+secrets and in `.dev.vars`; no Worker code reads them yet. **There's no test
+store**, so local dev talks to the live store: keep local testing to reads
+unless Sam OKs a write.
+
+### Built as an app block, not theme code (Sam, 2026-10-21)
+
+The FAQ is a **theme app extension** in the Panda Portal app: an app block
+called **Panda FAQ**. Its code lives in the app, so no theme file is edited.
+
+- **Why:** Sam's worry was losing the FAQ when the theme is updated. Shopify
+  copies theme-editor customizations, app blocks included, into an updated
+  theme version; hand-edited theme code is not copied. On a different theme
+  it's **Add section → Apps → Panda FAQ** in the theme editor, no code. A
+  portal button that writes theme files was considered and dropped: it needs
+  `write_themes` plus a theme-file exemption that Shopify approves per app,
+  and developers report being blocked even after approval.
+- **Code:** `shopify-app/extensions/panda-faq/` (`blocks/faq.liquid`,
+  `assets/faq.css`, `assets/faq.js`). Released app version: `faq-2`. Title,
+  accent and button colours, and the contact box text are block settings in
+  the theme editor.
+- **Releasing:** `shopify app deploy` from `shopify-app/` releases a new app
+  version; it writes nothing to the store and is not part of the Worker
+  deploy. The project is linked to the existing Dev Dashboard app with
+  `shopify app config link`, so a deploy doesn't change its scopes or URLs.
+  Shopify CLI must be signed in to the account that owns the Panda Portal app
+  (Sam signs in).
+- **In the store:** a page template named **`panda-faq`** in the live theme
+  ("2026 June - Sam Testing", `185871630642`, Empire 12.2.1), made in the
+  theme editor so it carries over on updates (not `faq`, which the theme
+  already has), with the page-content section removed and the Panda FAQ block
+  added. `/pages/faq` uses it. A page's template is set on the page, not per
+  theme, so changing it changes the live site. A theme without a `panda-faq`
+  template falls back to the default page template. Preview on a theme copy
+  with `/pages/faq?view=panda-faq&preview_theme_id=<copy id>`.
+- **What it renders:** sections in `sort_order`, skipping hidden or trashed
+  sections and any section with no Live question; Draft questions never
+  reach Liquid (`shop.metaobjects.faq_question.values` leaves them out), and
+  `trashed` is checked as a guard. Each question is an expanding answer with
+  `id="hc-<handle>"`, plus FAQPage structured data. `paginate … by 250` stays
+  as a guard as the FAQ grows. `{{ q.answer | metafield_tag }}` renders the
+  rich text.
+- **Liquid gotchas:** a metaobject's handle is `entry.system.handle`, not
+  `entry.handle` (that's blank, and every question lands in every section).
+  Avoid `continue` inside a `capture`; wrap in an `if`.
+- **The block depends on the app.** Uninstalling the Panda Portal app would
+  remove the block from the page (the questions survive; they're
+  merchant-owned). Theme updates keep it.
+
+**Layout B, the sidebar** (Sam, 2026-10-21). Mockup:
+`C:\dev\faq-migration\website-mockup\faq-page.html` (switch to "B · Sidebar";
+screenshots beside it). It was drawn inside a saved copy of the live site, so
+the header, fonts and colours are the theme's own.
+
+- "Frequently Asked Questions" title with nothing under it (Sam: no intro
+  line), then a search box whose placeholder is just "Search". It filters
+  every answer at once and says how many matched ("1 answer for 'deposit'"),
+  with a no-results message pointing to customer service.
+- Desktop: a list of sections down the left that stays in view while
+  scrolling, each with its question count; every section and question on one
+  page to the right, each section under its own heading.
+- Phone: the section list becomes a "Jump to a section" dropdown above the
+  questions.
+- Questions are the theme's own expanding FAQ items (`faq__details`); an open
+  question turns the accent colour.
+- A "Still have a question?" box at the end with the customer service email,
+  hours (Monday to Friday, 12pm to 5pm) and a Contact us button to
+  `/pages/contact-us`.
+- The theme caps FAQ sections at 680px wide (`.faq--regular`); this layout
+  needs about 1100px, so the section sets its own width.
+
+**Known issue:** on desktop the theme's 138px sticky header covers the
+question title when a `#hc-…` link opens it, because `faq.css` only leaves
+`scroll-margin-top: 24px`. The fix needs an app release. Sam (2026-11-03):
+leave it for now.
+
+### Around the page
+
+- **Redirect:** `/apps/help-center` (with or without a trailing slash or
+  query) 301s to `/pages/faq`, and an old `#hc-…` link survives the redirect
+  and opens its question. It's a URL redirect in Shopify admin
+  (admin.shopify.com/store/panda-hobby-store/redirects).
+- **Search engine listing** (Pages → FAQ). **Decided (Sam, 2026-10-23):** "Answers to
+  common questions about shipping, pre-orders, in-store pickup, Panda
+  Rewards, Panda Vault and trade-ins at Panda Hobby."
+- **The homepage "Free Shipping" banner.** **Decided (Sam, 2026-10-23):**
+  the Canada rates question,
+  `https://pandahobby.ca/pages/faq#hc-how-much-is-shipping-canada`.
+- **Links:** menus, homepage banners, the contact page, the pre-order product
+  template, CustomerHub's account menu, the Vault email template and the
+  Shopify notification emails all point to `/pages/faq`.
+  `C:\dev\faq-migration\scripts\check_links.py` checks for old links.
+  **Sam wants no .store links** (pandahobby.store); use pandahobby.ca.
+- **Notification emails** are built in Orderly Emails and copied by hand
+  into Shopify, so change a link in Orderly first. The two B2B emails stay
+  on Shopify's default template by Sam's choice (2026-10-28).
+- **`agents.md`** has a "Store Questions" section (between Legitimate Contact
+  and Commerce Protocol) pointing AI tools to the FAQ. Its source is
+  `templates/agents.md.liquid` in the live theme, and the same content is
+  served at `/llms.txt` and `/llms-full.txt`, so it's one edit. It only has
+  the restricted `agents` Liquid object (`shop` renders blank), so URLs are
+  written out in full.
 
 ## Secrets
 

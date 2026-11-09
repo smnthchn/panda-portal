@@ -1,8 +1,11 @@
 # Handoff: Panda Portal
 
+## Working now
+
 ## Open items
 - [Claude] Build Phase 2 (positions, dated rates, position picker on shifts, pay timeline, read-only view for staff) as planned in `docs/payroll-plan.md` (added 2026-09-28; no longer waits on a payday, the app isn't in real use yet)
 - [Claude] FAQ cutover step 20, ask Sam first (deletes on the live store): delete theme copy 189206954290, the empty `/pages/avada-faqs` page, and the 2021 body text on `/pages/faq` (added 2026-11-03)
+- [Sam] Decide: fix the 3 stale FAQ answers on the live page (two mention Covid or the pandemic, one links to pandahobby.store; the Markham answer needs checking). Edit them in Shopify admin, or say what they should say. Marked UNDECIDED in `docs/faq-plan.md` (added 2026-11-09)
 - [Claude] FAQ phase 3: the portal FAQ editor (plan in `docs/faq-plan.md`, clickable mockup `design/mockups/faq-editor.html`) (added 2026-11-03)
 
 ## Parked
@@ -10,6 +13,10 @@
 - [Claude] FAQ sticky header: on desktop the theme's 138px sticky header covers the question title when a `#hc-…` link opens it, because `faq.css` only leaves `scroll-margin-top: 24px` (lines 120 and 132). Fix the CSS, then release a new app version. Sam (2026-11-03): leave it for now. Good time to do it is the next app release, e.g. phase 3 (added 2026-11-03, parked 2026-11-03 by Sam)
 
 ---
+
+## 2026-11-09 (one-time plan sort, from the /startup wrapup fix session)
+**Done:** CLAUDE.md got Where things live (Plan: CLAUDE.md, docs/faq-plan.md, docs/payroll-plan.md; docs/ai-foundation/ is reference only), a Bring list section (it was described as not built; it is), and the full routes list. Plan: the live FAQ moved into a CLAUDE.md FAQ section and faq-plan.md is trimmed to the unbuilt editor (Sam, 2026-11-09), all 15 decisions kept; the stale live FAQ answers are a Decide item.
+**State:** committed, not pushed (pushing master redeploys the portal).
 
 ## 2026-11-03 (FAQ migration)
 **Done:**
