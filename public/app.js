@@ -58,6 +58,8 @@ const NAV_ITEMS = [
   { id: "navConventions", label: "Events", group: "Operations", permission: "conventions", view: "conventions", nav: true },
   { id: "navSchedule", label: "Schedule", group: "Operations", permission: "manage_conventions", view: "schedule" },
   { id: "navStaff", label: "Staff", group: "Operations", permission: "manage_users", view: "staff" },
+  // Boss role only, not just the permission: this page shows last year's sales.
+  { id: "navBonus", label: "Sales bonus", group: "Operations", permission: "manage_users", bossOnly: true, view: "sales-bonus" },
   { id: "navKnowledgeBase", label: "Docs", group: "Reference", permission: "knowledge_base", view: "knowledge-base" },
   { id: "navMyFolder", label: "My Folder", group: "Reference", permission: "employee_folder", view: "my-folder" },
   { id: "navAvailability", label: "My availability", group: "Reference", permission: null, view: "availability" },
@@ -98,6 +100,7 @@ const NAV_STUBS = ["Inventory", "Purchasing"];
 function visibleNavItems() {
   return NAV_ITEMS
     .filter(item => !item.permission || can(item.permission))
+    .filter(item => !item.bossOnly || state.user?.role === "boss")
     .map(item => ({
       ...item,
       label: item.bossLabel && can("manage_users") ? item.bossLabel : item.label
@@ -553,6 +556,7 @@ async function renderDashboard(user, pushState = true) {
     ${dashHeader(data)}
     ${data.day_type === "event" && data.event ? eventBand(data) : upcomingNudge(data)}
     ${showClock ? clockCard(data) : ""}
+    <div id="bonusSlot"></div>
     ${showClock && data.day_type === "event" ? breakBatteryCard(data) : ""}
     ${data.day_type === "event" ? hallHoursCard(data) : myShiftCard(data)}
     ${rosterCard(data)}
@@ -560,6 +564,7 @@ async function renderDashboard(user, pushState = true) {
 
   markActiveNav("dashboard");
   wireClockButtons(() => renderDashboard(user, false));
+  loadBonusSlot();
 
   document.querySelectorAll("[data-open-event]").forEach(el => {
     el.onclick = () => openConvention(el.dataset.openEvent);
@@ -1354,6 +1359,7 @@ function viewForPath(pathname) {
     "/schedule": "schedule",
     "/availability": "availability",
     "/staff": "staff",
+    "/sales-bonus": "sales-bonus",
     "/users-roles": "users-roles",
     "/appearance": "appearance",
     "/more": "more"
@@ -1376,6 +1382,7 @@ const POPSTATE_VIEWS = {
   clock: () => renderClock(false),
   availability: () => renderMyAvailability(false),
   staff: () => renderStaff(false),
+  "sales-bonus": () => renderSalesBonus(false),
   "staff-member": (s) => openStaffMember(s.id, false),
   "users-roles": () => renderUsersRoles(false),
   appearance: () => renderAppearance(false),

@@ -8,7 +8,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ## Where things live
 
-- Plan: CLAUDE.md, docs/faq-plan.md, docs/payroll-plan.md
+- Plan: CLAUDE.md, docs/faq-plan.md, docs/payroll-plan.md, docs/bonus-plan.md
 - Status: HANDOFF.md
 - Design: design/DESIGN-STATUS.md
 - Reference only, not plan: docs/ai-foundation/ (old starter pack; the knowledge base lives in Google Docs)
@@ -17,7 +17,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 182 tests
+npm test               # vitest, 207 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -60,9 +60,10 @@ src/
     permissions.js      roles, permission keys, effective-permission resolution
     google.js           service-account JWT, Drive listing, Google Doc -> HTML
     http.js             json(), matchPath(), cookies, field validation
+    shopify.js          the Panda Portal Shopify app: token + shopifyGraphql() (reads only)
   routes/               session, dashboard, knowledge, clock, admin, staff,
                         conventions, schedule, shelves, resources, availability,
-                        bring, budget, groupings, timesheets
+                        bring, budget, groupings, timesheets, bonus
 public/
   core.js               shared helpers — MUST load first (esc, api, themes, battery)
   admin.js              Users & Roles
@@ -71,6 +72,7 @@ public/
   resources.js          Resources — the store's image library
   schedule.js           Schedule builder
   timesheets.js         Timesheets — pay periods, flags, approval, Excel export
+  bonus.js              Sales bonus — the Home card and the boss's Sales bonus page
   app.js                shell, login, dashboard, KB, My Folder, Clock, Appearance
 migrations/             numbered SQL, applied via wrangler
 shopify-app/            the "Panda Portal" Shopify app's config + theme app extension
@@ -868,9 +870,12 @@ after full stops and colons, added in 3 answers (Sam's OK).
 
 **The "Panda Portal" app** in the Shopify Dev Dashboard, client-credentials
 grant. Scopes in `shopify-app/shopify.app.toml`: read and write metaobjects
-and metaobject definitions, plus `customer_read_metaobjects`. Secrets
+and metaobject definitions, plus `customer_read_metaobjects`, and
+`read_orders` with `read_all_orders` (Sam added them 2026-11-20 for the
+sales bonus, see `docs/bonus-plan.md`). Secrets
 `SHOPIFY_SHOP`, `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET` are wrangler
-secrets and in `.dev.vars`; no Worker code reads them yet. **There's no test
+secrets and in `.dev.vars`; the sales bonus reads them through
+`src/lib/shopify.js`. **There's no test
 store**, so local dev talks to the live store: keep local testing to reads
 unless Sam OKs a write.
 
@@ -971,6 +976,48 @@ leave it for now.
   served at `/llms.txt` and `/llms-full.txt`, so it's one edit. It only has
   the restricted `agents` Liquid object (`shop` renders blank), so URLs are
   written out in full.
+
+## Sales bonus
+
+The decisions are in `docs/bonus-plan.md`; read it before working here. Built
+2026-11-20, **not deployed yet** (migration 0049).
+
+- **Staff are written by staff ID, never by name** (Sam, 2026-11-20): in the
+  plan, in HANDOFF.md, in migrations, tests and commit messages. The goals are
+  linked to people by `employees.id` only.
+- `bonus_blocks` is one row per goal (a Monday-to-Friday week or a weekend),
+  money in cents; `bonus_people` says who shares each kind of goal.
+- **A person only shares for the days they worked.** Everyone counts as
+  having worked until the boss unticks them, so `bonus_absences` holds only
+  the exceptions. `sharesFor()` cuts the bonus into equal daily parts and
+  gives each day's part to whoever worked that day; a day nobody worked isn't
+  paid. Staff are sent only their own share (`my_cents`), never who was off.
+- `GET /api/bonus` is the signed-in person's own card and **never carries
+  `last_year_cents`**. `GET /api/admin/bonus` and the three `PUT`s under it
+  (a goal's numbers, who worked a day, who is on a goal) are for the `boss`
+  role only, checked on the role, not on `manage_users`.
+- Sales are read from Shopify by `fetchSalesCents()` in `src/routes/bonus.js`
+  and kept on the block row (`sales_cents`, `sales_checked_at`): 100 seconds
+  for a goal that's running, an hour for a finished one. One page load makes at
+  most 4 Shopify reads; the rest show the kept figure. If Shopify can't be
+  reached the kept figure is shown and marked stale.
+- `orderNetCents()` is the rule for what one order counts for. Tested against
+  Shopify's own report on 2026-11-20: equal to the cent on most days, and
+  $0.26 apart on one day with a return (Nov 5, 2026), so expect cents of
+  difference, never dollars. A cancelled order is the deliberate exception:
+  Shopify still counts it, the portal doesn't.
+- The order search must quote its dates, and the Markham location is the
+  constant `MARKHAM_LOCATION_ID`. Both are explained in the plan's What we
+  know.
+- The Home card's meter is a Christmas tree made from one picture
+  (`public/bonus-tree.webp`) drawn three ways by `bonusMeterHtml()`: washed
+  out, in colour up to the fill level, and each bulb washed back to white
+  until sales pass it. `BONUS_TREE` holds the picture's measurements (bulb
+  centres, star, where the colour starts and stops); a new picture needs
+  them measured again. The white panel behind it is deliberate, in every
+  theme, and is the one place literal colours are right.
+- Local dev reads the **live** store's sales (there is no test store). It
+  only reads.
 
 ## Secrets
 

@@ -4167,3 +4167,129 @@ button.pick-open {
   background: var(--chip);
 }
 
+
+/* ---------- Sales bonus ---------- */
+
+.bonus-kicker {
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.bonus-big {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 32px;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.bonus-line {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.bonus-line.met {
+  color: var(--go-text);
+}
+
+/* The tree meter. The picture has a white background, so it sits on its own
+   white panel in every theme: these two colours are the one place a literal
+   is right, because they belong to the picture, not to the palette. */
+.bonus-tree {
+  --tree-paper: #FEFEFE;
+  --tree-ink: #23324A;
+  --tree-faint: #9AA3B2;
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  margin: 12px auto 0;
+  background: var(--tree-paper);
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+}
+
+.bonus-tree-tick {
+  stroke: var(--tree-faint);
+  stroke-width: 3;
+  stroke-dasharray: 6 9;
+}
+
+.bonus-tree-mark {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 500;
+  font-size: 46px;
+  fill: var(--tree-faint);
+}
+
+.bonus-tree-mark.passed {
+  font-weight: 600;
+  fill: var(--tree-ink);
+}
+
+.bonus-last {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 2px solid var(--track);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.bonus-last b {
+  color: var(--text);
+}
+
+.card input.bonus-input {
+  width: 96px;
+}
+
+.bonus-table td {
+  vertical-align: middle;
+}
+
+.bonus-table .pill {
+  white-space: nowrap;
+}
+
+.bonus-day {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.bonus-day-name {
+  width: 30px;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.bonus-tick {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.bonus-people {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.bonus-person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 14px;
+}
+
+.bonus-people-group .btn-quiet {
+  margin-top: 8px;
+}

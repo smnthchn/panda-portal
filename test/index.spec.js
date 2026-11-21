@@ -26,6 +26,17 @@ import { templatePositions, BOOTH_FEET } from "../src/lib/booth-template.js";
 import { parseImageDataUri, imageUrlFor } from "../src/lib/images.js";
 import { parseThemeColors, THEME_IDS } from "../src/routes/session.js";
 import { renderGoogleDocToHtml } from "../src/lib/google.js";
+import {
+  orderNetCents,
+  bonusFor,
+  blockStatus,
+  torontoMidnight,
+  nextDay,
+  ordersSearch,
+  dollarsToCents,
+  blockDays,
+  sharesFor
+} from "../src/routes/bonus.js";
 
 function request(path, method = "GET", headers = {}) {
   return new Request(`http://example.com${path}`, { method, headers });
@@ -1543,5 +1554,177 @@ describe("stat holiday hours", () => {
   it("gives no holiday hours to the boss or volunteers", () => {
     const people = buildPeriod({ ...base, scheduled: [], events: lookback, employees: [{ ...kevin, role: "volunteer" }] });
     expect(people).toEqual([]);
+  });
+});
+
+describe("sales bonus", () => {
+  const money = amount => ({ shopMoney: { amount: String(amount) } });
+  const order = (subtotal, extra = {}) => ({
+    test: false,
+    cancelledAt: null,
+    currentSubtotalPriceSet: money(subtotal),
+    currentTotalPriceSet: money((subtotal * 1.13).toFixed(2)),
+    refunds: [],
+    ...extra
+  });
+
+  describe("orderNetCents", () => {
+    it("counts a plain sale at its subtotal, before tax", () => {
+      expect(orderNetCents(order(90))).toBe(9000);
+    });
+
+    it("counts a cancelled order as nothing, even when Shopify still shows its amount", () => {
+      expect(orderNetCents(order(49.99, { cancelledAt: "2026-11-06T18:32:35Z" }))).toBe(0);
+    });
+
+    it("ignores test orders", () => {
+      expect(orderNetCents(order(20, { test: true }))).toBe(0);
+    });
+
+    it("leaves a refund with items alone: Shopify already took it off the subtotal", () => {
+      const returned = order(15.6, {
+        refunds: [{ totalRefundedSet: money(38.41), refundLineItems: { nodes: [{ id: "x" }] } }]
+      });
+      expect(orderNetCents(returned)).toBe(1560);
+    });
+
+    it("takes off money refunded with no item returned, less its share of tax", () => {
+      // RX158841: $107.08 before tax, $121.00 with it, $17.96 handed back.
+      const adjusted = {
+        test: false,
+        cancelledAt: null,
+        currentSubtotalPriceSet: money(107.08),
+        currentTotalPriceSet: money(121),
+        refunds: [{ totalRefundedSet: money(17.96), refundLineItems: { nodes: [] } }]
+      };
+      expect(orderNetCents(adjusted)).toBe(10708 - 1589);
+    });
+
+    it("never goes below zero", () => {
+      const over = order(10, {
+        refunds: [{ totalRefundedSet: money(50), refundLineItems: { nodes: [] } }]
+      });
+      expect(orderNetCents(over)).toBe(0);
+    });
+  });
+
+  describe("bonusFor", () => {
+    const weekend = { goal_cents: 600000, base_cents: 12000, step_size_cents: 50000, step_bonus_cents: 2500 };
+
+    it("pays nothing below the goal and says how far there is to go", () => {
+      const bonus = bonusFor(weekend, 435000, 2);
+      expect(bonus.met).toBe(false);
+      expect(bonus.total_cents).toBe(0);
+      expect(bonus.to_goal_cents).toBe(165000);
+    });
+
+    it("pays the base exactly at the goal, split between the people on it", () => {
+      const bonus = bonusFor(weekend, 600000, 2);
+      expect(bonus).toMatchObject({ met: true, steps: 0, total_cents: 12000, each_cents: 6000, to_next_cents: 50000 });
+    });
+
+    it("adds a step for each full $500 past the goal", () => {
+      expect(bonusFor(weekend, 665000, 2)).toMatchObject({ steps: 1, total_cents: 14500, each_cents: 7250, to_next_cents: 35000 });
+      expect(bonusFor(weekend, 699999, 2).steps).toBe(1);
+      expect(bonusFor(weekend, 700000, 2).steps).toBe(2);
+    });
+
+    it("pays one person the whole amount", () => {
+      const week = { goal_cents: 540000, base_cents: 10000, step_size_cents: 50000, step_bonus_cents: 2500 };
+      expect(bonusFor(week, 600000, 1)).toMatchObject({ steps: 1, total_cents: 12500, each_cents: 12500 });
+    });
+
+    it("pays nothing while the goal isn't set", () => {
+      expect(bonusFor({ ...weekend, goal_cents: null }, 900000, 2).total_cents).toBe(0);
+    });
+  });
+
+  describe("dates", () => {
+    it("knows whether a goal is coming, running or finished", () => {
+      const block = { starts_on: "2026-11-21", ends_on: "2026-11-22" };
+      expect(blockStatus(block, "2026-11-20")).toBe("upcoming");
+      expect(blockStatus(block, "2026-11-21")).toBe("live");
+      expect(blockStatus(block, "2026-11-22")).toBe("live");
+      expect(blockStatus(block, "2026-11-23")).toBe("done");
+    });
+
+    it("finds Toronto midnight in winter and in summer", () => {
+      expect(torontoMidnight("2026-11-21")).toBe("2026-11-21T00:00:00-05:00");
+      expect(torontoMidnight("2026-07-01")).toBe("2026-07-01T00:00:00-04:00");
+    });
+
+    it("steps over a month end", () => {
+      expect(nextDay("2026-11-30")).toBe("2026-12-01");
+      expect(nextDay("2026-12-31")).toBe("2027-01-01");
+    });
+
+    it("searches Markham in-store orders with quoted dates, the end day included", () => {
+      expect(ordersSearch({ starts_on: "2026-11-21", ends_on: "2026-11-22" })).toBe(
+        "created_at:>='2026-11-21T00:00:00-05:00' created_at:<'2026-11-23T00:00:00-05:00' source_name:pos location_id:3164241943"
+      );
+    });
+  });
+
+  describe("sharesFor", () => {
+    const weekend = { starts_on: "2026-11-21", ends_on: "2026-11-22" };
+    const first = { id: 1, full_name: "Staff One" };
+    const second = { id: 2, full_name: "Staff Two" };
+    const cents = result => result.shares.map(share => share.cents);
+
+    it("lists every day of a goal", () => {
+      expect(blockDays(weekend)).toEqual(["2026-11-21", "2026-11-22"]);
+      expect(blockDays({ starts_on: "2026-11-30", ends_on: "2026-12-04" })).toHaveLength(5);
+    });
+
+    it("splits evenly when both work both days", () => {
+      expect(cents(sharesFor(weekend, 12000, [first, second]))).toEqual([6000, 6000]);
+    });
+
+    it("gives it all to the one who worked when the other was off all weekend", () => {
+      const away = new Map([["2026-11-21", new Set([2])], ["2026-11-22", new Set([2])]]);
+      const result = sharesFor(weekend, 12000, [first, second], away);
+      expect(cents(result)).toEqual([12000, 0]);
+      expect(result.shares[1].days_worked).toBe(0);
+    });
+
+    it("shares only the day they both worked", () => {
+      const away = new Map([["2026-11-21", new Set([2])]]);
+      expect(cents(sharesFor(weekend, 12000, [first, second], away))).toEqual([9000, 3000]);
+    });
+
+    it("shares the steps the same way as the base", () => {
+      const away = new Map([["2026-11-21", new Set([2])]]);
+      expect(cents(sharesFor(weekend, 14500, [first, second], away))).toEqual([10875, 3625]);
+    });
+
+    it("pays one person only for the days they worked", () => {
+      const week = { starts_on: "2026-11-23", ends_on: "2026-11-27" };
+      const solo = { id: 3, full_name: "Staff Three" };
+      const away = new Map([["2026-11-25", new Set([3])]]);
+      const result = sharesFor(week, 10000, [solo], away);
+      expect(cents(result)).toEqual([8000]);
+      expect(result.unpaid_cents).toBe(2000);
+    });
+  });
+
+  describe("dollarsToCents", () => {
+    it("reads what someone would type", () => {
+      expect(dollarsToCents("6,500", "Goal")).toBe(650000);
+      expect(dollarsToCents("$72.50", "Goal")).toBe(7250);
+      expect(dollarsToCents("", "Goal")).toBeNull();
+    });
+
+    it("refuses junk", () => {
+      expect(() => dollarsToCents("abc", "Goal")).toThrow(BadRequest);
+      expect(() => dollarsToCents("-5", "Goal")).toThrow(BadRequest);
+    });
+  });
+
+  it("answers nobody who isn't signed in", async () => {
+    const mine = await (await call(request("/api/bonus"))).json();
+    expect(mine).toEqual({ ok: false, error: "Not logged in" });
+
+    const admin = await (await call(request("/api/admin/bonus"))).json();
+    expect(admin.ok).toBe(false);
   });
 });

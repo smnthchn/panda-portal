@@ -257,6 +257,7 @@ const PAGE_URLS = {
   clock: () => "/clock",
   availability: () => "/availability",
   staff: () => "/staff",
+  "sales-bonus": () => "/sales-bonus",
   "staff-member": (d) => `/staff/${encodeURIComponent(d.id)}`,
   "users-roles": () => "/users-roles",
   appearance: () => "/appearance",

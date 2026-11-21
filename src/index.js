@@ -103,6 +103,13 @@ import {
   handleDeleteMoverTime
 } from "./routes/budget.js";
 import {
+  handleMyBonus,
+  handleBonusAdmin,
+  handleUpdateBonusBlock,
+  handleSetBonusAttendance,
+  handleSetBonusPeople
+} from "./routes/bonus.js";
+import {
   handleConventionList,
   handleConventionDetail,
   handleCreateConvention,
@@ -134,6 +141,12 @@ const ROUTES = [
   ["PUT", "/api/theme", handleSetTheme],
 
   ["GET", "/api/dashboard", handleDashboard],
+
+  ["GET", "/api/bonus", handleMyBonus],
+  ["GET", "/api/admin/bonus", handleBonusAdmin],
+  ["PUT", "/api/admin/bonus/blocks/:id", handleUpdateBonusBlock],
+  ["PUT", "/api/admin/bonus/blocks/:id/attendance", handleSetBonusAttendance],
+  ["PUT", "/api/admin/bonus/people", handleSetBonusPeople],
 
   ["GET", "/api/knowledge-base", handleKnowledgeBase],
   ["GET", "/api/my-folder", handleMyFolder],
