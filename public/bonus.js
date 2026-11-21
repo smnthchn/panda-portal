@@ -39,14 +39,14 @@ function bonusKindLabel(kind) {
 }
 
 /**
- * " Your share so far: $72.50." A person only shares for the days they
- * worked, so this is their own figure. Left out when they're the only one on
- * the goal and it's simply the whole bonus.
+ * Staff are only ever told their own amount, never a total that gets split
+ * (Sam, 2026-11-21): a total makes people think it's all theirs. Every
+ * dollar figure on the card is the viewer's own, by the days they're down as
+ * working. The boss, who's on no goal, sees the typical per-person figure.
  */
-function bonusMineText(view, totalCents, label = "Your share so far") {
-  if (view.my_cents === null || view.my_cents === undefined) return "";
-  if (view.people < 2 && view.my_cents === totalCents) return "";
-  return ` ${label}: ${bonusMoney(view.my_cents)}.`;
+function bonusEarnedLabel(view, soFar) {
+  if (view.on_goal) return soFar ? "Your bonus so far" : "Your bonus";
+  return soFar ? "Bonus so far, each person" : "Bonus, each person";
 }
 
 function bonusFirstName(fullName) {
@@ -65,6 +65,8 @@ const BONUS_TREE = {
   h: 1367,
   // The picture's last few rows are a grey strip from a screenshot; stop above it.
   show: 1350,
+  // Breathing room above the star and below the trunk (Sam, 2026-11-21).
+  pad: 70,
   top: 205,
   bottom: 1320,
   star: [575, 110],
@@ -123,7 +125,7 @@ function bonusMeterHtml(view) {
     `<image href="${T.src}" x="0" y="0" width="${T.w}" height="${T.h}" ${attrs} />`;
 
   return `
-    <svg class="bonus-tree" viewBox="-230 0 ${T.w + 230} ${T.show}" role="img"
+    <svg class="bonus-tree" viewBox="-230 ${-T.pad} ${T.w + 230} ${T.show + 2 * T.pad}" role="img"
          aria-label="${esc(`${bonusSales(sales)} of a ${bonusMoney(goal)} goal`)}">
       <defs>
         <filter id="${id}Wash" color-interpolation-filters="sRGB">
@@ -153,14 +155,19 @@ function bonusMeterHtml(view) {
         <clipPath id="${id}Fill">
           <rect x="0" y="${met ? 0 : fillY.toFixed(0)}" width="${T.w}" height="${T.h}" />
         </clipPath>
+        <clipPath id="${id}Crop">
+          <rect x="0" y="0" width="${T.w}" height="${T.show}" />
+        </clipPath>
         <mask id="${id}Unlit" maskUnits="userSpaceOnUse" x="0" y="0" width="${T.w}" height="${T.h}">
           ${unlit.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="46" fill="url(#${id}Soft)" />`).join("")}
         </mask>
       </defs>
 
-      ${image(`filter="url(#${id}Wash)"`)}
-      ${sales > 0 ? image(`clip-path="url(#${id}Fill)"`) : ""}
-      ${unlit.length ? image(`filter="url(#${id}Bulb)" mask="url(#${id}Unlit)"`) : ""}
+      <g clip-path="url(#${id}Crop)">
+        ${image(`filter="url(#${id}Wash)"`)}
+        ${sales > 0 ? image(`clip-path="url(#${id}Fill)"`) : ""}
+        ${unlit.length ? image(`filter="url(#${id}Bulb)" mask="url(#${id}Unlit)"`) : ""}
+      </g>
       ${met ? `<circle cx="${T.star[0]}" cy="${T.star[1]}" r="230" fill="url(#${id}Glow)" />` : ""}
 
       ${marks.join("")}
@@ -171,13 +178,16 @@ function bonusMeterHtml(view) {
 
 /** What the goal pays, in one sentence, for a goal that hasn't been met. */
 function bonusRuleText(view) {
-  const perDay = bonusMoney(Math.round(view.base_cents / Math.max(1, view.days)));
-  const whole = `${bonusMoney(view.base_cents)} for the ${bonusKindLabel(view.kind)}`;
-  const base = view.people > 1
-    ? `Hit it and it pays ${perDay} a day, shared by whoever works that day (${whole}).`
-    : `Hit it and it pays ${perDay} for each day you work (${whole}).`;
-  const step = view.step_size_cents > 0 && view.step_bonus_cents > 0
-    ? ` Every extra ${bonusMoney(view.step_size_cents)} adds ${bonusMoney(view.step_bonus_cents)}.`
+  // Someone unticked for every day of the goal has nothing to earn on it.
+  if (view.on_goal && !view.my_base_cents) {
+    return "You aren't down as working on these days, so this goal has no bonus for you.";
+  }
+
+  // Sam's wording (2026-11-21), in the tree's own terms. Both amounts are the
+  // viewer's own.
+  const base = `Fill the tree all the way to the star and receive a ${bonusMoney(view.my_base_cents)} bonus!`;
+  const step = view.step_size_cents > 0 && view.my_step_cents > 0
+    ? ` Then for every ${BONUS_LIGHTS_PER_STEP} Christmas lights you light up, you'll get an additional ${bonusMoney(view.my_step_cents)} bonus.`
     : "";
   return base + step;
 }
@@ -190,9 +200,9 @@ function bonusProgressText(view) {
     return `${bonusSales(bonus.to_goal_cents)} to go to the goal.`;
   }
 
-  const earned = `Goal met! Bonus so far ${bonusMoney(bonus.total_cents)}.${bonusMineText(view, bonus.total_cents)}`;
-  const next = bonus.to_next_cents
-    ? ` ${bonusSales(bonus.to_next_cents)} more adds another ${bonusMoney(view.step_bonus_cents)}.`
+  const earned = `Goal met! ${bonusEarnedLabel(view, true)}: ${bonusMoney(view.my_cents)}.`;
+  const next = bonus.to_next_cents && view.my_step_cents > 0
+    ? ` ${bonusSales(bonus.to_next_cents)} more in sales adds another ${bonusMoney(view.my_step_cents)}.`
     : "";
   return earned + next;
 }
@@ -229,7 +239,7 @@ function bonusLastHtml(view) {
   if (!view.goal_cents || view.sales_cents === null) return "";
 
   const result = view.bonus.met
-    ? `Goal met. Bonus ${bonusMoney(view.bonus.total_cents)}.${bonusMineText(view, view.bonus.total_cents, "Your share")}`
+    ? `Goal met. ${bonusEarnedLabel(view, false)}: ${bonusMoney(view.my_cents)}.`
     : `Goal not met, ${bonusSales(view.bonus.to_goal_cents)} short.`;
 
   return `

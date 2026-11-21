@@ -48,6 +48,20 @@ portal's Staff page.
 - **The meter carries numbers,** so staff can see what point they have got
   up to and how much more they need to sell to reach the goal.
   (Sam, 2026-11-20)
+- **The card explains the bonus in the tree's own words:** "Fill the tree
+  all the way to the star and receive a $XX bonus! Then for every 5
+  Christmas lights you light up, you'll get an additional $XX bonus."
+  (Sam, 2026-11-21)
+- **Staff are only ever told their own amount, never a total that gets
+  split.** A total makes people think it is all theirs, which is confusion
+  nobody needs. So the weekend card says "$60 bonus", not $120, and each
+  further step is $12.50, not $25. (Sam, 2026-11-21) Every dollar figure on
+  a person's card is their own, worked out from the days they are down as
+  working, and the totals are not sent to a staff member's browser at all.
+  The boss's copy of the card shows the per-person figure, and the full
+  breakdown is on the Sales bonus page. (Claude, 2026-11-21)
+- **The tree has a little space above the star and below the trunk.**
+  (Sam, 2026-11-21)
 - **It's a group goal, not a per-person one.** Every POS sale at the Markham
   store counts, whoever rang it up. The portal doesn't show who sold what.
   (Sam, 2026-11-20)

@@ -314,6 +314,15 @@ function staffView(block, sales, status, people, absentByDay, viewerId = null) {
   const split = sharesFor(block, bonus.total_cents, people, absentByDay);
   const mine = viewerId === null ? null : split.shares.find(share => share.id === viewerId) || null;
 
+  // One person's part of an amount: their own, by the days they're down as
+  // working. Someone who isn't on the goal (the boss, looking at what staff
+  // see) gets an even split, as the typical figure.
+  const partOf = (totalCents) => {
+    if (viewerId === null || !mine) return Math.round(totalCents / Math.max(1, people.length));
+    const share = sharesFor(block, totalCents, people, absentByDay).shares.find(s => s.id === viewerId);
+    return share ? share.cents : 0;
+  };
+
   return {
     id: block.id,
     kind: block.kind,
@@ -330,9 +339,23 @@ function staffView(block, sales, status, people, absentByDay, viewerId = null) {
     days: blockDays(block).length,
     people: people.length,
     bonus,
-    my_cents: mine ? mine.cents : null,
+    on_goal: Boolean(mine),
+    my_cents: mine ? mine.cents : partOf(bonus.total_cents),
+    my_base_cents: partOf(block.base_cents),
+    my_step_cents: partOf(block.step_bonus_cents || 0),
     my_days_worked: mine ? mine.days_worked : null
   };
+}
+
+/**
+ * Staff are only ever told their own amount, never a total that gets split
+ * (Sam, 2026-11-21): a total makes people think it's all theirs. So the
+ * totals don't leave the server for anyone but the boss.
+ */
+function ownAmountsOnly(view) {
+  const { base_cents, step_bonus_cents, people, ...rest } = view;
+  const { total_cents, each_cents, ...bonus } = view.bonus;
+  return { ...rest, bonus };
 }
 
 /**
@@ -381,6 +404,11 @@ export async function handleMyBonus(request, env) {
     if (last) {
       const sales = await salesFor(env, last, today, now, budget);
       card.last = staffView(last, sales, "done", people[kind], absences.get(last.id), me);
+    }
+
+    if (!isBoss) {
+      if (card.current) card.current = ownAmountsOnly(card.current);
+      if (card.last) card.last = ownAmountsOnly(card.last);
     }
 
     if (card.current || card.last) cards.push(card);

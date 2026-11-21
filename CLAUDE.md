@@ -991,7 +991,13 @@ and deployed 2026-11-20 (migration 0049).
   having worked until the boss unticks them, so `bonus_absences` holds only
   the exceptions. `sharesFor()` cuts the bonus into equal daily parts and
   gives each day's part to whoever worked that day; a day nobody worked isn't
-  paid. Staff are sent only their own share (`my_cents`), never who was off.
+  paid.
+- **Staff are only ever told their own amount, never a total that gets
+  split** (Sam, 2026-11-21). Every dollar figure on a staff card is the
+  viewer's own (`my_base_cents`, `my_step_cents`, `my_cents`), and
+  `ownAmountsOnly()` strips the totals and the head count before the answer
+  leaves the server. Nor are they sent who was off. Only the boss gets
+  totals.
 - `GET /api/bonus` is the signed-in person's own card and **never carries
   `last_year_cents`**. `GET /api/admin/bonus` and the three `PUT`s under it
   (a goal's numbers, who worked a day, who is on a goal) are for the `boss`
