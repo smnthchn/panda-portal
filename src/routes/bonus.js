@@ -106,16 +106,17 @@ export function orderNetCents(order) {
 }
 
 /**
- * The bonus a sales figure earns against one goal.
+ * Where a sales figure stands against one goal.
  *
- * Below the goal nothing is paid. At the goal the base is paid, and each full
- * step past it adds the step bonus. The total is split evenly between the
- * people sharing the goal.
+ * Below the goal nothing is paid. Once it's met, everyone who worked a day of
+ * it gets the day rate for each of their days (see sharesFor), and each full
+ * step past the goal adds the step bonus to a pot they share. `extra_cents`
+ * is that pot.
  */
-export function bonusFor(block, salesCents, people = 1) {
+export function bonusFor(block, salesCents) {
   const goal = block.goal_cents;
   const nothing = {
-    met: false, steps: 0, total_cents: 0, each_cents: 0, to_goal_cents: null, to_next_cents: null
+    met: false, steps: 0, extra_cents: 0, to_goal_cents: null, to_next_cents: null
   };
 
   if (!goal || salesCents === null || salesCents === undefined) return nothing;
@@ -124,13 +125,11 @@ export function bonusFor(block, salesCents, people = 1) {
   const over = salesCents - goal;
   const stepSize = block.step_size_cents > 0 ? block.step_size_cents : 0;
   const steps = stepSize ? Math.floor(over / stepSize) : 0;
-  const total = block.base_cents + steps * (block.step_bonus_cents || 0);
 
   return {
     met: true,
     steps,
-    total_cents: total,
-    each_cents: Math.round(total / Math.max(1, people)),
+    extra_cents: steps * (block.step_bonus_cents || 0),
     to_goal_cents: 0,
     to_next_cents: stepSize && block.step_bonus_cents > 0 ? stepSize - (over % stepSize) : null
   };
@@ -250,78 +249,132 @@ export function blockDays(block) {
 }
 
 /**
- * Who gets what. A person only shares in a bonus for the days they worked,
- * so the bonus is cut into equal daily parts and each day's part goes to
- * whoever worked that day. A day nobody on the goal worked isn't paid.
+ * Who worked each day of a goal: Map(day -> [{ id, full_name, extra }]).
  *
- * Everyone is taken to have worked unless the boss has unticked them, so
- * `absentByDay` holds only the exceptions: Map(day -> Set(employee id)).
+ * The people on the goal's list are taken to have worked every day unless the
+ * boss has unticked them (`absentByDay`: Map(day -> Set(employee id))). Anyone
+ * else the boss has added for a day is an extra (`extrasByDay`:
+ * Map(day -> [{ id, full_name }])), such as weekend staff helping on a
+ * weekday sale day.
  */
-export function sharesFor(block, totalCents, people, absentByDay = new Map()) {
-  const days = blockDays(block);
-  const perDay = days.length ? totalCents / days.length : 0;
-  const owed = new Map(people.map(person => [person.id, { cents: 0, days_worked: 0 }]));
-  let unpaid = 0;
+export function workersByDay(block, people, absentByDay = new Map(), extrasByDay = new Map()) {
+  const byDay = new Map();
 
-  for (const day of days) {
+  for (const day of blockDays(block)) {
     const absent = absentByDay.get(day) || new Set();
-    const workers = people.filter(person => !absent.has(person.id));
+    const regulars = people
+      .filter(person => !absent.has(person.id))
+      .map(person => ({ id: person.id, full_name: person.full_name, extra: false }));
+    const extras = (extrasByDay.get(day) || [])
+      .filter(person => !people.some(regular => regular.id === person.id))
+      .map(person => ({ id: person.id, full_name: person.full_name, extra: true }));
 
-    if (!workers.length) {
-      unpaid += perDay;
-      continue;
-    }
+    byDay.set(day, [...regulars, ...extras]);
+  }
 
-    for (const worker of workers) {
-      const entry = owed.get(worker.id);
-      entry.cents += perDay / workers.length;
-      entry.days_worked += 1;
+  return byDay;
+}
+
+/**
+ * Who gets what when a goal is met (Sam, 2026-11-21).
+ *
+ *  - Everyone gets the day rate for each day they worked. It is one amount
+ *    per person, the same on any day, and it is not split: two people on a
+ *    day both get it.
+ *  - The extra pot (the steps past the goal) IS shared, by days worked: five
+ *    days and one day make sixths.
+ *
+ * Nothing is paid on a goal that wasn't met. `days_worked` is filled in
+ * either way, so a card can say what someone stands to earn.
+ */
+export function sharesFor(block, workers, bonus) {
+  const byId = new Map();
+  let personDays = 0;
+
+  for (const day of blockDays(block)) {
+    for (const worker of workers.get(day) || []) {
+      if (!byId.has(worker.id)) {
+        byId.set(worker.id, { id: worker.id, full_name: worker.full_name, days_worked: 0 });
+      }
+      byId.get(worker.id).days_worked += 1;
+      personDays += 1;
     }
   }
 
+  const rate = block.day_rate_cents || 0;
+  const pot = bonus.met ? bonus.extra_cents || 0 : 0;
+
+  const shares = [...byId.values()].map(person => {
+    const base = bonus.met ? rate * person.days_worked : 0;
+    const extra = personDays ? Math.round((pot * person.days_worked) / personDays) : 0;
+    return { ...person, base_cents: base, extra_cents: extra, cents: base + extra };
+  });
+
   return {
-    shares: people.map(person => ({
-      id: person.id,
-      full_name: person.full_name,
-      cents: Math.round(owed.get(person.id).cents),
-      days_worked: owed.get(person.id).days_worked
-    })),
-    unpaid_cents: Math.round(unpaid)
+    shares,
+    person_days: personDays,
+    total_cents: shares.reduce((sum, share) => sum + share.cents, 0)
   };
 }
 
-/** The boss's unticks: Map(block id -> Map(day -> Set(employee id))). */
-async function loadAbsences(db) {
-  const rows = await db.prepare(`SELECT block_id, day, employee_id FROM bonus_absences`).all();
+/** Rows of (block, day, employee) -> Map(block id -> Map(day -> value)). */
+function groupByBlockAndDay(rows, add) {
   const byBlock = new Map();
 
-  for (const row of rows.results || []) {
+  for (const row of rows) {
     if (!byBlock.has(row.block_id)) byBlock.set(row.block_id, new Map());
-    const byDay = byBlock.get(row.block_id);
-    if (!byDay.has(row.day)) byDay.set(row.day, new Set());
-    byDay.get(row.day).add(row.employee_id);
+    add(byBlock.get(row.block_id), row);
   }
 
   return byBlock;
 }
 
+/** The boss's unticks: Map(block id -> Map(day -> Set(employee id))). */
+async function loadAbsences(db) {
+  const rows = await db.prepare(`SELECT block_id, day, employee_id FROM bonus_absences`).all();
+
+  return groupByBlockAndDay(rows.results || [], (byDay, row) => {
+    if (!byDay.has(row.day)) byDay.set(row.day, new Set());
+    byDay.get(row.day).add(row.employee_id);
+  });
+}
+
+/** People added to a single day: Map(block id -> Map(day -> [{ id, full_name }])). */
+async function loadExtras(db) {
+  const rows = await db.prepare(
+    `SELECT x.block_id, x.day, e.id, e.full_name
+     FROM bonus_extra_days x
+     JOIN employees e ON e.id = x.employee_id
+     WHERE e.is_active = 1
+     ORDER BY e.full_name`
+  ).all();
+
+  return groupByBlockAndDay(rows.results || [], (byDay, row) => {
+    if (!byDay.has(row.day)) byDay.set(row.day, []);
+    byDay.get(row.day).push({ id: row.id, full_name: row.full_name });
+  });
+}
+
 /**
- * What anyone on the goal may see. Last year's sales are deliberately absent,
- * and so is who else was or wasn't in: a person sees only their own share.
+ * One goal as a card shows it. Last year's sales are deliberately absent, and
+ * so is who else was or wasn't in.
+ *
+ * Every `my_` figure is the viewer's own: what they've earned, what meeting
+ * the goal pays them, and what one more step adds for them. Someone who
+ * didn't work the goal (the boss, looking at what staff see) gets the figures
+ * of whoever worked it most, as the typical case.
  */
-function staffView(block, sales, status, people, absentByDay, viewerId = null) {
-  const bonus = bonusFor(block, sales.cents, people.length);
-  const split = sharesFor(block, bonus.total_cents, people, absentByDay);
+function staffView(block, sales, status, workers, viewerId = null) {
+  const bonus = bonusFor(block, sales.cents);
+  const split = sharesFor(block, workers, bonus);
   const mine = viewerId === null ? null : split.shares.find(share => share.id === viewerId) || null;
 
-  // One person's part of an amount: their own, by the days they're down as
-  // working. Someone who isn't on the goal (the boss, looking at what staff
-  // see) gets an even split, as the typical figure.
-  const partOf = (totalCents) => {
-    if (viewerId === null || !mine) return Math.round(totalCents / Math.max(1, people.length));
-    const share = sharesFor(block, totalCents, people, absentByDay).shares.find(s => s.id === viewerId);
-    return share ? share.cents : 0;
-  };
+  const typical = [...split.shares].sort((a, b) => b.days_worked - a.days_worked)[0] || null;
+  const shown = mine || typical;
+  const days = shown ? shown.days_worked : 0;
+  const stepPart = split.person_days
+    ? Math.round(((block.step_bonus_cents || 0) * days) / split.person_days)
+    : 0;
 
   return {
     id: block.id,
@@ -330,19 +383,18 @@ function staffView(block, sales, status, people, absentByDay, viewerId = null) {
     ends_on: block.ends_on,
     status,
     goal_cents: block.goal_cents,
-    base_cents: block.base_cents,
+    day_rate_cents: block.day_rate_cents,
     step_size_cents: block.step_size_cents,
     step_bonus_cents: block.step_bonus_cents,
     sales_cents: sales.cents,
     sales_checked_at: sales.checked_at,
     sales_stale: sales.stale,
-    days: blockDays(block).length,
-    people: people.length,
     bonus,
+    total_cents: split.total_cents,
     on_goal: Boolean(mine),
-    my_cents: mine ? mine.cents : partOf(bonus.total_cents),
-    my_base_cents: partOf(block.base_cents),
-    my_step_cents: partOf(block.step_bonus_cents || 0),
+    my_cents: shown ? shown.cents : 0,
+    my_base_cents: (block.day_rate_cents || 0) * days,
+    my_step_cents: stepPart,
     my_days_worked: mine ? mine.days_worked : null
   };
 }
@@ -353,9 +405,19 @@ function staffView(block, sales, status, people, absentByDay, viewerId = null) {
  * totals don't leave the server for anyone but the boss.
  */
 function ownAmountsOnly(view) {
-  const { base_cents, step_bonus_cents, people, ...rest } = view;
-  const { total_cents, each_cents, ...bonus } = view.bonus;
+  const { step_bonus_cents, total_cents, ...rest } = view;
+  const { extra_cents, ...bonus } = view.bonus;
   return { ...rest, bonus };
+}
+
+/**
+ * A finished goal, for staff: whether it was met and what they earned, and
+ * nothing about the sales that were done (Sam, 2026-11-21).
+ */
+function resultOnly(view) {
+  const own = ownAmountsOnly(view);
+  const { sales_cents, sales_checked_at, sales_stale, ...rest } = own;
+  return { ...rest, bonus: { met: own.bonus.met } };
 }
 
 /**
@@ -367,48 +429,53 @@ export async function handleMyBonus(request, env) {
   const auth = await requireUser(request, env);
   if (!auth.ok) return auth;
 
-  const people = await loadPeople(env.DB);
-
   // The boss sees every goal the way staff see it, tree and all, so they
-  // know what's on their team's screens. They're on no list, so they get no
-  // share of their own.
+  // know what's on their team's screens. They work no days, so they get no
+  // amount of their own.
   const isBoss = auth.user.role === "boss";
-  const myKinds = KINDS.filter(kind =>
-    isBoss || people[kind].some(person => person.id === auth.user.id)
-  );
-  if (!myKinds.length) return { ok: true, cards: [] };
-
-  const now = new Date();
-  const today = todayToronto(now);
-  const blocks = await loadBlocks(env.DB);
-  const absences = await loadAbsences(env.DB);
-  const budget = { left: MAX_REFRESHES };
-  const cards = [];
   const me = auth.user.id;
 
-  for (const kind of myKinds) {
-    const mine = blocks.filter(block => block.kind === kind);
-    const current = mine.find(block => blockStatus(block, today) === "live")
-      || mine.find(block => blockStatus(block, today) === "upcoming");
-    const last = mine.filter(block => blockStatus(block, today) === "done").pop();
+  const people = await loadPeople(env.DB);
+  const absences = await loadAbsences(env.DB);
+  const extras = await loadExtras(env.DB);
+  const blocks = await loadBlocks(env.DB);
+  const now = new Date();
+  const today = todayToronto(now);
+  const budget = { left: MAX_REFRESHES };
+  const cards = [];
+
+  const workersOf = block =>
+    workersByDay(block, people[block.kind], absences.get(block.id), extras.get(block.id));
+  const workedIn = block =>
+    Boolean(block) && [...workersOf(block).values()].some(list => list.some(worker => worker.id === me));
+
+  for (const kind of KINDS) {
+    const ofKind = blocks.filter(block => block.kind === kind);
+    const current = ofKind.find(block => blockStatus(block, today) === "live")
+      || ofKind.find(block => blockStatus(block, today) === "upcoming");
+    const last = ofKind.filter(block => blockStatus(block, today) === "done").pop();
+
+    // Someone helping out on a goal that isn't usually theirs sees it only
+    // while they're down for one of its days.
+    const onList = people[kind].some(person => person.id === me);
+    const showCurrent = Boolean(current) && (isBoss || onList || workedIn(current));
+    const showLast = Boolean(last) && (isBoss || onList || workedIn(last));
 
     const card = { kind, current: null, last: null };
 
-    if (current) {
+    if (showCurrent) {
       const sales = await salesFor(env, current, today, now, budget);
-      card.current = staffView(
-        current, sales, blockStatus(current, today), people[kind], absences.get(current.id), me
-      );
+      card.current = staffView(current, sales, blockStatus(current, today), workersOf(current), me);
     }
 
-    if (last) {
+    if (showLast) {
       const sales = await salesFor(env, last, today, now, budget);
-      card.last = staffView(last, sales, "done", people[kind], absences.get(last.id), me);
+      card.last = staffView(last, sales, "done", workersOf(last), me);
     }
 
     if (!isBoss) {
       if (card.current) card.current = ownAmountsOnly(card.current);
-      if (card.last) card.last = ownAmountsOnly(card.last);
+      if (card.last) card.last = resultOnly(card.last);
     }
 
     if (card.current || card.last) cards.push(card);
@@ -437,6 +504,7 @@ export async function handleBonusAdmin(request, env) {
   const people = await loadPeople(env.DB);
   const blocks = await loadBlocks(env.DB);
   const absences = await loadAbsences(env.DB);
+  const extras = await loadExtras(env.DB);
   const budget = { left: MAX_REFRESHES };
 
   // The running goals first, so they're the ones that get a fresh read when
@@ -450,8 +518,11 @@ export async function handleBonusAdmin(request, env) {
     salesById.set(block.id, await salesFor(env, block, today, now, budget));
   }
 
+  // Everyone who can earn a bonus. The boss can't, so isn't offered.
   const staff = await env.DB.prepare(
-    `SELECT id, full_name FROM employees WHERE is_active = 1 ORDER BY full_name`
+    `SELECT id, full_name FROM employees
+     WHERE is_active = 1 AND role != 'boss'
+     ORDER BY full_name`
   ).all();
 
   return {
@@ -461,18 +532,30 @@ export async function handleBonusAdmin(request, env) {
     staff: staff.results || [],
     blocks: blocks.map(block => {
       const absentByDay = absences.get(block.id) || new Map();
-      const view = staffView(
-        block, salesById.get(block.id), blockStatus(block, today), people[block.kind], absentByDay
-      );
-      const split = sharesFor(block, view.bonus.total_cents, people[block.kind], absentByDay);
+      const workers = workersByDay(block, people[block.kind], absentByDay, extras.get(block.id));
+      const view = staffView(block, salesById.get(block.id), blockStatus(block, today), workers);
+      const split = sharesFor(block, workers, view.bonus);
 
       return {
         ...view,
         last_year_cents: block.last_year_cents,
-        day_list: blockDays(block),
-        absent: Object.fromEntries([...absentByDay].map(([day, ids]) => [day, [...ids]])),
-        shares: split.shares,
-        unpaid_cents: split.unpaid_cents
+        // Each day: the goal's regulars with whether they're ticked, then
+        // anyone added for that day alone.
+        days: blockDays(block).map(day => ({
+          day,
+          people: [
+            ...people[block.kind].map(person => ({
+              id: person.id,
+              full_name: person.full_name,
+              extra: false,
+              worked: !(absentByDay.get(day)?.has(person.id))
+            })),
+            ...(workers.get(day) || [])
+              .filter(worker => worker.extra)
+              .map(worker => ({ id: worker.id, full_name: worker.full_name, extra: true, worked: true }))
+          ]
+        })),
+        shares: split.shares
       };
     })
   };
@@ -498,19 +581,40 @@ export async function handleSetBonusAttendance(request, env, id) {
   if (!blockDays(block).includes(day)) throw new BadRequest("That day isn't part of this goal.");
 
   const people = await loadPeople(env.DB);
-  if (!people[block.kind].some(person => person.id === employeeId)) {
-    throw new BadRequest("That person isn't on this goal.");
+  const regular = people[block.kind].some(person => person.id === employeeId);
+
+  // One of the goal's regulars: ticked by default, so store the untick.
+  if (regular) {
+    if (body.worked) {
+      await env.DB.prepare(
+        `DELETE FROM bonus_absences WHERE block_id = ? AND day = ? AND employee_id = ?`
+      ).bind(block.id, day, employeeId).run();
+    } else {
+      await env.DB.prepare(
+        `INSERT OR IGNORE INTO bonus_absences (block_id, day, employee_id, marked_by)
+         VALUES (?, ?, ?, ?)`
+      ).bind(block.id, day, employeeId, auth.user.id).run();
+    }
+
+    return { ok: true };
   }
+
+  // Anyone else is being added for this day alone, or taken off it again.
+  const employee = await env.DB.prepare(
+    `SELECT id, role FROM employees WHERE id = ? AND is_active = 1`
+  ).bind(employeeId).first();
+
+  if (!employee || employee.role === "boss") throw new BadRequest("Pick a staff member.");
 
   if (body.worked) {
     await env.DB.prepare(
-      `DELETE FROM bonus_absences WHERE block_id = ? AND day = ? AND employee_id = ?`
-    ).bind(block.id, day, employeeId).run();
-  } else {
-    await env.DB.prepare(
-      `INSERT OR IGNORE INTO bonus_absences (block_id, day, employee_id, marked_by)
+      `INSERT OR IGNORE INTO bonus_extra_days (block_id, day, employee_id, marked_by)
        VALUES (?, ?, ?, ?)`
     ).bind(block.id, day, employeeId, auth.user.id).run();
+  } else {
+    await env.DB.prepare(
+      `DELETE FROM bonus_extra_days WHERE block_id = ? AND day = ? AND employee_id = ?`
+    ).bind(block.id, day, employeeId).run();
   }
 
   return { ok: true };
@@ -543,18 +647,18 @@ export async function handleUpdateBonusBlock(request, env, id) {
   const body = await readJsonBody(request);
 
   const goal = "goal" in body ? dollarsToCents(body.goal, "The goal") : block.goal_cents;
-  const base = "base" in body ? dollarsToCents(body.base, "What it pays") : block.base_cents;
+  const dayRate = "day_rate" in body ? dollarsToCents(body.day_rate, "The pay per day") : block.day_rate_cents;
   const stepSize = "step_size" in body ? dollarsToCents(body.step_size, "The step") : block.step_size_cents;
   const stepBonus = "step_bonus" in body ? dollarsToCents(body.step_bonus, "The step bonus") : block.step_bonus_cents;
 
-  if (base === null) throw new BadRequest("What it pays can't be blank. Use 0 for nothing.");
+  if (dayRate === null) throw new BadRequest("The pay per day can't be blank. Use 0 for nothing.");
 
   await env.DB.prepare(
     `UPDATE bonus_blocks
-     SET goal_cents = ?, base_cents = ?, step_size_cents = ?, step_bonus_cents = ?,
+     SET goal_cents = ?, day_rate_cents = ?, step_size_cents = ?, step_bonus_cents = ?,
          updated_by = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`
-  ).bind(goal, base, stepSize ?? 0, stepBonus ?? 0, auth.user.id, block.id).run();
+  ).bind(goal, dayRate, stepSize ?? 0, stepBonus ?? 0, auth.user.id, block.id).run();
 
   return { ok: true };
 }

@@ -62,6 +62,14 @@ portal's Staff page.
   breakdown is on the Sales bonus page. (Claude, 2026-11-21)
 - **The tree has a little space above the star and below the trunk.**
   (Sam, 2026-11-21)
+- **After a goal ends, staff see only the bonus they made,** not the sales
+  that were done. (Sam, 2026-11-21) The finished goal's sales figure is not
+  sent to a staff member's browser. While a goal is running they still see
+  sales so far, since that is what fills the tree. (Claude, 2026-11-21)
+- **Staff see one goal at a time:** the one running now, or the very next
+  one when none is running. They never see the full list, so later goals can
+  be changed on the Sales bonus page before anyone has seen them. The next
+  goal starts showing the moment the current one ends. (Claude, 2026-11-21)
 - **It's a group goal, not a per-person one.** Every POS sale at the Markham
   store counts, whoever rang it up. The portal doesn't show who sold what.
   (Sam, 2026-11-20)
@@ -74,58 +82,48 @@ portal's Staff page.
 - **Two goals a week.** Monday to Friday is Staff 5's, the only one
   who works those days. Saturday and Sunday is shared between Staff 4 and 6.
   (Sam, 2026-11-20)
-- **Hitting a goal pays a set amount for each day in it, and every further
-  $500 pays another $25.** The goal itself stays weekly.
-  UNDECIDED: weekly or daily goals. Sam "keeps thinking about daily again"
-  (2026-11-20), see HANDOFF.md
-  Staff 5's weekday
-  goal pays $20 a day: $100 for a five-day week. The weekend goal pays $60 a
-  day: $120 a weekend, split between Staff 4 and 6, $60 each.
-  (Sam, 2026-11-20) The four-day weeks of Dec 21 to 24 and Dec 28 to 31 pay
-  Staff 5 $80. (Claude, 2026-11-20) $25 for a whole week was barely worth
-  trying harder for.
-  UNDECIDED: whether the $25 steps apply to the weekend, see HANDOFF.md
-- **A person only shares in a bonus for the days they actually worked.** If
-  one of the weekend two is off sick and the other works the whole weekend,
-  the one who worked does not split with the one who didn't.
-  (Sam, 2026-11-20) When both work, Staff 4 and 6 split the weekend bonus;
-  Staff 5's weekday bonus is theirs alone. (Sam, 2026-11-20)
-- **The boss says who worked.** Everyone on a goal is ticked as working each
-  day by default. When someone was off, the boss goes in and unticks that
-  day. This stands in until the clock and the schedule are finished.
+- **When a goal is met, every person gets $20 for each day they worked in
+  it.** The goals stay weekly and weekend goals; there are no daily goals.
+  The $20 is the same on any day, weekday or weekend, for anyone. It is one
+  amount per person and is not split: two people working the same day both
+  get $20. (Sam, 2026-11-21) So a full five-day week is $100, a four-day
+  week $80, and a full weekend $40 each.
+- **Every further $500 past the goal adds $25, and that extra is shared
+  between the people who worked, by days worked.** (Sam, 2026-11-21) Sam's
+  example: weekend staff helps on one weekday sale day and the week ends $50
+  of extra over; six days were worked in all, so the weekday staff gets
+  $100 plus $41.67 and the helper $20 plus $8.33.
+  The first weekend, Nov 21 to 22, is $20 a day like every other goal: it
+  was live under the old rule for a few hours, but Sam had not told any
+  staff and none had looked. (Sam, 2026-11-21)
+- **A person is paid only for the days they actually worked.**
   (Sam, 2026-11-20)
-  How the split is worked out: the bonus is cut into equal daily parts, and
-  each day's part goes to whoever worked that day. A weekend that pays $120:
-  both work both days, $60 each; one works alone, $120; one works both days
-  and the other Sunday only, $90 and $30. The $25 steps are shared the same
-  way. A day nobody on the goal worked is not paid, so Staff 5 missing one day
-  of a met week gets $80, not $100. (Claude, 2026-11-20, shown to Sam as a
-  table before she chose the tick boxes; she has not confirmed the split
-  itself, see HANDOFF.md)
+- **The boss says who worked.** The usual staff for a goal are ticked as
+  working each day by default. When someone was off, the boss unticks that
+  day. Anyone else can be added to a single day, such as weekend staff
+  helping on a weekday. This stands in until the clock and the schedule are
+  finished. (Sam, 2026-11-20 and 2026-11-21)
 - **Sales are counted before tax and after discounts.** A $100 kit sold with
   $10 off counts as $90. (Sam, 2026-11-20)
 - **A refund or cancellation comes off the week or weekend the sale was made
   in.** (Claude, 2026-11-20) That it comes off at all is a non-negotiable,
   above.
-- **Each goal sits at or a little above where sales would land if nothing
-  changed,** so the bonus is earned by doing better than today.
-  (Sam, 2026-11-20)
-  - **Weekday goal: last year's sales for the same days, minus 10%.**
-    Weekday sales ran at about 86% of last year this fall, so this is a step
-    above that pace. $5,400 (Nov 23 to 27), $4,840 (Nov 30 to Dec 4), $5,890
-    (Dec 7 to 11), $6,770 (Dec 14 to 18), $11,620 (Dec 21 to 24) and $9,040
-    (Dec 28 to 31). (Sam, 2026-11-20)
+- **Every goal is last year's sales for the same days, minus 5%,** weekdays
+  and weekends alike, the first weekend included. (Sam, 2026-11-21: "Change
+  them to 5% under") This is settled: do not offer other goal levels again
+  unless Sam reopens it.
+  - **Weekday goals:** $5,700 (Nov 23 to 27), $5,110 (Nov 30 to Dec 4),
+    $6,220 (Dec 7 to 11), $7,150 (Dec 14 to 18), $12,260 (Dec 21 to 24) and
+    $9,540 (Dec 28 to 31).
     UNDECIDED: whether the goals for Dec 1 to 19 need lowering: they are
     built on last year's sale days, see HANDOFF.md
-  - **Weekend goal, first weekend (Sat and Sun, Nov 21 to 22): $6,000, as a
-    try.** That is a little under last year's $6,211 for the same two days.
-    (Sam, 2026-11-20)
-    UNDECIDED: the goals for the five weekends after it. On the table: last
-    year minus 10% ($5,850, $4,340, $6,740, $7,780, $9,260), last year as is
-    ($6,500, $4,830, $7,490, $8,650, $10,290) or last year plus 10% ($7,150,
-    $5,310, $8,240, $9,510, $11,320). Sam wants a goal that can be reached
-    before the day ends, so the steps reward pushing through the extra
-    hours, see HANDOFF.md
+  - **Weekend goals:** $5,900 (Nov 21 to 22), $6,170 (Nov 28 to 29), $4,590
+    (Dec 5 to 6), $7,110 (Dec 12 to 13), $8,210 (Dec 19 to 20) and $9,770
+    (Dec 26 to 27).
+  Why 5% and not 10%: with sales 10% over last year, the whole period pays
+  about $1,565 in bonuses at 5% under, against $1,815 at 10% under. The $20
+  a day is the same either way; a higher goal leaves less room for the extra
+  tiers.
 - **Goals are built day by day, then added up for the week.** Each day is
   matched to its own day last year, so a big day that moves between the
   weekday goal and the weekend goal lands in the right one. Boxing Day was a
@@ -145,16 +143,19 @@ final look will go. Everything below is Claude's choice inside that
 (Claude, 2026-11-20).
 
 - **The numbers live in the portal's database,** one row per week or
-  weekend (`bonus_blocks`): dates, goal, what it pays when the goal is met,
-  the step ($500) and what a step pays ($25), and the matching 2025 sales.
-  The decided goals are filled in to start with. A goal that isn't decided
-  yet is left empty, and staff see "Goal not set yet" for it.
-- **Who shares each goal is a list** (`bonus_people`): Staff 5 on weekdays,
-  Staff 4 and 6 on weekends. The boss can change it.
-- **Who worked is a tick box per person per day** on the boss page, ticked
-  to start with. Only the unticks are stored (`bonus_absences`). A tick saves
-  the moment it is changed. Staff see their own share on their card and
-  nothing about anyone else's days.
+  weekend (`bonus_blocks`): dates, goal, what each person gets per day
+  worked when the goal is met (`day_rate_cents`), the step ($500) and what a
+  step adds ($25), and the matching 2025 sales. A goal left empty shows
+  staff "Goal not set yet". The older `base_cents` column is no longer read.
+- **Who usually works each kind of goal is a list** (`bonus_people`):
+  Staff 5 on weekdays, Staff 4 and 6 on weekends. The boss can change it.
+- **Who worked is a tick box per person per day** on the boss page. The
+  usual staff start ticked and only their unticks are stored
+  (`bonus_absences`). Anyone else is added to a single day with "+ Add" and
+  stored in `bonus_extra_days`; unticking them takes them off again. A tick
+  saves the moment it is changed. A helper sees that goal's card only while
+  they are down for one of its days. Staff see their own amount and nothing
+  about anyone else's days.
 - **Boss page: Sales bonus,** in the sidebar and under More. Each week and
   weekend shows its 2025 sales, goal, pay, sales so far and bonus earned. The
   goal and pay can be changed there. Only the `boss` role can open it, and the
@@ -224,23 +225,21 @@ after discounts and returns. With-tax figures are about 13% higher.
   $3,612 in the weeks of Nov 2 and Nov 9, against $5,814 and $6,169 in the
   matching weeks of 2025 (55% and 59%). Weekends: $5,137 and $2,874 against
   $4,341 and $5,656.
-- **What the bonus pays over the six weeks if every goal is just hit:**
-  Staff 5 $560 (four five-day weeks at $100, two four-day weeks at $80). The
-  weekend $720 in total (six at $120), $360 each. The $25 steps come on top.
-- **What Staff 5's goal asks for** (last year minus 10%, against a fall pace
-  of 86%): about $220 to $520 more a week, $1,940 over the six weeks. Gross
-  profit on that is about $390 at a 20% margin, $480 at 25%, $580 at 30% and
-  $770 at 40%, against $560 if he hits all six. Sales past the goal are
-  where the store gains. Matching last year means about $6,800 more weekday
-  sales than the fall pace.
-- **How often each weekend goal would have been hit** (the 8 weekends Sep 26
-  to Nov 15, 2026, against the same weekends of 2025): last year minus 10%,
-  7 of 8; last year as is, 5 of 8; last year plus 10%, 4 of 8. The one miss
-  at minus 10% was Nov 14 to 15 (51%). At minus 10%, with $120 and $25 per
-  $500, those 8 weekends would have paid $1,165, about $145 a weekend, with
-  no change in sales. Staff 5's minus 10% goal over the 5 weeks Oct 19 to
-  Nov 20: hit in 1 of 5 (in the last three, days with no sale were measured
-  against sale days).
+- **What the bonus pays over the six weeks if every goal is just hit** (at
+  $20 per person per day worked): Staff 5 $560 (four five-day weeks at $100,
+  two four-day weeks at $80). Each weekend person $240 (six weekends at
+  $40), so $480 for the two. The $25 steps come on top, shared by days
+  worked.
+- **What Staff 5's goal asks for** (last year minus 5%, against a fall pace
+  of 86%): about $480 to $1,160 more a week, $4,360 over the six weeks. Gross
+  profit on that is about $870 at a 20% margin, $1,090 at 25%, $1,310 at 30%
+  and $1,740 at 40%, against $560 in day pay if every goal is hit. Matching
+  last year means about $6,800 more weekday sales than the fall pace.
+- **How often a weekend goal would have been hit** (the 8 weekends Sep 26
+  to Nov 15, 2026, against the same weekends of 2025): at last year minus
+  5%, 5 of 8. The misses were 94%, 95% and 51% of last year. The weekday
+  goal over the 5 weeks Oct 19 to Nov 20: hit in 1 of 5 (in the last three,
+  days with no sale were measured against sale days).
 - **Daily sales, for scale.** A weekday at Markham this fall: lowest $348,
   middle $792, highest $1,792, and $1,200 or more on 5 of 39 days. A daily
   goal paying $25 for each day hit was tested on the same 8 weeks: hit on
@@ -261,12 +260,11 @@ after discounts and returns. With-tax figures are about 13% higher.
   | $25 per $250 | $650 | 48%, 32%, 24% |
   | $50 per $500 | $550 | 41%, 27%, 20% |
 
-  The pay for hitting the goals comes on top: up to $560 for Staff 5 and $720
-  for the weekend over the six weeks.
-- **Why the two goals use different percentages.** Weekdays run about 14%
-  below last year and weekends about 6% above. One percentage for both would
-  pay Staff 4 and 6 at today's sales while Staff 5 had to climb. Single
-  weekends swing a lot: 51% to 144% of last year over the last 8.
+  The pay for hitting the goals comes on top: up to $560 for Staff 5 and $480
+  for the two weekend staff over the six weeks.
+- **How the fall ran against last year.** Weekdays about 14% below, weekends
+  about 6% above. Single weekends swing a lot: 51% to 144% of last year over
+  the last 8.
 - **"About 15% below last year" holds for weekdays, not weekends.** The 8
   weeks Sep 21 to Nov 15, 2026 against their matching weeks of 2025: weekdays
   86%, weekends 106%. Single weeks swing from 55% to 140%. The first 6 of those
@@ -276,7 +274,7 @@ after discounts and returns. With-tax figures are about 13% higher.
   Nov 2 to 6 $3,176 against $5,814 (55%), Nov 9 to 13 $3,612 against $6,169
   (59%), Nov 16 to 20 $3,692 against $6,086 (61%). Together 58%. The two
   weeks before were 83% (Oct 19 to 23) and 140% (Oct 26 to 30). A goal of
-  last year minus 10% is $1,700 to $2,200 above these three weeks. The last
+  last year minus 5% is $2,000 to $2,500 above these three weeks. The last
   weekend, Nov 14 to 15, was $2,874 against $5,656 (51%); the three weekends
   before it were 95%, 107% and 118%.
 - **Most of that November gap is sale timing, not a slump.** Last year's
@@ -293,22 +291,22 @@ after discounts and returns. With-tax figures are about 13% higher.
 
   | 2026 | Last year, same days | Goal |
   |---|---|---|
-  | Sat + Sun, Nov 21 to 22 | $6,210 | $6,000 |
-  | Mon to Fri, Nov 23 to 27 | $6,000 | $5,400 |
-  | Sat + Sun, Nov 28 to 29 | $6,500 | $7,150 |
-  | Mon to Fri, Nov 30 to Dec 4 | $5,380 | $4,840 |
-  | Sat + Sun, Dec 5 to 6 | $4,830 | $5,310 |
-  | Mon to Fri, Dec 7 to 11 | $6,550 | $5,890 |
-  | Sat + Sun, Dec 12 to 13 | $7,490 | $8,240 |
-  | Mon to Fri, Dec 14 to 18 | $7,530 | $6,770 |
-  | Sat + Sun, Dec 19 to 20 | $8,650 | $9,510 |
-  | Mon to Thu, Dec 21 to 24 | $12,910 | $11,620 |
-  | Sat + Sun, Dec 26 to 27 | $10,290 | $11,320 |
-  | Mon to Thu, Dec 28 to 31 | $10,040 | $9,040 |
+  | Sat + Sun, Nov 21 to 22 | $6,210 | $5,900 |
+  | Mon to Fri, Nov 23 to 27 | $6,000 | $5,700 |
+  | Sat + Sun, Nov 28 to 29 | $6,500 | $6,170 |
+  | Mon to Fri, Nov 30 to Dec 4 | $5,380 | $5,110 |
+  | Sat + Sun, Dec 5 to 6 | $4,830 | $4,590 |
+  | Mon to Fri, Dec 7 to 11 | $6,550 | $6,220 |
+  | Sat + Sun, Dec 12 to 13 | $7,490 | $7,110 |
+  | Mon to Fri, Dec 14 to 18 | $7,530 | $7,150 |
+  | Sat + Sun, Dec 19 to 20 | $8,650 | $8,210 |
+  | Mon to Thu, Dec 21 to 24 | $12,910 | $12,260 |
+  | Sat + Sun, Dec 26 to 27 | $10,290 | $9,770 |
+  | Mon to Thu, Dec 28 to 31 | $10,040 | $9,540 |
 
-  Weekday goals are last year minus 10%. The first weekend is $6,000 (Sam's
-  try); the later weekends are shown at last year plus 10% and are
-  undecided, see Decided.
+  Every goal is last year minus 5%. These are the numbers on the live
+  portal; the migration file still carries the first set, since it had
+  already run.
   Matching day by day only changes the two Christmas weeks; the earlier weeks
   come out the same as a plain weekly match.
 - **The Christmas days, matched by date** (2026 day, then the 2025 day and

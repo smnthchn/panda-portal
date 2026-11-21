@@ -4287,6 +4287,23 @@ button.pick-open {
   gap: 5px;
 }
 
+/* Someone added for this one day, not one of the goal's regulars. */
+.bonus-tick.extra {
+  font-style: italic;
+}
+
+.card select.bonus-add {
+  width: auto;
+  min-width: 0;
+  padding: 2px 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.card input.bonus-input.narrow {
+  width: 64px;
+}
+
 .bonus-people {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

@@ -235,17 +235,21 @@ function bonusCurrentHtml(view) {
   `;
 }
 
+/**
+ * How the last goal ended. Only the bonus is shown, never the sales that were
+ * done (Sam, 2026-11-21): once a week is over, what a person earned is the
+ * part that's theirs to know.
+ */
 function bonusLastHtml(view) {
-  if (!view.goal_cents || view.sales_cents === null) return "";
+  if (!view.goal_cents) return "";
 
   const result = view.bonus.met
     ? `Goal met. ${bonusEarnedLabel(view, false)}: ${bonusMoney(view.my_cents)}.`
-    : `Goal not met, ${bonusSales(view.bonus.to_goal_cents)} short.`;
+    : "Goal not met, so no bonus.";
 
   return `
     <div class="bonus-last">
-      <b>Last ${esc(bonusKindLabel(view.kind))}</b> (${esc(bonusRange(view))}):
-      ${esc(bonusSales(view.sales_cents))} of ${esc(bonusMoney(view.goal_cents))}. ${esc(result)}
+      <b>Last ${esc(bonusKindLabel(view.kind))}</b> (${esc(bonusRange(view))}): ${esc(result)}
     </div>
   `;
 }
@@ -265,7 +269,7 @@ function bonusCardHtml(card, canManage = false) {
         ${current && current.status === "live" ? `<span class="strip-side">${esc(bonusRange(current))}</span>` : ""}
       </div>
       <div class="card-body">
-        ${current ? bonusCurrentHtml(current) : `<div class="meta">No more goals coming up.</div>`}
+        ${current ? bonusCurrentHtml(current) : card.last ? "" : `<div class="meta">No more goals coming up.</div>`}
         ${card.last ? bonusLastHtml(card.last) : ""}
         ${canManage ? `
           <div class="bonus-manage">
@@ -324,43 +328,46 @@ function bonusInputValue(cents) {
 }
 
 /**
- * One tick box per person per day. Everyone starts ticked; the boss unticks
- * a day someone was off, and that day's share goes to whoever did work.
+ * Who worked each day. The goal's regulars start ticked; the boss unticks a
+ * day someone was off. Anyone else can be added to a single day, such as
+ * weekend staff helping on a weekday sale day, and unticking them takes them
+ * off again.
  */
-function bonusWorkedCell(block, people) {
-  if (!people.length) return `<span class="meta">Nobody on this goal</span>`;
-
-  return block.day_list.map(day => {
-    const away = block.absent[day] || [];
+function bonusWorkedCell(block, staff) {
+  return block.days.map(({ day, people }) => {
     const name = new Date(`${day}T00:00:00`).toLocaleDateString("en-CA", { weekday: "short" });
+    const others = staff.filter(person => !people.some(p => p.id === person.id));
 
     return `
       <div class="bonus-day">
         <span class="bonus-day-name">${esc(name)}</span>
         ${people.map(person => `
-          <label class="bonus-tick">
+          <label class="bonus-tick${person.extra ? " extra" : ""}">
             <input type="checkbox" data-bonus-worked data-block="${block.id}"
                    data-day="${esc(day)}" data-person="${person.id}"
-                   ${away.includes(person.id) ? "" : "checked"} />
+                   ${person.worked ? "checked" : ""} />
             ${esc(bonusFirstName(person.full_name))}
           </label>
         `).join("")}
+        ${others.length ? `
+          <select class="bonus-add" data-bonus-add data-block="${block.id}" data-day="${esc(day)}"
+                  aria-label="Add someone who worked ${esc(name)}">
+            <option value="">+ Add</option>
+            ${others.map(person => `<option value="${person.id}">${esc(person.full_name)}</option>`).join("")}
+          </select>
+        ` : ""}
       </div>
     `;
   }).join("");
 }
 
 function bonusAdminRow(block, data) {
-  const shares = block.shares.length > 1 || block.shares.some(share => share.cents !== block.bonus.total_cents)
-    ? block.shares.map(share =>
-        `<div class="meta">${esc(bonusFirstName(share.full_name))} ${esc(bonusMoney(share.cents))}</div>`
-      ).join("")
-    : "";
-  const unpaid = block.unpaid_cents > 0
-    ? `<div class="meta">${esc(bonusMoney(block.unpaid_cents))} not paid, nobody worked</div>`
-    : "";
+  const shares = block.shares
+    .filter(share => share.cents > 0)
+    .map(share => `<div class="meta">${esc(bonusFirstName(share.full_name))} ${esc(bonusMoney(share.cents))}</div>`)
+    .join("");
   const earned = block.bonus.met
-    ? `${bonusMoney(block.bonus.total_cents)}${shares}${unpaid}`
+    ? `${bonusMoney(block.total_cents)}${shares}`
     : block.status === "upcoming" || !block.goal_cents ? "" : "$0";
 
   return `
@@ -377,11 +384,11 @@ function bonusAdminRow(block, data) {
                aria-label="Goal for ${esc(bonusRange(block))}" />
       </td>
       <td>
-        <input class="bonus-input" inputmode="decimal"
-               data-bonus-base value="${esc(bonusInputValue(block.base_cents))}"
-               aria-label="What ${esc(bonusRange(block))} pays" />
+        <input class="bonus-input narrow" inputmode="decimal"
+               data-bonus-rate value="${esc(bonusInputValue(block.day_rate_cents))}"
+               aria-label="Pay per day worked, ${esc(bonusRange(block))}" />
       </td>
-      <td>${bonusWorkedCell(block, data.people[block.kind])}</td>
+      <td>${bonusWorkedCell(block, data.staff)}</td>
       <td class="right">${block.sales_cents === null ? "" : esc(bonusSales(block.sales_cents))}</td>
       <td class="right">${earned}</td>
       <td><button class="btn-quiet" data-bonus-save="${block.id}">Save</button></td>
@@ -408,7 +415,7 @@ function bonusPeopleCard(data) {
     <div class="card stripped">
       <div class="strip">WHO SHARES EACH GOAL</div>
       <div class="card-body">
-        <p class="meta" style="margin-top:0;">The people ticked here are on the goal and see it on their Home screen. Each day's share goes to whoever worked that day.</p>
+        <p class="meta" style="margin-top:0;">The people ticked here usually work those days. They start ticked as working on every goal and see it on their Home screen. To add someone for one day only, use "+ Add" beside that day above.</p>
         <div class="bonus-people">
           ${group("weekday", "Monday to Friday")}
           ${group("weekend", "Saturday and Sunday")}
@@ -430,7 +437,7 @@ async function renderSalesBonus(pushState = true) {
 
   const first = data.blocks[0];
   const stepNote = first && first.step_size_cents > 0 && first.step_bonus_cents > 0
-    ? `Past the goal, every extra ${bonusMoney(first.step_size_cents)} adds ${bonusMoney(first.step_bonus_cents)}.`
+    ? `Past the goal, every extra ${bonusMoney(first.step_size_cents)} adds ${bonusMoney(first.step_bonus_cents)}, shared between everyone by the days they worked.`
     : "";
 
   pageArea().innerHTML = `
@@ -451,7 +458,7 @@ async function renderSalesBonus(pushState = true) {
                   <th></th>
                   <th class="right">2025 sales</th>
                   <th>Goal ($)</th>
-                  <th>Pays ($)</th>
+                  <th>Per day, each ($)</th>
                   <th>Who worked</th>
                   <th class="right">Sales so far</th>
                   <th class="right">Bonus</th>
@@ -462,11 +469,12 @@ async function renderSalesBonus(pushState = true) {
             </table>
           </div>
           <p class="meta">
-            <b>Who worked:</b> everyone is ticked as working. Untick a day someone was off.
-            That day's share then goes to whoever did work. It saves as you tick.
+            <b>Who worked:</b> the usual staff start ticked. Untick a day someone was off.
+            Use "+ Add" to put anyone else on a day they helped. It saves as you tick.
           </p>
           <p class="meta">
-            "Pays" is the whole amount when the goal is met, before it is shared. ${esc(stepNote)}
+            <b>Per day, each:</b> when the goal is met, every person gets this for each day they worked.
+            It is not split. ${esc(stepNote)}
             Leave a goal blank and staff see "Goal not set yet".
           </p>
           <div id="bonusAdminError" class="form-error" style="display:none;"></div>
@@ -491,7 +499,7 @@ async function renderSalesBonus(pushState = true) {
 
       const result = await apiSend(`/api/admin/bonus/blocks/${btn.dataset.bonusSave}`, "PUT", {
         goal: row.querySelector("[data-bonus-goal]").value,
-        base: row.querySelector("[data-bonus-base]").value
+        day_rate: row.querySelector("[data-bonus-rate]").value
       });
 
       if (!result.ok) {
@@ -525,6 +533,35 @@ async function renderSalesBonus(pushState = true) {
       // shares catch up on the next save or refresh.
       if (bonusAdminDirty) {
         box.disabled = false;
+        return;
+      }
+
+      await renderSalesBonus(false);
+    };
+  });
+
+  pageArea().querySelectorAll("[data-bonus-add]").forEach(select => {
+    select.onchange = async () => {
+      if (!select.value) return;
+      select.disabled = true;
+
+      const result = await apiSend(`/api/admin/bonus/blocks/${select.dataset.block}/attendance`, "PUT", {
+        day: select.dataset.day,
+        employee_id: Number(select.value),
+        worked: true
+      });
+
+      if (!result.ok) {
+        select.value = "";
+        select.disabled = false;
+        showFormError("bonusAdminError", result.error || "That didn't save.");
+        return;
+      }
+
+      // Adding a person changes who's listed, so the row has to be redrawn
+      // even over something half typed; say so rather than lose it silently.
+      if (bonusAdminDirty && !confirm("Added. Reload the page to show them? Any goal or pay you typed and didn't save will be lost.")) {
+        select.disabled = false;
         return;
       }
 

@@ -35,6 +35,7 @@ import {
   ordersSearch,
   dollarsToCents,
   blockDays,
+  workersByDay,
   sharesFor
 } from "../src/routes/bonus.js";
 
@@ -1609,33 +1610,27 @@ describe("sales bonus", () => {
   });
 
   describe("bonusFor", () => {
-    const weekend = { goal_cents: 600000, base_cents: 12000, step_size_cents: 50000, step_bonus_cents: 2500 };
+    const weekend = { goal_cents: 600000, step_size_cents: 50000, step_bonus_cents: 2500 };
 
     it("pays nothing below the goal and says how far there is to go", () => {
-      const bonus = bonusFor(weekend, 435000, 2);
+      const bonus = bonusFor(weekend, 435000);
       expect(bonus.met).toBe(false);
-      expect(bonus.total_cents).toBe(0);
+      expect(bonus.extra_cents).toBe(0);
       expect(bonus.to_goal_cents).toBe(165000);
     });
 
-    it("pays the base exactly at the goal, split between the people on it", () => {
-      const bonus = bonusFor(weekend, 600000, 2);
-      expect(bonus).toMatchObject({ met: true, steps: 0, total_cents: 12000, each_cents: 6000, to_next_cents: 50000 });
+    it("is met exactly at the goal, with no extra yet", () => {
+      expect(bonusFor(weekend, 600000)).toMatchObject({ met: true, steps: 0, extra_cents: 0, to_next_cents: 50000 });
     });
 
-    it("adds a step for each full $500 past the goal", () => {
-      expect(bonusFor(weekend, 665000, 2)).toMatchObject({ steps: 1, total_cents: 14500, each_cents: 7250, to_next_cents: 35000 });
-      expect(bonusFor(weekend, 699999, 2).steps).toBe(1);
-      expect(bonusFor(weekend, 700000, 2).steps).toBe(2);
+    it("adds to the extra pot for each full $500 past the goal", () => {
+      expect(bonusFor(weekend, 665000)).toMatchObject({ steps: 1, extra_cents: 2500, to_next_cents: 35000 });
+      expect(bonusFor(weekend, 699999).steps).toBe(1);
+      expect(bonusFor(weekend, 700000)).toMatchObject({ steps: 2, extra_cents: 5000 });
     });
 
-    it("pays one person the whole amount", () => {
-      const week = { goal_cents: 540000, base_cents: 10000, step_size_cents: 50000, step_bonus_cents: 2500 };
-      expect(bonusFor(week, 600000, 1)).toMatchObject({ steps: 1, total_cents: 12500, each_cents: 12500 });
-    });
-
-    it("pays nothing while the goal isn't set", () => {
-      expect(bonusFor({ ...weekend, goal_cents: null }, 900000, 2).total_cents).toBe(0);
+    it("is never met while the goal isn't set", () => {
+      expect(bonusFor({ ...weekend, goal_cents: null }, 900000).met).toBe(false);
     });
   });
 
@@ -1665,45 +1660,71 @@ describe("sales bonus", () => {
     });
   });
 
-  describe("sharesFor", () => {
-    const weekend = { starts_on: "2026-11-21", ends_on: "2026-11-22" };
+  describe("who worked, and what each person gets", () => {
+    const week = { starts_on: "2026-11-23", ends_on: "2026-11-27", day_rate_cents: 2000 };
+    const weekend = { starts_on: "2026-11-28", ends_on: "2026-11-29", day_rate_cents: 2000 };
     const first = { id: 1, full_name: "Staff One" };
     const second = { id: 2, full_name: "Staff Two" };
-    const cents = result => result.shares.map(share => share.cents);
+    const solo = { id: 3, full_name: "Staff Three" };
+    const met = extra => ({ met: true, extra_cents: extra });
+    const byId = result => Object.fromEntries(result.shares.map(share => [share.id, share.cents]));
 
     it("lists every day of a goal", () => {
-      expect(blockDays(weekend)).toEqual(["2026-11-21", "2026-11-22"]);
-      expect(blockDays({ starts_on: "2026-11-30", ends_on: "2026-12-04" })).toHaveLength(5);
+      expect(blockDays(weekend)).toEqual(["2026-11-28", "2026-11-29"]);
+      expect(blockDays(week)).toHaveLength(5);
     });
 
-    it("splits evenly when both work both days", () => {
-      expect(cents(sharesFor(weekend, 12000, [first, second]))).toEqual([6000, 6000]);
+    it("counts the regulars as working every day until they're unticked", () => {
+      const away = new Map([["2026-11-25", new Set([3])]]);
+      const workers = workersByDay(week, [solo], away);
+      expect(workers.get("2026-11-24").map(w => w.id)).toEqual([3]);
+      expect(workers.get("2026-11-25")).toEqual([]);
     });
 
-    it("gives it all to the one who worked when the other was off all weekend", () => {
-      const away = new Map([["2026-11-21", new Set([2])], ["2026-11-22", new Set([2])]]);
-      const result = sharesFor(weekend, 12000, [first, second], away);
-      expect(cents(result)).toEqual([12000, 0]);
-      expect(result.shares[1].days_worked).toBe(0);
+    it("adds someone for a single day without listing a regular twice", () => {
+      const extras = new Map([["2026-11-26", [first, solo]]]);
+      const workers = workersByDay(week, [solo], new Map(), extras);
+      expect(workers.get("2026-11-26")).toEqual([
+        { id: 3, full_name: "Staff Three", extra: false },
+        { id: 1, full_name: "Staff One", extra: true }
+      ]);
     });
 
-    it("shares only the day they both worked", () => {
-      const away = new Map([["2026-11-21", new Set([2])]]);
-      expect(cents(sharesFor(weekend, 12000, [first, second], away))).toEqual([9000, 3000]);
+    it("pays each person the day rate for each day they worked, not split", () => {
+      const result = sharesFor(weekend, workersByDay(weekend, [first, second]), met(0));
+      expect(byId(result)).toEqual({ 1: 4000, 2: 4000 });
+      expect(result.total_cents).toBe(8000);
     });
 
-    it("shares the steps the same way as the base", () => {
-      const away = new Map([["2026-11-21", new Set([2])]]);
-      expect(cents(sharesFor(weekend, 14500, [first, second], away))).toEqual([10875, 3625]);
+    it("pays only the one who worked when the other was off all weekend", () => {
+      const away = new Map([["2026-11-28", new Set([2])], ["2026-11-29", new Set([2])]]);
+      const result = sharesFor(weekend, workersByDay(weekend, [first, second], away), met(0));
+      expect(byId(result)).toEqual({ 1: 4000 });
     });
 
     it("pays one person only for the days they worked", () => {
-      const week = { starts_on: "2026-11-23", ends_on: "2026-11-27" };
-      const solo = { id: 3, full_name: "Staff Three" };
       const away = new Map([["2026-11-25", new Set([3])]]);
-      const result = sharesFor(week, 10000, [solo], away);
-      expect(cents(result)).toEqual([8000]);
-      expect(result.unpaid_cents).toBe(2000);
+      const result = sharesFor(week, workersByDay(week, [solo], away), met(0));
+      expect(byId(result)).toEqual({ 3: 8000 });
+    });
+
+    it("gives a helper the day rate too, and shares the extra by days worked", () => {
+      // Sam's example: weekend staff helps on one weekday, $50 of extra.
+      const extras = new Map([["2026-11-26", [first]]]);
+      const result = sharesFor(week, workersByDay(week, [solo], new Map(), extras), met(5000));
+      expect(result.person_days).toBe(6);
+      expect(byId(result)).toEqual({ 3: 10000 + 4167, 1: 2000 + 833 });
+    });
+
+    it("shares the extra evenly when both worked the same days", () => {
+      const result = sharesFor(weekend, workersByDay(weekend, [first, second]), met(2500));
+      expect(byId(result)).toEqual({ 1: 4000 + 1250, 2: 4000 + 1250 });
+    });
+
+    it("pays nothing when the goal wasn't met, but still counts the days", () => {
+      const result = sharesFor(weekend, workersByDay(weekend, [first, second]), { met: false, extra_cents: 0 });
+      expect(byId(result)).toEqual({ 1: 0, 2: 0 });
+      expect(result.shares[0].days_worked).toBe(2);
     });
   });
 

@@ -17,7 +17,7 @@ Live at **https://portal.pandahobby.ca**.
 
 ```bash
 npm run dev            # local server; uses the local D1 copy, not production data
-npm test               # vitest, 207 tests
+npm test               # vitest, 209 tests
 npm run migrate:local  # apply migrations to the local D1
 npm run migrate:remote # apply migrations to production
 npm run migrate:check  # list pending remote migrations — the source of truth
@@ -980,24 +980,29 @@ leave it for now.
 ## Sales bonus
 
 The decisions are in `docs/bonus-plan.md`; read it before working here. Built
-and deployed 2026-11-20 (migration 0049).
+and deployed 2026-11-20 (migration 0049); the pay rule changed 2026-11-21
+(migration 0050).
 
 - **Staff are written by staff ID, never by name** (Sam, 2026-11-20): in the
   plan, in HANDOFF.md, in migrations, tests and commit messages. The goals are
   linked to people by `employees.id` only.
 - `bonus_blocks` is one row per goal (a Monday-to-Friday week or a weekend),
-  money in cents; `bonus_people` says who shares each kind of goal.
-- **A person only shares for the days they worked.** Everyone counts as
-  having worked until the boss unticks them, so `bonus_absences` holds only
-  the exceptions. `sharesFor()` cuts the bonus into equal daily parts and
-  gives each day's part to whoever worked that day; a day nobody worked isn't
-  paid.
+  money in cents; `bonus_people` says who usually works each kind of goal.
+  `base_cents` is dead since migration 0050; `day_rate_cents` replaced it.
+- **The pay rule** (Sam, 2026-11-21): when a goal is met, every person gets
+  `day_rate_cents` ($20) for each day they worked in it. One amount per
+  person, same on any day, not split. The steps past the goal are a pot
+  shared by days worked. `sharesFor()` does both.
+- **Who worked** is `workersByDay()`: the goal's regulars minus the boss's
+  unticks (`bonus_absences`), plus anyone added for a single day
+  (`bonus_extra_days`), such as weekend staff helping on a weekday.
 - **Staff are only ever told their own amount, never a total that gets
   split** (Sam, 2026-11-21). Every dollar figure on a staff card is the
   viewer's own (`my_base_cents`, `my_step_cents`, `my_cents`), and
-  `ownAmountsOnly()` strips the totals and the head count before the answer
-  leaves the server. Nor are they sent who was off. Only the boss gets
-  totals.
+  `ownAmountsOnly()` strips the totals before the answer leaves the server.
+  Nor are they sent who was off. Only the boss gets totals. A finished goal
+  goes out through `resultOnly()`: whether it was met and the viewer's
+  bonus, with no sales figure.
 - `GET /api/bonus` is the signed-in person's own card and **never carries
   `last_year_cents`**. `GET /api/admin/bonus` and the three `PUT`s under it
   (a goal's numbers, who worked a day, who is on a goal) are for the `boss`
