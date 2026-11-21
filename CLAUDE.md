@@ -980,7 +980,7 @@ leave it for now.
 ## Sales bonus
 
 The decisions are in `docs/bonus-plan.md`; read it before working here. Built
-2026-11-20, **not deployed yet** (migration 0049).
+and deployed 2026-11-20 (migration 0049).
 
 - **Staff are written by staff ID, never by name** (Sam, 2026-11-20): in the
   plan, in HANDOFF.md, in migrations, tests and commit messages. The goals are

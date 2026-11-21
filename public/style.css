@@ -4242,6 +4242,17 @@ button.pick-open {
   color: var(--text);
 }
 
+.bonus-manage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 2px solid var(--track);
+}
+
 .card input.bonus-input {
   width: 96px;
 }

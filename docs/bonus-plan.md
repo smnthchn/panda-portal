@@ -149,6 +149,11 @@ final look will go. Everything below is Claude's choice inside that
   goal, sales so far, how far to the goal or the next $25, and the bonus so
   far. Before the first day it shows the coming goal with the tree still
   white.
+- **The boss sees the staff cards too,** on their own Home screen, one for
+  weekdays and one for the weekend, exactly as staff see them, with a button
+  through to the Sales bonus page. Sam asked for a staff view in boss mode
+  after the first deploy (Sam, 2026-11-20). The boss is on no list, so the
+  card shows them no share.
 - **The tree is one picture drawn three ways at once** (`bonusMeterHtml()`
   in `public/bonus.js`, picture `public/bonus-tree.webp`): washed out all
   over; in full colour from the foot up to how far sales have got; and each

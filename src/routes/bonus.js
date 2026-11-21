@@ -345,7 +345,14 @@ export async function handleMyBonus(request, env) {
   if (!auth.ok) return auth;
 
   const people = await loadPeople(env.DB);
-  const myKinds = KINDS.filter(kind => people[kind].some(person => person.id === auth.user.id));
+
+  // The boss sees every goal the way staff see it, tree and all, so they
+  // know what's on their team's screens. They're on no list, so they get no
+  // share of their own.
+  const isBoss = auth.user.role === "boss";
+  const myKinds = KINDS.filter(kind =>
+    isBoss || people[kind].some(person => person.id === auth.user.id)
+  );
   if (!myKinds.length) return { ok: true, cards: [] };
 
   const now = new Date();
@@ -379,7 +386,7 @@ export async function handleMyBonus(request, env) {
     if (card.current || card.last) cards.push(card);
   }
 
-  return { ok: true, cards };
+  return { ok: true, cards, can_manage: isBoss };
 }
 
 function requireBoss(auth) {

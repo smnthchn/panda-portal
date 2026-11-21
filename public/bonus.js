@@ -240,18 +240,29 @@ function bonusLastHtml(view) {
   `;
 }
 
-function bonusCardHtml(card) {
+/**
+ * One goal's card. `canManage` is the boss looking at what staff see: the
+ * same card, plus a way through to the page where goals are set.
+ */
+function bonusCardHtml(card, canManage = false) {
   const current = card.current;
+  const title = card.kind === "weekend" ? "WEEKEND SALES BONUS" : "WEEKDAY SALES BONUS";
 
   return `
     <div class="card stripped bonus-card">
       <div class="strip warm">
-        HOLIDAY SALES BONUS
+        ${title}
         ${current && current.status === "live" ? `<span class="strip-side">${esc(bonusRange(current))}</span>` : ""}
       </div>
       <div class="card-body">
         ${current ? bonusCurrentHtml(current) : `<div class="meta">No more goals coming up.</div>`}
         ${card.last ? bonusLastHtml(card.last) : ""}
+        ${canManage ? `
+          <div class="bonus-manage">
+            <span class="meta">This is what staff on this goal see.</span>
+            <button class="btn-quiet" data-bonus-manage>Goals and who worked</button>
+          </div>
+        ` : ""}
       </div>
     </div>
   `;
@@ -274,7 +285,11 @@ async function loadBonusSlot() {
   const slot = document.getElementById("bonusSlot");
   if (!slot || !data?.ok) return;
 
-  slot.innerHTML = data.cards.map(bonusCardHtml).join("");
+  slot.innerHTML = data.cards.map(card => bonusCardHtml(card, data.can_manage)).join("");
+
+  slot.querySelectorAll("[data-bonus-manage]").forEach(btn => {
+    btn.onclick = () => goToView("sales-bonus");
+  });
 
   if (data.cards.length && !bonusTimer) {
     bonusTimer = setInterval(loadBonusSlot, BONUS_REFRESH_MS);
