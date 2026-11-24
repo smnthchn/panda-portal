@@ -76,6 +76,8 @@ that date.
   one when none is running. They never see the full list, so later goals can
   be changed on the Sales bonus page before anyone has seen them. The next
   goal starts showing the moment the current one ends. (Claude, 2026-11-21)
+  UNDECIDED: show the next goal before its first day, or hide it until
+  then, see HANDOFF.md
 - **It's a group goal, not a per-person one.** Every POS sale at the Markham
   store counts, whoever rang it up. The portal doesn't show who sold what.
   (Sam, 2026-11-20)
@@ -347,8 +349,8 @@ after discounts and returns. With-tax figures are about 13% higher.
   selling weekdays, not 5.
 - **The portal's Shopify app can read Markham in-store sales** (tested
   2026-11-20 with the app's own token, read only). Sam added `read_orders`
-  and `read_all_orders` to the Panda Portal app on 2026-11-20. No Worker code
-  calls Shopify yet. How: the Admin GraphQL `orders` query with the search
+  and `read_all_orders` to the Panda Portal app on 2026-11-20. The Worker
+  reads sales this way since the build (`src/routes/bonus.js`). How: the Admin GraphQL `orders` query with the search
   `source_name:pos location_id:3164241943` (Markham) and a `created_at`
   range, adding up `currentSubtotalPriceSet`. That matched Shopify's net
   sales to the cent on 6 days (Nov 7, 14, 15, 19 and 20, 2026, and a
@@ -366,8 +368,8 @@ after discounts and returns. With-tax figures are about 13% higher.
   return comes off the day of the original sale here, where Shopify's report
   takes it off the day of the return, so a week can differ by a returned
   item. Toronto is UTC-5 in winter and UTC-4 in summer.
-  `shopify-app/shopify.app.toml` lists the two scopes (added to the file
-  2026-11-20, not committed yet), so a release from the repo keeps them.
+  `shopify-app/shopify.app.toml` lists the two scopes (added
+  2026-11-20), so a release from the repo keeps them.
 - **What `currentSubtotalPriceSet` takes off by itself, and what it misses**
   (checked on real in-store orders, 2026-11-20). Taken off: an item returned
   or refunded (RX171280, $49.99 down to $0; RX160132, $49.59 down to $15.60),
