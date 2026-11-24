@@ -41,17 +41,19 @@ portal's Staff page.
   "love it!" (Sam, 2026-11-20) The picture is hers to use: she made it in
   ChatGPT on her paid subscription. (Sam, 2026-11-20)
 - **A light is white, with no colour, until sales pass its amount. Once
-  sales pass it, it is coloured.** (Sam, 2026-11-20) Past the goal one light
-  is one fifth of a step, so $100, and five lights make the next $25. The
-  picture has 22 lights, which covers $2,200 past the goal.
-  (Claude, 2026-11-20)
+  sales pass it, it is coloured.** (Sam, 2026-11-20)
+- **Past the goal, one light is $250 of sales,** so two lights make the next
+  $25. (Sam, 2026-11-24) The picture has 22 lights, which shows up to $5,500
+  past a goal. It was $100 a light at first, and the first weekend went
+  $2,417 past its goal and ran out of lights.
 - **The meter carries numbers,** so staff can see what point they have got
   up to and how much more they need to sell to reach the goal.
   (Sam, 2026-11-20)
 - **The card explains the bonus in the tree's own words:** "Fill the tree
-  all the way to the star and receive a $XX bonus! Then for every 5
+  all the way to the star and receive a $XX bonus! Then for every 2
   Christmas lights you light up, you'll get an additional $XX bonus."
-  (Sam, 2026-11-21)
+  (Sam, 2026-11-21; it said "every 5" until a light became $250 on
+  2026-11-24)
 - **Staff are only ever told their own amount, never a total that gets
   split.** A total makes people think it is all theirs, which is confusion
   nobody needs. So the weekend card says "$60 bonus", not $120, and each

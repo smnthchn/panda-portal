@@ -78,8 +78,12 @@ const BONUS_TREE = {
   ]
 };
 
-/** Lights per step past the goal: a $500 step is five $100 lights. */
-const BONUS_LIGHTS_PER_STEP = 5;
+/**
+ * Lights per step past the goal: a $500 step is two $250 lights (Sam,
+ * 2026-11-24). It was five $100 lights at first, and the first weekend ran
+ * past all 22 of them. At $250 the tree shows up to $5,500 past a goal.
+ */
+const BONUS_LIGHTS_PER_STEP = 2;
 
 /**
  * The meter: one picture of a Christmas tree, drawn three ways at once.
@@ -88,7 +92,8 @@ const BONUS_LIGHTS_PER_STEP = 5;
  *  - In full colour from the foot up to how far sales have got toward the
  *    goal. At the goal the whole picture is in colour, star included.
  *  - Each bulb washed back to white until sales pass it. Past the goal a
- *    bulb is one fifth of a step, so they come on one at a time.
+ *    bulb is a set part of a step (BONUS_LIGHTS_PER_STEP), so they come on
+ *    one at a time.
  *
  * It sits on its own white panel in every theme, because the picture has a
  * white background.
