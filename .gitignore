@@ -168,3 +168,6 @@ dist
 
 # design handoff bundles (reference only)
 /design/v*/
+
+# sales figures and other numbers that stay on this computer (see CLAUDE.md)
+/local-notes/

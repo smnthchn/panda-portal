@@ -12,6 +12,18 @@ Live at **https://portal.pandahobby.ca**.
 - Status: HANDOFF.md
 - Design: design/DESIGN-STATUS.md
 - Reference only, not plan: docs/ai-foundation/ (old starter pack; the knowledge base lives in Google Docs)
+- **Sales figures stay out of this repo from now on** (Sam, 2026-11-24): no
+  sales amounts, margins or order amounts in the plan docs, HANDOFF.md, this
+  file, migrations, tests or commit messages. It is a strong suggestion, not
+  a non-negotiable (Sam, 2026-11-24). Everything below is Claude's
+  (Claude, 2026-11-24). Keep to it by default, and ask Sam first if a figure
+  ever seems to need to go in. A figure the app needs goes straight into the live
+  database with Sam's OK, never through a migration file. A figure worth
+  keeping goes in `local-notes/`, which git ignores and which stays on this
+  computer. Goal amounts count as sales figures, since each one is last
+  year's sales less a set percent. Tests use made-up numbers. Figures written
+  before 2026-11-24 (in `docs/bonus-plan.md`, HANDOFF.md and migration 0049)
+  are still in the files and in the history.
 
 ## Commands
 
@@ -35,6 +47,15 @@ and leave production running old code against a new schema.
 tests, then these same three steps, on every push that touches anything
 outside `.github/` (so a HANDOFF.md-only push redeploys too). Its first real
 run was 2026-09-28. A push is a production decision.
+
+**Claude's own push can be refused by the Claude app's safety check.** It
+happened twice on 2026-11-20 ("sensitive information"), on the first big
+sales bonus commit: once with staff names in it, once after they were taken
+out. A small push on 2026-11-24 went through. The check gives no more reason
+than that. The first commit carried last year's weekly sales, margins and
+order numbers, and came in a session that had just used the Shopify app's
+secret for a read test; which of those tripped it isn't known. When it
+happens, don't work around it: hand Sam the push command.
 
 Deploying by hand, it's three steps:
 

@@ -9,6 +9,10 @@ goals are linked to people the same way (Sam, 2026-11-20). Staff 5 works
 Monday to Friday. Staff 4 and Staff 6 work the weekends. Who is who is on the
 portal's Staff page.
 
+Sales figures stay out of this repo from now on (Sam, 2026-11-24): the rule
+is in CLAUDE.md, Where things live. The figures below were written before
+that date.
+
 ## Non-negotiable
 
 - **Refunds, cancellations and anything else that takes money back off a
